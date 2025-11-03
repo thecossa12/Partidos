@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🏐 Sistema de Rotaciones</title>
+    <link rel="stylesheet" href="styles.css?v=2025102029">
+</head>
+<body>
+    <!-- Banner de jornada pendiente -->
+    <div id="bannerJornadaPendiente" class="banner-jornada-pendiente" style="display: none;">
+        <div class="banner-content">
+            <div class="banner-info">
+                <span class="banner-icon">📝</span>
+                <span class="banner-texto"></span>
+            </div>
+            <div class="banner-actions">
+                <button id="continuarPlanificando" class="btn-continuar">✏️ Continuar Editando</button>
+                <button id="eliminarBorrador" class="btn-eliminar">🗑️ Eliminar</button>
+                <button id="cerrarBanner" class="btn-cerrar">✕</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Setup (OCULTO) -->
+    <div id="setupInicial" class="setup-modal" style="display: none !important;">
+        <!-- Contenido del setup modal oculto -->
+    </div>
+
+    <!-- Aplicación Principal -->
+    <div class="container" id="mainApp">
+        <div class="header">
+            <h1>🏐 Sistema de Rotaciones</h1>
+            <div class="tabs">
+                <button class="tab-button active" data-tab="jornadas">📅 Jornadas</button>
+                <button class="tab-button" data-tab="jugadoras">👥 Equipo</button>
+                <button class="tab-button" data-tab="historial">📊 Historial</button>
+            </div>
+        </div>
+
+        <!-- Contenido de Jornadas -->
+        <div id="jornadas" class="tab-content active">
+            <div id="jornada-nueva">
+                <h3>Nueva Jornada</h3>
+                <div class="jornada-config">
+                    <input type="date" id="fechaJornada">
+                    <button id="crearJornada" class="btn-crear">+ Crear Jornada</button>
+                </div>
+            </div>
+
+            <div id="jornadaActual" class="jornada-container" style="display: none;">
+                <div class="jornada-header">
+                    <h3 id="tituloJornada">Jornada: Semana del [fecha]</h3>
+                    <div class="jornada-controles">
+                        <div class="jornada-progreso">
+                            <span id="progresoJornada">Paso 1 de 3</span>
+                        </div>
+                        <div class="navegacion-rapida">
+                            <button id="irLunes" class="btn-nav active" onclick="app.irAPaso('lunes')">Lunes</button>
+                            <button id="irMiercoles" class="btn-nav" onclick="app.irAPaso('miercoles')">Miércoles</button>
+                            <button id="irSabado" class="btn-nav" onclick="app.irAPaso('sabado')">Sábado</button>
+                            <button id="volverInicio" class="btn-volver" onclick="app.volverAInicioJornada()">🔄 Nueva Jornada</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Paso 1: Entrenamiento Lunes -->
+                <div id="pasoLunes" class="jornada-paso active">
+                    <div class="paso-header">
+                        <h4 id="tituloLunes">📅 Entrenamiento Lunes</h4>
+                        <p>Selecciona las jugadoras que asistieron al entrenamiento</p>
+                    </div>
+                    <div class="jugadoras-grid" id="asistenciaLunesGrid"></div>
+                    <div class="paso-actions">
+                        <button id="siguienteLunes" class="btn-siguiente">Continuar a Miércoles</button>
+                    </div>
+                </div>
+
+                <!-- Paso 2: Entrenamiento Miércoles -->
+                <div id="pasoMiercoles" class="jornada-paso">
+                    <div class="paso-header">
+                        <h4 id="tituloMiercoles">📅 Entrenamiento Miércoles</h4>
+                        <p>Selecciona las jugadoras que asistieron al entrenamiento</p>
+                    </div>
+                    <div class="jugadoras-grid" id="asistenciaMiercolesGrid"></div>
+                    <div class="paso-actions">
+                        <button id="volverLunes" class="btn-anterior">Volver a Lunes</button>
+                        <button id="siguienteMiercoles" class="btn-siguiente">Continuar a Sábado</button>
+                    </div>
+                </div>
+
+                <!-- Paso 3: Partido Sábado -->
+                <div id="pasoSabado" class="jornada-paso">
+                    <div class="paso-header">
+                        <h4 id="tituloSabado">🏐 Partido Sábado</h4>
+                        <p>Selecciona las jugadoras que van a ir al partido y planifica la rotación</p>
+                    </div>
+                    
+                    <div class="partido-config">
+                        <h5>Configuración del Partido</h5>
+                        <div class="config-grid">
+                            <div class="form-group">
+                                <label for="puntosSet1Jornada">Set 1:</label>
+                                <input type="number" id="puntosSet1Jornada" value="25" min="15" max="50">
+                            </div>
+                            <div class="form-group">
+                                <label for="puntosSet2Jornada">Set 2:</label>
+                                <input type="number" id="puntosSet2Jornada" value="25" min="15" max="50">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="jugadoras-grid" id="asistenciaSabadoGrid"></div>
+                    
+                    <!-- Contenedor principal para la planificación inteligente -->
+                    <div id="configuracionPartido" class="configuracion-partido">
+                        <!-- La planificación se genera automáticamente aquí -->
+                    </div>
+                    
+                    <div class="paso-actions">
+                        <button id="volverMiercoles" class="btn-anterior">Volver a Miércoles</button>
+                        <button id="guardarBorrador" class="btn-guardar-borrador">💾 Guardar Borrador</button>
+                        <button id="completarJornada" class="btn-completar">✅ Completar Jornada</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="listaJornadas"></div>
+            <!-- Div necesario para la lista de setup -->
+            <div id="listaSetup" style="display:none;"></div>
+
+            <!-- Planificador de sets independiente -->
+            <div id="planificadorSets" class="planificador-sets" style="display: none;">
+                <!-- Contenido del planificador -->
+            </div>
+        </div>
+
+        <!-- Contenido de Equipo -->
+        <div id="jugadoras" class="tab-content">
+            <div class="section-header">
+                <h3>👥 Gestión del Equipo</h3>
+                <div class="equipo-actions">
+                    <button id="addJugadora" class="btn-add">+ Añadir Jugadora</button>
+                    <button id="resetearEquipo" class="btn-reset">🔄 Reset Equipo</button>
+                </div>
+            </div>
+            
+            <div id="formJugadora" class="form-jugadora" style="display: none;">
+                <h4>Añadir Jugadora</h4>
+                <div class="form-row">
+                    <input type="text" id="nombreJugadora" placeholder="Nombre">
+                    <input type="number" id="dorsalJugadora" placeholder="Dorsal" min="1" max="99">
+                    <select id="posicionJugadora">
+                        <option value="jugadora">Jugadora</option>
+                        <option value="colocadora">Colocadora</option>
+                        <option value="central">Central</option>
+                    </select>
+                        <button id="guardarJugadora" class="btn-save" type="button">Guardar</button>
+                        <button id="cancelarJugadora" class="btn-cancel" type="button">Cancelar</button>
+                </div>
+            </div>
+
+            <div id="listaJugadoras" class="lista-equipo"></div>
+        </div>
+
+        <!-- Contenido de Historial -->
+        <div id="historial" class="tab-content">
+            <div class="filtros-historial">
+                <div class="info-filtros">
+                    <h4>🔍 Filtros de Búsqueda</h4>
+                    <p>Filtra las jornadas por mes o por jugadora específica</p>
+                </div>
+                
+                <div class="filtros-row">
+                    <div class="filtro-item">
+                        <label>Filtrar por mes:</label>
+                        <select id="filtroMes">
+                            <option value="">Todos los meses</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filtro-item">
+                        <label>Filtrar por jugadora:</label>
+                        <select id="filtroJugadora">
+                            <option value="">Todas las jugadoras</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filtro-acciones">
+                        <button id="filtrarHistorial" class="btn-aplicar">🔍 Filtrar</button>
+                        <button id="limpiarFiltro" class="btn-limpiar">🗑️ Limpiar</button>
+                        <button id="exportarDatos" class="btn-exportar">📥 Exportar Datos</button>
+                        <button id="importarDatos" class="btn-importar">📤 Importar Datos</button>
+                        <button id="eliminarSeleccionadas" class="btn-eliminar">🗑️ Eliminar Seleccionados</button>
+                        <input type="file" id="archivoImportar" accept=".json" style="display: none;">
+                    </div>
+                </div>
+            </div>
+            
+            <div id="listaHistorial"></div>
+        </div>
+    </div>
+
+    <!-- Modal para sustituciones -->
+    <div id="modalSustitucion" class="modal-sustitucion" style="display: none;">
+        <div class="modal-content">
+            <h4>Añadir Sustitución</h4>
+            <div class="sustitucion-form">
+                <div class="form-group">
+                    <label>Jugadora que sale:</label>
+                    <select id="jugadoraSale">
+                        <option value="">Seleccionar...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Jugadora que entra:</label>
+                    <select id="jugadoraEntra">
+                        <option value="">Seleccionar...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Punto del cambio:</label>
+                    <input type="text" id="puntoCambio" placeholder="ej: 12-5, 3-8, etc.">
+                </div>
+                <div class="modal-actions">
+                    <button id="confirmarSustitucion" class="btn-confirmar">✅ Confirmar</button>
+                    <button id="cancelarSustitucion" class="btn-cancelar">❌ Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js?v=2025102036"></script>
+</body>
+</html>

@@ -1,0 +1,3560 @@
+/* ==================== BANNER JORNADA PENDIENTE ==================== */
+/* TEMPORAL: Ocultar completamente el setup */
+.setup-modal, #setupInicial {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    position: absolute !important;
+    left: -9999px !important;
+}
+
+.banner-jornada-pendiente {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #ffa500 0%, #ff8c00 100%);
+    color: white;
+    z-index: 10000;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    animation: slideDown 0.3s ease;
+}
+
+.banner-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.banner-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.banner-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.banner-texto {
+    font-weight: 500;
+    font-size: 1rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.banner-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.btn-continuar {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.btn-continuar:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+.btn-eliminar {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+
+.btn-eliminar:hover {
+    background: #c82333;
+    transform: scale(1.05);
+}
+
+.btn-exportar {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-exportar:hover {
+    background: #138496;
+    transform: scale(1.05);
+}
+
+.btn-importar {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-importar:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+.btn-recalcular {
+    background: #fd7e14;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    font-weight: 500;
+}
+
+.btn-recalcular:hover {
+    background: #e8650c;
+    transform: scale(1.05);
+}
+
+.btn-cerrar {
+    background: transparent;
+    color: white;
+    border: 1px solid white;
+    padding: 6px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s;
+}
+
+.btn-cerrar:hover {
+    background: white;
+    color: #ff8c00;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Ajustar el cuerpo cuando el banner esté visible */
+body.banner-activo {
+    padding-top: 60px;
+}
+    /* === PLANIFICADOR DE SETS (ESTILO ORIGINAL) === */
+    .planificador-sets {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+    }
+    .sets-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+    }
+    .set-column h4 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e0e0e0;
+    }
+    .set-container-campo {
+            min-height: 200px;
+            border: 2px solid #4caf50;
+            border-radius: 10px;
+            padding: 15px;
+            background: #f1f8e9;
+    }
+    .jugadoras-set {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+    }
+    .suplentes-container {
+            margin-top: 20px;
+    }
+    .suplentes-container h5 {
+            color: #666;
+            margin-bottom: 10px;
+    }
+    .suplentes-list {
+            min-height: 60px;
+            border: 1px dashed #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            background: #f9f9f9;
+            margin-bottom: 10px;
+    }
+    .sustitucion-item {
+            background: #e3f2fd;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+    }
+    .sustitucion-item span {
+            flex: 1;
+            margin-right: 8px;
+    }
+    .sustitucion-item .btn-remove-sust {
+            flex-shrink: 0;
+            margin-left: auto;
+    }
+    .btn-add-suplente {
+            background: #4caf50;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+    }
+    .btn-add-suplente:hover {
+            background: #45a049;
+    }
+    .jugadoras-disponibles-container {
+            border-top: 2px solid #e0e0e0;
+            padding-top: 20px;
+    }
+    .jugadoras-disponibles-container h4 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 15px;
+    }
+    .jugadoras-disponibles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+    }
+    .jugadora-disponible {
+            padding: 8px;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform 0.2s;
+            border: 2px solid;
+            position: relative;
+            min-height: 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+    }
+    .jugadora-disponible:hover {
+            transform: translateY(-2px);
+    }
+    .jugadora-disponible.verde {
+            background: #e8f5e8;
+            border-color: #4caf50;
+            color: #2e7d32;
+    }
+    .jugadora-disponible.amarillo {
+            background: #fff8e1;
+            border-color: #ff9800;
+            color: #f57c00;
+    }
+    .jugadora-disponible.rojo {
+            background: #ffebee;
+            border-color: #f44336;
+            color: #c62828;
+    }
+    .jugadora-disponible .jugadora-info {
+            font-weight: bold;
+            font-size: 0.85rem;
+            line-height: 1.2;
+            display: block;
+            white-space: nowrap;
+    }
+    .jugadora-disponible .nombre {
+            font-weight: bold;
+            font-size: 0.85rem;
+            line-height: 1.2;
+            display: inline !important;
+    }
+    .jugadora-disponible .dorsal {
+            font-size: 0.75rem;
+    }
+
+.btn-cerrar:hover {
+    background: white;
+    color: #ff8c00;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Ajustar el cuerpo cuando el banner esté visible */
+body.banner-activo {
+    padding-top: 60px;
+}
+
+/* ==================== ESTILOS GENERALES ==================== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+    margin: 0;
+    box-sizing: border-box;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 15px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: visible;
+    width: 100%;
+    min-width: 0;
+}
+
+header {
+    background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+    color: white;
+    padding: 30px 0 10px 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    text-align: center;
+}
+
+header p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+display: flex;
+justify-content: center;
+align-items: center;
+width: 100%;
+margin-top: 10px;
+}
+
+.tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2vw;
+  box-sizing: border-box;
+  margin-top: 10px;
+}
+
+.tab-button {
+  flex: 1 1 0;
+  padding: 15px 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #6c757d;
+  transition: all 0.3s ease;
+  border-bottom: 3px solid transparent;
+  text-align: center;
+  max-width: 100%;
+  min-width: 120px;
+}
+
+.tab-button:hover {
+    background: #e9ecef;
+    color: #495057;
+}
+
+.tab-button.active {
+    color: #ff6b6b;
+    border-bottom-color: #ff6b6b;
+    background: white;
+}
+
+.tab-content {
+    display: none;
+    padding: 30px;
+    min-height: 500px;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.section {
+    margin-bottom: 30px;
+}
+
+.section h2 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.8rem;
+    border-left: 4px solid #ff6b6b;
+    padding-left: 15px;
+}
+
+.section h3 {
+    color: #495057;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+
+.form-group {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #495057;
+    min-width: 120px;
+}
+
+input[type="text"], 
+input[type="date"], 
+input[type="number"],
+input[type="month"],
+select {
+    padding: 12px 15px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+    flex: 1;
+    max-width: 300px;
+    background: white;
+    cursor: pointer;
+}
+
+input[type="text"]:focus, 
+input[type="date"]:focus, 
+input[type="number"]:focus,
+input[type="month"]:focus,
+select:focus {
+    outline: none;
+    border-color: #ff6b6b;
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+button {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+#addJugadora, #nuevaSemana, #calcularRotacion {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+#guardarEntrenamiento, #guardarPartido {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    color: white;
+}
+
+#filtrarHistorial {
+    background: linear-gradient(135deg, #ff8a80 0%, #ff5722 100%);
+    color: white;
+}
+
+#limpiarFiltro {
+    background: #6c757d;
+    color: white;
+}
+
+.list-container, .asistencia-lista, .resultado-container, .historial-container {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 15px;
+}
+
+.jugadora-item, .partido-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.jugadora-item:hover, .partido-item:hover {
+    transform: translateY(-2px);
+}
+
+.jugadora-item > div:first-child {
+    flex: 1;
+    margin-right: 15px;
+    min-width: 0;
+}
+
+.jugadora-nombre {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1rem;
+    margin-bottom: 5px;
+}
+
+.jugadora-stats {
+    font-size: 0.85rem;
+    color: #6c757d;
+    line-height: 1.2;
+    word-wrap: break-word;
+}
+
+.jugadora-item > div:last-child {
+    display: flex;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.delete-btn, .edit-btn {
+    padding: 8px 15px;
+    font-size: 0.8rem;
+}
+
+.delete-btn {
+    background: #dc3545;
+    color: white;
+}
+
+.edit-btn {
+    background: #007bff;
+    color: white;
+}
+
+.entrenamientos-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin: 20px 0;
+}
+
+.entrenamiento-dia {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+}
+
+.entrenamiento-dia h3 {
+    text-align: center;
+    color: #495057;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: white;
+    border-radius: 8px;
+}
+
+.asistencia-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 8px;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.asistencia-item label {
+    flex: 1;
+    margin-left: 10px;
+    font-weight: 500;
+}
+
+.asistencia-item input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    accent-color: #ff6b6b;
+}
+
+.partido-config {
+    background: #e3f2fd;
+    padding: 20px;
+    border-radius: 10px;
+    margin: 20px 0;
+}
+
+.rotacion-resultado {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.rotacion-set {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #ff6b6b;
+}
+
+.rotacion-set h4 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1.2rem;
+}
+
+.jugadora-rotacion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.jugadora-rotacion:last-child {
+    border-bottom: none;
+}
+
+.jugadora-nombre-rotacion {
+    font-weight: 600;
+    color: #333;
+}
+
+.puntos-asignados {
+    background: #ff6b6b;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.resumen-rotacion {
+    background: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.resumen-rotacion h4 {
+    color: #155724;
+    margin-bottom: 10px;
+}
+
+.historial-filtros {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.partido-historial {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #667eea;
+}
+
+.partido-fecha {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+}
+
+.partido-sets {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.set-detalle {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    min-width: 100%;
+    width: auto;
+    overflow: visible;
+    line-height: 1.4;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #6c757d;
+}
+
+.empty-state h3 {
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.empty-state p {
+    font-size: 1.1rem;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.alert-error {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Setup inicial */
+.setup-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.setup-content {
+    background: white;
+    padding: 40px;
+    border-radius: 15px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.setup-content h2 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.setup-content p {
+    text-align: center;
+    color: #666;
+    margin-bottom: 30px;
+}
+
+.setup-section h3 {
+    color: #ff6b6b;
+    margin-bottom: 20px;
+    border-left: 4px solid #ff6b6b;
+    padding-left: 15px;
+}
+
+.lista-setup {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 20px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.jugadora-setup-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background: white;
+    border-radius: 6px;
+    border-left: 3px solid #667eea;
+}
+
+.jugadora-setup-info {
+    font-weight: 600;
+    color: #333;
+}
+
+.dorsal-badge {
+    background: #667eea;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-left: 10px;
+}
+
+.setup-actions {
+    text-align: center;
+    margin-top: 30px;
+}
+
+.btn-completar {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    color: white;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+}
+
+.btn-completar:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-guardar-borrador {
+    background: linear-gradient(135deg, #ffa500 0%, #ffcc70 100%);
+    color: white;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    margin-right: 15px;
+}
+
+.btn-guardar-borrador:hover {
+    background: linear-gradient(135deg, #ff8c00 0%, #ffb84d 100%);
+    transform: translateY(-2px);
+}
+
+.btn-omitir {
+    background: linear-gradient(135deg, #6c757d 0%, #adb5bd 100%);
+    color: white;
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    margin-top: 10px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-omitir:hover {
+    background: linear-gradient(135deg, #5a6268 0%, #95a5a6 100%);
+    transform: translateY(-2px);
+}
+
+/* Jornadas */
+.jornada-nueva {
+    background: #e3f2fd;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 30px;
+}
+
+.jornada-container {
+    background: #f8f9fa;
+    border-radius: 15px;
+    padding: 25px;
+    margin-top: 20px;
+}
+
+.jornada-header {
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.jornada-controles {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.jornada-progreso {
+    background: #667eea;
+    color: white;
+    padding: 8px 15px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.jornada-paso {
+    display: none;
+}
+
+.jornada-paso.active {
+    display: block;
+}
+
+.paso-header {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.paso-header h4 {
+    color: #333;
+    font-size: 1.4rem;
+    margin-bottom: 8px;
+}
+
+.paso-header p {
+    color: #666;
+    font-size: 1rem;
+}
+
+.jugadoras-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(clamp(120px, 15vw, 140px), 1fr));
+    gap: clamp(8px, 2vw, 15px);
+    margin: 25px 0;
+    justify-content: center;
+}
+
+/* Leyenda de colores para entrenamientos */
+.leyenda-entrenamientos {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 20px 0;
+}
+
+.leyenda-entrenamientos h5 {
+    margin: 0 0 10px 0;
+    color: #333;
+    font-size: 1rem;
+}
+
+.leyenda-items {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.leyenda-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    border: 2px solid;
+}
+
+.leyenda-color.verde {
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border-color: #28a745;
+}
+
+.leyenda-color.amarillo {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    border-color: #ffc107;
+}
+
+.leyenda-color.rojo {
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    border-color: #dc3545;
+}
+
+.leyenda-texto {
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.no-jugadoras {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    color: #856404;
+    font-size: 16px;
+    margin: 20px auto;
+    max-width: 400px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.jugadora-card {
+    background: white;
+    border: 2px solid #e9ecef;
+    border-radius: 12px;
+    padding: clamp(10px, 3vw, 15px);
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    min-height: clamp(70px, 10vw, 90px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    font-size: clamp(0.8rem, 2vw, 1rem);
+}
+
+.jugadora-card:hover {
+    border-color: #ff6b6b;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(255, 107, 107, 0.2);
+}
+
+.jugadora-card.selected {
+    border-color: #007bff;
+    background: linear-gradient(135deg, #ffffff 0%, #e3f2fd 100%);
+    color: #0d47a1;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(0, 123, 255, 0.3);
+    border-width: 3px;
+}
+
+/* Colores según asistencia a entrenamientos */
+.jugadora-card.verde {
+    border-color: #28a745;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    color: #155724;
+}
+
+.jugadora-card.verde.selected {
+    background: linear-gradient(135deg, #ffffff 0%, #e8f5e8 100%);
+    color: #2e7d32;
+    border-color: #4caf50;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(76, 175, 80, 0.3);
+}
+
+.jugadora-card.amarillo {
+    border-color: #ffc107;
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    color: #856404;
+}
+
+.jugadora-card.amarillo.selected {
+    background: linear-gradient(135deg, #ffffff 0%, #fffbf0 100%);
+    color: #f57c00;
+    border-color: #ff9800;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(255, 152, 0, 0.3);
+}
+
+.jugadora-card.rojo {
+    border-color: #dc3545;
+    background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%);
+    color: #721c24;
+}
+
+.jugadora-card.rojo.selected {
+    background: linear-gradient(135deg, #ffffff 0%, #ffeaea 100%);
+    color: #c62828;
+    border-color: #f44336;
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(244, 67, 54, 0.3);
+}
+
+.jugadora-card.selected .jugadora-nombre {
+    color: #222;
+}
+
+.jugadora-card.selected .jugadora-stats-card {
+    color: #222;
+}
+
+.jugadora-card.absent {
+    border-color: #dc3545;
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.jugadora-nombre {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 5px;
+    color: #222;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.jugadora-nombre .emoji {
+    font-weight: 700;
+    margin-right: 4px;
+}
+.jugadora-nombre .jugadora-dorsal {
+    color: #667eea;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-right: 4px;
+}
+.jugadora-nombre .nombre {
+    font-weight: 700;
+}
+.jugadora-card.selected .jugadora-dorsal {
+    color: #667eea !important;
+}
+
+
+.jugadora-card.selected .jugadora-dorsal {
+    color: white;
+}
+
+.jugadora-stats-card {
+    font-size: 0.8rem;
+    margin-top: 8px;
+    opacity: 0.7;
+    color: #222;
+}
+
+.paso-actions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+.btn-anterior {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-siguiente, .btn-calcular {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-guardar {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    color: white;
+}
+
+/* Navegación rápida */
+.navegacion-rapida {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btn-nav {
+    padding: 8px 15px;
+    border: 2px solid #dee2e6;
+    background: white;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #6c757d;
+}
+
+.btn-nav:hover {
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.btn-nav.active {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+}
+
+/* Responsive para botones de navegación en móvil */
+@media (max-width: 480px) {
+    .btn-nav {
+        padding: 6px 8px;
+        font-size: 0.75rem;
+        min-width: 70px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}
+
+.btn-volver {
+    padding: 8px 12px;
+    background: #dc3545;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-volver:hover {
+    background: #c82333;
+    transform: translateY(-1px);
+}
+
+/* Posiciones y planificación avanzada */
+.posicion-badge {
+    background: #667eea;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    margin-left: 5px;
+}
+
+.jugadora-card .posicion-badge {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+.jugadora-card {
+    position: relative;
+}
+
+.planificacion-avanzada {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    margin: 25px 0;
+    border: 2px solid #e9ecef;
+    display: none;
+}
+
+.planificacion-avanzada.show {
+    display: block;
+}
+
+.planificacion-avanzada h5 {
+    color: #333;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.2rem;
+}
+
+.sets-planificacion {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 20px;
+}
+
+.set-planificacion {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 12px;
+    border-left: 4px solid #ff6b6b;
+}
+
+.set-planificacion h6 {
+    color: #333;
+    margin-bottom: 15px;
+    font-size: 1rem;
+    text-align: center;
+    background: white;
+    padding: 8px;
+    border-radius: 8px;
+}
+
+.titulares-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.titular-slot {
+    background: white;
+    border: 2px dashed #dee2e6;
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.titular-slot:hover {
+    border-color: #667eea;
+    background: #f0f4ff;
+}
+
+.titular-slot.occupied {
+    border-color: #28a745;
+    background: #d4edda;
+    border-style: solid;
+}
+
+.titular-info {
+    text-align: center;
+}
+
+.titular-nombre {
+    font-weight: 600;
+    color: #333;
+    font-size: 0.9rem;
+}
+
+.titular-posicion {
+    font-size: 0.7rem;
+    color: #666;
+    margin-top: 2px;
+}
+
+.suplentes-info {
+    background: white;
+    padding: 10px;
+    border-radius: 8px;
+    margin-top: 10px;
+}
+
+.suplentes-info strong {
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+.suplente-item {
+    display: inline-block;
+    background: #e9ecef;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin: 3px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.suplente-item:hover {
+    background: #667eea;
+    color: white;
+}
+
+.btn-manual {
+    background: linear-gradient(135deg, #ff8a80 0%, #ff5722 100%);
+    color: white;
+}
+
+/* Estados de participación */
+.participacion-alta {
+    border-left-color: #28a745 !important;
+}
+
+.participacion-media {
+    border-left-color: #ffc107 !important;
+}
+
+.participacion-baja {
+    border-left-color: #dc3545 !important;
+}
+
+/* Estilo para jugadora filtrada - resaltado en color llamativo */
+.jugadora-filtrada {
+    background: #ff9800;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    text-shadow: none;
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.4);
+}
+
+.partido-config {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    border: 1px solid #dee2e6;
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.rotacion-preview {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    border-left: 4px solid #ff6b6b;
+    display: none;
+}
+
+.rotacion-preview.show {
+    display: block;
+}
+
+/* Equipo */
+.equipo-acciones {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 25px;
+    flex-wrap: wrap;
+}
+
+.form-jugadora {
+    background: #f8f9fa;
+    border: 2px solid #e9ecef;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+    display: none;
+}
+
+.form-jugadora h4 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    color: #333;
+}
+
+.form-row {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.form-row input,
+.form-row select {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.form-row input[type="text"] {
+    min-width: 200px;
+}
+
+.form-row input[type="number"] {
+    width: 80px;
+}
+
+.form-row select {
+    min-width: 120px;
+}
+
+.btn-save {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-save:hover {
+    background: #218838;
+}
+
+.btn-cancel {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.btn-cancel:hover {
+    background: #5a6268;
+}
+
+.btn-agregar {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.btn-add {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-add:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.btn-reset {
+    background: #dc3545;
+    color: white;
+}
+
+.btn-reset-stats {
+    background: #fd7e14;
+    color: white;
+}
+
+.btn-reset-danger {
+    background: #dc3545;
+    color: white;
+    border: 2px solid #dc3545;
+    font-weight: bold;
+}
+
+.btn-reset-danger:hover {
+    background: #c82333;
+    border-color: #c82333;
+    transform: scale(1.02);
+}
+
+/* Historial mejorado */
+.historial-filtros {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 25px;
+    border-left: 4px solid #007bff;
+}
+
+.info-filtros {
+    margin-bottom: 15px;
+}
+
+.info-filtros h4 {
+    margin: 0 0 5px 0;
+    color: #007bff;
+}
+
+.info-filtros p {
+    margin: 0;
+    color: #6c757d;
+}
+
+.filtros-row {
+    display: flex;
+    gap: 15px;
+    align-items: end;
+    flex-wrap: wrap;
+}
+
+.info-filtro {
+    background: #e8f4fd;
+    border: 1px solid #bee5eb;
+    border-radius: 5px;
+    padding: 10px;
+    margin-bottom: 15px;
+    font-size: 0.9rem;
+    color: #0c5460;
+}
+
+.filtro-grupo {
+    margin-bottom: 15px;
+}
+
+.filtro-grupo label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #495057;
+}
+
+.filtro-acciones {
+    display: flex;
+    gap: clamp(8px, 2vw, 15px);
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.filtro-acciones button {
+    flex: 1 1 auto;
+    min-width: clamp(100px, 20vw, 150px);
+    white-space: normal;
+    word-wrap: break-word;
+    font-size: clamp(0.8rem, 2vw, 1rem);
+    padding: clamp(6px, 2vw, 10px) clamp(10px, 3vw, 15px);
+}
+
+.historial-resumen {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 25px;
+    border-left: 4px solid #667eea;
+}
+
+.resumen-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+}
+
+.stat-card {
+    text-align: center;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+}
+
+.stat-number {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #667eea;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: #666;
+    margin-top: 5px;
+}
+
+.jornada-historial {
+    background: white;
+    border-radius: 10px;
+    padding: clamp(15px, 4vw, 25px);
+    margin-bottom: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #667eea;
+    width: 100%;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.jornada-fecha {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-eliminar-jornada {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.btn-eliminar-jornada:hover {
+    background: #c82333;
+    transform: scale(1.05);
+}
+
+.btn-editar-jornada {
+    background: #28a745;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    margin-right: 8px;
+}
+
+.btn-editar-jornada:hover {
+    background: #218838;
+    transform: scale(1.05);
+}
+
+.jornada-detalle {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr 2fr !important;
+    gap: 20px;
+    margin-top: 15px;
+    width: 100%;
+    align-items: start;
+}
+
+.dia-detalle {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.dia-detalle h5 {
+    color: #495057;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.asistentes-lista {
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.jugadora-asistente {
+    display: inline-block;
+    background: #e3f2fd;
+    color: #1976d2;
+    padding: 4px 8px;
+    border-radius: 12px;
+    margin: 2px;
+    font-size: 0.8rem;
+    border: 1px solid #bbdefb;
+}
+
+.jugadora-asistente.resaltado {
+    background: #ff9800;
+    color: white;
+    font-weight: bold;
+    box-shadow: 0 2px 4px rgba(255, 152, 0, 0.4);
+    transform: scale(1.05);
+}
+
+.set-historial {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    border-left: 3px solid #4caf50;
+}
+
+.set-historial strong {
+    color: #2e7d32;
+    margin-right: 8px;
+}
+
+.sustitucion-form select option.option-verde {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+}
+
+.sustitucion-form select option.option-rojo {
+    background-color: #ffebee;
+    color: #c62828;
+}
+
+/* Recuadro de cambios realizados tipo nota */
+.cambios-realizados-box {
+  background: #fff9db;
+  border-left: 6px solid #ffd600;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 18px 0;
+  box-shadow: 0 2px 8px rgba(255, 214, 0, 0.08);
+}
+.cambios-realizados-box h4, .cambios-realizados-box strong {
+  color: #b8860b;
+}
+.cambios-realizados-box .cambio-label {
+  background: #ffb300;
+  color: white;
+  font-weight: bold;
+  border-radius: 6px;
+  padding: 2px 10px;
+  margin: 0 4px;
+  display: inline-block;
+}
+
+/* Solo historial: estilo amarillo tipo nota */
+#historial .sustituciones-historial {
+  background: #fff9db;
+  border-left: 6px solid #ffd600;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 18px 0;
+  box-shadow: 0 2px 8px rgba(255, 214, 0, 0.08);
+}
+#historial .sustituciones-historial strong, #historial .sustituciones-historial h4 {
+  color: #b8860b;
+}
+#historial .sustituciones-historial .cambio-label {
+  background: #ffb300;
+  color: white;
+  font-weight: bold;
+  border-radius: 6px;
+  padding: 2px 10px;
+  margin: 0 4px;
+  display: inline-block;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 10px;
+    }
+    
+    .container {
+        border-radius: 10px;
+    }
+    
+    header h1 {
+        font-size: 1.5rem;
+    }
+    .tabs {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+    .tab-button {
+        font-size: 1rem;
+        padding: 12px 0;
+        min-width: 100px;
+        max-width: 100%;
+    }
+    
+    .tab-content {
+        padding: 20px;
+    }
+    
+    .entrenamientos-container {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    .form-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .form-group label {
+        min-width: auto;
+        margin-bottom: 5px;
+    }
+    
+    input[type="text"], 
+    input[type="date"], 
+    input[type="number"],
+    input[type="month"] {
+        max-width: 100%;
+    }
+    
+    .jugadora-item {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .historial-filtros {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .partido-sets {
+        grid-template-columns: 1fr;
+    }
+    
+    .setup-content {
+        padding: 20px;
+    }
+    
+    .jugadoras-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+    }
+    
+    .config-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .jornada-detalle {
+        grid-template-columns: 1fr 1fr 2fr;
+        gap: 15px;
+    }
+    
+    .paso-actions {
+        flex-direction: column;
+    }
+    
+    .equipo-acciones {
+        flex-direction: column;
+    }
+    
+    .filtro-acciones {
+        flex-direction: column;
+    }
+    
+    .resumen-stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+    
+    .jornada-controles {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+    
+    .navegacion-rapida {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    /* Mejoras específicas para planificador de sets en móvil */
+    .planificador-sets {
+        padding: 10px;
+    }
+    
+    .sets-container {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .set-planificacion {
+        padding: 10px;
+    }
+    
+    .campo-voleibol {
+        min-height: 200px;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+        gap: 5px;
+        padding: 10px;
+    }
+    
+    .posicion {
+        min-height: 60px;
+        padding: 5px;
+        font-size: 0.7rem;
+    }
+    
+    .posicion span {
+        font-size: 0.6rem;
+    }
+    
+    .jugadoras-disponibles-container {
+        margin-top: 15px;
+    }
+    
+    .jugadoras-disponibles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        justify-content: center;
+    }
+    
+    .jugadora-disponible {
+        padding: 6px 10px;
+        font-size: 0.75rem;
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    .suplentes-container {
+        margin-top: 15px;
+    }
+    
+    .actions-container {
+        margin-top: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .planificador-actions {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .analisis-entrenamientos {
+        margin-top: 15px;
+    }
+    
+    .jugadoras-por-entrenamientos-horizontal {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+    }
+    
+    .jugadora-entrenamiento-box {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        border-radius: 8px;
+    }
+    
+    .btn-nav, .btn-volver {
+        flex: 1;
+        min-width: 80px;
+    }
+    .tabs {
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+    }
+    .tab-button {
+        font-size: 0.95rem;
+        padding: 10px 0;
+        min-width: 80px;
+        max-width: 100%;
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .nav-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-button {
+        flex: 1 1 50%;
+        min-width: 50%;
+    }
+    
+    /* Mejoras adicionales para móviles muy pequeños */
+    header h1 {
+        font-size: 1.2rem;
+        text-align: center;
+    }
+    
+    .jugadoras-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+        justify-content: center;
+    }
+    
+    .jugadora-card {
+        padding: 12px;
+        font-size: 0.85rem;
+        min-height: 90px;
+        max-width: none;
+    }
+    
+    .jornada-detalle {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+    
+    .jornada-historial {
+        min-width: unset;
+        padding: 15px;
+        margin-bottom: 10px;
+        overflow-x: visible;
+    }
+    
+    .jornada-fecha {
+        font-size: 1rem;
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start;
+    }
+    
+    .btn-eliminar-jornada {
+        padding: 6px 10px;
+        font-size: 0.9rem;
+        align-self: flex-end;
+    }
+    
+    .filtro-acciones {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .dia-detalle h5 {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
+    }
+    
+    .jugadora-asistente {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        margin: 2px;
+    }
+    
+    .set-historial {
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+    }
+    
+    .sustituciones-historial {
+        font-size: 0.75rem;
+        padding: 8px;
+    }
+    
+    .resumen-stats {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+    
+    .stat-item {
+        padding: 10px;
+        text-align: center;
+    }
+    
+    .modal-content {
+        width: 95% !important;
+        margin: 10px;
+        padding: 15px !important;
+    }
+    
+    .historial-filtros {
+        gap: 8px;
+    }
+    
+    .filtro-grupo {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .filtro-grupo label {
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+    }
+}
+
+
+/* Resultado de rotación */
+.rotacion-resultado {
+    margin-top: 20px;
+}
+
+.rotacion-set {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    border-left: 4px solid #007bff;
+}
+
+.jugadora-rotacion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    margin: 5px 0;
+    background: white;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.jugadora-nombre-rotacion {
+    display: flex;
+    flex-direction: column;
+}
+
+.jugadora-nombre-rotacion small {
+    color: #666;
+    margin-top: 2px;
+}
+
+.puntos-asignados {
+    font-weight: bold;
+    color: #007bff;
+    background: #e3f2fd;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85em;
+}
+
+.jugadora-asistente {
+    background: #fff3e0;
+    color: #f57c00;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    margin-right: 5px;
+}
+
+.resumen-rotacion {
+    background: #f5f5f5;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.resumen-rotacion p {
+    margin: 5px 0;
+    font-size: 0.9em;
+}
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+    color: #155724;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+.alert h4 {
+    margin: 0 0 10px 0;
+    color: #155724;
+}
+
+.alert p {
+    margin: 5px 0;
+}
+
+/* Nuevos estilos para el sistema realista */
+.resumen-partido {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin: 10px 0;
+}
+
+.stat-item {
+    text-align: center;
+    background: white;
+    padding: 10px;
+    border-radius: 6px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.stat-label {
+    font-size: 0.8em;
+    color: #666;
+    text-transform: uppercase;
+}
+
+.rotacion-set.con-rotacion {
+    border-left-color: #ff9800;
+    background: #fff3e0;
+}
+
+.rotacion-set.set-completo {
+    border-left-color: #4caf50;
+    background: #e8f5e8;
+}
+
+.info-rotacion {
+    background: #fff;
+    padding: 8px 12px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    border-left: 3px solid #ff9800;
+}
+
+.jugadora-rotacion.set_completo {
+    border-left: 3px solid #4caf50;
+}
+
+.jugadora-rotacion.rotacion_interna {
+    border-left: 3px solid #ff9800;
+}
+
+.registro-individual {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+    border: 1px solid #e0e0e0;
+}
+
+.tabla-registro {
+    width: 100%;
+}
+
+.registro-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.registro-fila {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid #dee2e6;
+    align-items: center;
+}
+
+.registro-fila:hover {
+    background: #f9f9f9;
+}
+
+.jugadora-nombre {
+    font-weight: 500;
+}
+
+.sets-jugados {
+    color: #007bff;
+    font-weight: 500;
+}
+
+.puntos-partido {
+    color: #28a745;
+    font-weight: bold;
+}
+
+.entrenamientos {
+    font-size: 0.9em;
+}
+
+.tipo-participacion {
+    font-size: 0.8em;
+    color: #666;
+}
+
+.explicacion-sistema {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.explicacion-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 10px 0;
+}
+
+.explicacion-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    background: white;
+    padding: 12px;
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.explicacion-item .icono {
+    font-size: 1.2em;
+    margin-top: 2px;
+}
+
+.explicacion-item strong {
+    display: block;
+    margin-bottom: 4px;
+    color: #333;
+}
+
+.explicacion-item p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #666;
+    line-height: 1.3;
+}
+
+/* Estilos para vista previa */
+.distribucion-preview {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    border: 1px solid #e0e0e0;
+}
+
+.preview-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin: 15px 0;
+}
+
+.preview-stat {
+    text-align: center;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 6px;
+}
+
+.preview-stat .numero {
+    display: block;
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #007bff;
+}
+
+.preview-stat .etiqueta {
+    font-size: 0.8em;
+    color: #666;
+    text-transform: uppercase;
+}
+
+/* Estilos para jugadoras con déficit */
+.jugadora-card.con-deficit {
+    border: 2px solid #ff9800;
+    background: #fff3e0;
+    box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+}
+
+.jugadora-card.con-deficit::before {
+    content: "⚠️";
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: #ff9800;
+    color: white;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+}
+
+/* Estilos para sustituciones */
+.titulares-iniciales {
+    background: #e8f5e8;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+    border-left: 4px solid #4caf50;
+}
+
+.sustituciones-programadas {
+    background: #fff3e0;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+    border-left: 4px solid #ff9800;
+}
+
+.sustitucion-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin: 6px 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.sustitucion-detalle {
+    flex: 1;
+}
+
+.sustitucion-puntos {
+    color: #ff9800;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.jugadora-rotacion.titular {
+    border-left: 3px solid #4caf50;
+    background: #f8fff8;
+}
+
+.jugadora-rotacion.set_completo {
+    border-left: 3px solid #2196f3;
+    background: #f3f9ff;
+}
+
+.jugadora-rotacion.sustituida {
+    border-left: 3px solid #ff9800;
+    background: #fff8f0;
+}
+
+/* Estilos para selector de posición */
+.selector-posicion {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 0.9em;
+    margin-top: 4px;
+    width: 130px;
+}
+
+.selector-posicion:focus {
+    border-color: #007bff;
+    outline: none;
+    box-shadow: 0 0 5px rgba(0,123,255,0.3);
+}
+
+.jugadora-setup-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.jugadora-nombre {
+    font-weight: bold;
+}
+
+.jugadora-setup-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    margin: 8px 0;
+    background: white;
+}
+
+.jugadora-setup-item:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Estilos para suplentes con colores */
+.suplentes-section {
+    margin: 15px 0;
+    padding: 15px;
+    border: 2px solid #f0f0f0;
+    border-radius: 8px;
+    background: #fafafa;
+}
+
+.suplentes-section h5 {
+    margin: 10px 0 8px 0;
+    font-size: 1rem;
+}
+
+.suplentes-rojas, .suplentes-verdes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.suplente {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    display: inline-block;
+    border: 2px solid;
+}
+
+.suplente.roja {
+    background: #ffebee;
+    border-color: #f44336;
+    color: #d32f2f;
+}
+
+.suplente.verde {
+    background: #e8f5e8;
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+
+.suplente small {
+    font-weight: normal;
+    opacity: 0.8;
+}
+
+.no-suplentes {
+    font-style: italic;
+    color: #666;
+    padding: 8px;
+}
+
+/* Estilos para vista simple de jugadoras/suplentes */
+.jugadoras-section, .suplentes-section {
+    margin: 20px 0;
+    padding: 15px;
+    border-radius: 10px;
+    background: #fafafa;
+}
+
+.jugadoras-section h4, .suplentes-section h4 {
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.jugadoras-list, .suplentes-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.jugadora-chip {
+    padding: 8px 15px;
+    border-radius: 25px;
+    background: #e3f2fd;
+    border: 2px solid #2196f3;
+    color: #1976d2;
+    font-weight: 500;
+    display: inline-block;
+}
+
+.jugadora-chip.verde {
+    background: #e8f5e8;
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+
+.suplente.roja {
+    background: #ffebee;
+    border-color: #f44336;
+    color: #d32f2f;
+}
+
+/* Mensaje informativo de déficit */
+.info-deficit {
+    margin: 15px 0;
+    padding: 12px;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    color: #856404;
+}
+
+.info-deficit h5 {
+    margin: 0 0 8px 0;
+    font-size: 1rem;
+}
+
+.info-deficit p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Planificación Manual de Sets */
+.planificacion-manual-panel {
+    background: white;
+    border: 2px solid #007bff;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.sets-manuales {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.set-manual {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.set-manual h5 {
+    color: #007bff;
+    margin: 0 0 10px 0;
+}
+
+.jugadoras-set-manual, .sustituciones-manual {
+    min-height: 60px;
+    padding: 10px;
+    background: white;
+    border: 2px dashed #ccc;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+.jugadora-en-set {
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    color: #1976d2;
+    padding: 5px 10px;
+    margin: 5px;
+    border-radius: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.jugadoras-disponibles {
+    background: #fff3cd;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.jugadoras-disponibles-lista {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.jugadora-disponible {
+    background: #ffc107;
+    color: #856404;
+    padding: 12px 12px 8px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-block;
+    margin-top: 8px;
+}
+
+.jugadora-disponible:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.jugadora-disponible.prioridad-alta {
+    background: #28a745;
+    color: white;
+    border: 2px solid #1e7e34;
+}
+
+.jugadora-disponible.prioridad-alta:hover {
+    background: #218838;
+}
+
+.jugadora-disponible.prioridad-media {
+    background: #ffc107;
+    color: #856404;
+    border: 2px solid #e0a800;
+}
+
+.jugadora-disponible.prioridad-media:hover {
+    background: #e0a800;
+}
+
+.jugadora-disponible.prioridad-baja {
+    background: #dc3545;
+    color: white;
+    border: 2px solid #c82333;
+}
+
+.jugadora-disponible.prioridad-baja:hover {
+    background: #c82333;
+}
+
+/* Estilos para jugadoras asignadas a sets */
+.jugadora-disponible.en-set1,
+.jugadora-disponible.en-set2,
+.jugadora-disponible.en-ambos-sets {
+    position: relative;
+}
+
+.indicador-set1,
+.indicador-set2,
+.indicador-ambos-sets {
+    position: absolute;
+    top: -12px;
+    right: -5px;
+    background: #6c757d;
+    color: white;
+    font-size: 0.65rem;
+    padding: 1px 4px;
+    border-radius: 8px;
+    font-weight: bold;
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.indicador-ambos-sets {
+    right: -10px;
+    max-width: none;
+    text-align: center;
+}
+
+.btn-quitar {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+/* Alerta de puntos mínimos */
+.alerta-puntos-minimos {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+    animation: alertaEntrada 0.3s ease-out;
+}
+
+.alerta-header {
+    background: #ffc107;
+    color: #856404;
+    padding: 10px 15px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-cerrar-alerta {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: #856404;
+    cursor: pointer;
+    padding: 0;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-cerrar-alerta:hover {
+    background: rgba(133, 100, 4, 0.1);
+    border-radius: 50%;
+}
+
+.alerta-contenido {
+    padding: 15px;
+    color: #856404;
+}
+
+.alerta-contenido ul {
+    margin: 10px 0;
+    padding-left: 20px;
+}
+
+.alerta-contenido li {
+    margin: 5px 0;
+}
+
+@keyframes alertaEntrada {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Notificación de planificación pendiente */
+.notificacion-planificacion {
+    background: #e7f3ff;
+    border: 2px solid #0066cc;
+    border-radius: 10px;
+    margin: 20px 0;
+    box-shadow: 0 4px 15px rgba(0, 102, 204, 0.2);
+    animation: alertaEntrada 0.3s ease-out;
+}
+
+.notificacion-header {
+    background: #0066cc;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 8px 8px 0 0;
+    font-weight: bold;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-cerrar-notificacion {
+    background: none;
+    border: none;
+    font-size: 20px;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    width: 25px;
+    height: 25px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-cerrar-notificacion:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+}
+
+.notificacion-contenido {
+    padding: 15px;
+    color: #003d7a;
+}
+
+.notificacion-acciones {
+    margin-top: 15px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.btn-continuar-planificacion,
+.btn-descartar-planificacion {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-continuar-planificacion {
+    background: #28a745;
+    color: white;
+}
+
+.btn-continuar-planificacion:hover {
+    background: #218838;
+}
+
+.btn-descartar-planificacion {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-descartar-planificacion:hover {
+    background: #5a6268;
+}
+
+/* ESTILO ORIGINAL */
+.sustitucion-item {
+    background: #e3f2fd;
+    padding: 8px 12px;
+    border-radius: 8px;
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.btn-eliminar-sustitucion {
+  background: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-left: 8px;
+}
+.btn-eliminar-sustitucion:hover {
+  background: #c82333;
+}
+
+/* Restaurar estilos clásicos del planificador de sets */
+.sets-container {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+}
+/* No se define .set-column en el original, solo .set-column h4 y .set-container-campo */
+.set-column h4 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e0e0e0;
+}
+.set-container-campo {
+        min-height: 200px;
+        border: 2px solid #4caf50;
+        border-radius: 10px;
+        padding: 15px;
+        background: #f1f8e9;
+}
+.jugadoras-set {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+}
+.suplentes-container {
+        margin-top: 20px;
+}
+.suplentes-container h5 {
+        color: #666;
+        margin-bottom: 10px;
+}
+.suplentes-list {
+        min-height: 60px;
+        border: 1px dashed #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        background: #f9f9f9;
+        margin-bottom: 10px;
+}
+.jugadoras-disponibles-container {
+        border-top: 2px solid #e0e0e0;
+        padding-top: 20px;
+}
+.jugadoras-disponibles-container h4 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 15px;
+}
+.jugadoras-disponibles-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+        gap: 8px;
+}
+.btn-add-suplente {
+        background: #4caf50;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+}
+.btn-add-suplente:hover {
+        background: #45a049;
+}
+
+/* ==================== MODAL SUSTITUCIÓN ==================== */
+.modal-sustitucion {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+}
+
+.modal-sustitucion[style*="display: block"] {
+    display: flex !important;
+}
+
+.modal-sustitucion .modal-content {
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-sustitucion h4 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+.sustitucion-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.sustitucion-form .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.sustitucion-form label {
+    font-weight: 600;
+    color: #495057;
+    font-size: 1rem;
+}
+
+.sustitucion-form select,
+.sustitucion-form input {
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s ease;
+}
+
+.sustitucion-form select:focus,
+.sustitucion-form input:focus {
+    outline: none;
+    border-color: #ff6b6b;
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+    margin-top: 25px;
+}
+
+.btn-confirmar {
+    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-confirmar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(86, 171, 47, 0.3);
+}
+
+.btn-cancelar {
+    background: linear-gradient(135deg, #6c757d 0%, #adb5bd 100%);
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-cancelar:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(108, 117, 125, 0.3);
+}
+
+/* ==================== MEJORAS VISUALES AVANZADAS ==================== */
+
+/* Estilos para las jugadoras por entrenamientos - Similar a jugadoras disponibles */
+.jugadoras-por-entrenamientos-horizontal {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 8px;
+    margin: 15px 0;
+    padding: 8px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.jugadora-entrenamiento-box {
+    position: relative;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 2px solid;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    font-size: 14px;
+}
+
+.jugadora-entrenamiento-box:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+.jugadora-entrenamiento-box .dorsal {
+    font-weight: bold;
+    margin-right: 6px;
+}
+
+.jugadora-entrenamiento-box .nombre {
+    font-weight: 500;
+}
+
+.jugadora-entrenamiento-box.verde {
+    background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%);
+    border-color: #4caf50;
+    color: #2e7d32;
+}
+
+.jugadora-entrenamiento-box.amarillo {
+    background: linear-gradient(135deg, #fffbf0 0%, #fff3c4 100%);
+    border-color: #ff9800;
+    color: #f57c00;
+}
+
+.jugadora-entrenamiento-box.rojo {
+    background: linear-gradient(135deg, #ffeaea 0%, #ffcdd2 100%);
+    border-color: #f44336;
+    color: #c62828;
+}
+
+/* Leyenda de colores para entrenamientos */
+.leyenda-colores {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 10px;
+    padding: 8px;
+    background: white;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.leyenda-item {
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.leyenda-item.verde {
+    color: #2e7d32;
+}
+
+.leyenda-item.verde::before {
+    content: "●";
+    margin-right: 6px;
+    font-size: 16px;
+    color: #4caf50;
+}
+
+.leyenda-item.amarillo {
+    color: #f57c00;
+}
+
+.leyenda-item.amarillo::before {
+    content: "●";
+    margin-right: 6px;
+    font-size: 16px;
+    color: #ff9800;
+}
+
+.leyenda-item.rojo {
+    color: #c62828;
+}
+
+.leyenda-item.rojo::before {
+    content: "●";
+    margin-right: 6px;
+    font-size: 16px;
+    color: #f44336;
+}
+
+/* Botón Planificar Sets centrado */
+.boton-planificar-container {
+    display: flex;
+    justify-content: center;
+    margin: 25px 0;
+    padding: 15px 0;
+}
+
+.btn-planificar-sets {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+.btn-planificar-sets:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4);
+}
+
+/* Estilo para el texto "Listo para planificar" */
+.completo {
+    color: #28a745;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+/* Estilos para el rol de la jugadora */
+.jugadora-rol {
+    font-size: 12px;
+    font-style: italic;
+    color: #6c757d;
+    text-align: center;
+    margin-top: 4px;
+}
+
+.jugadora-header {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 2px;
+}
+
+.emoji {
+    font-size: 16px;
+}
+
+.jugadora-dorsal {
+    font-weight: bold;
+    color: #007bff;
+}
+
+.jugadora-nombre {
+    font-weight: 500;
+    flex: 1;
+}
+
+/* Mejoras para botones de eliminar sustitución */
+.btn-eliminar-sustitucion {
+    background: none;
+    border: none;
+    color: #f44336;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    transition: all 0.2s ease;
+    margin-left: 8px;
+}
+
+.btn-eliminar-sustitucion:hover {
+    background: #f44336;
+    color: white;
+    transform: scale(1.1);
+}
+
+.sustitucion-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    margin: 4px 0;
+    background: #e3f2fd;
+    border: 1px solid #2196f3;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+/* Mejoras para los sets - Campo de voleibol mejorado */
+.jugadoras-set {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 2px solid #28a745;
+    border-radius: 15px;
+    padding: 20px;
+    min-height: 180px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    margin-bottom: 15px;
+}
+
+.fila-campo {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.fila-campo:last-child {
+    margin-bottom: 0;
+}
+
+.posicion-campo {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    padding: 8px 12px;
+    text-align: center;
+    min-height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.posicion-campo.ocupada {
+    background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+    border-color: #2196f3;
+    color: #0d47a1;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(33, 150, 243, 0.2);
+}
+
+.posicion-campo.ocupada:hover {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border-color: #f44336;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+}
+
+.posicion-campo.vacia {
+    background: linear-gradient(135deg, #fafafa 0%, #f5f5f5 100%);
+    color: #9e9e9e;
+    border-style: dashed;
+    cursor: default;
+}
+
+.dorsal-campo {
+    font-weight: bold;
+    font-size: 13px;
+    margin-right: 4px;
+}
+
+.nombre-campo {
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+/* Estilos para las etiquetas de estado en jugadoras disponibles */
+.etiqueta-estado {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    background: rgba(108, 117, 125, 0.9);
+    color: white;
+    font-size: 7px;
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: bold;
+    z-index: 10;
+    white-space: nowrap;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.1;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+}
+
+/* Mejoras para jugadoras disponibles cuando se continúa editando */
+.jugadora-disponible {
+    position: relative;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.jugadora-disponible:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+/* ==================== MEJORAS FINALES MÓVIL ==================== */
+/* Prevenir scroll horizontal en todos los elementos */
+.tab-content, .jornada-container, .planificador-sets {
+    max-width: 100%;
+    overflow-x: hidden;
+    word-wrap: break-word;
+}
+
+/* Estabilizar scroll en móvil */
+html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Prevenir elementos que salgan del viewport */
+.modal-content, .jugadora-card, .jornada-historial {
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Asegurar que las tablas no rompan el layout */
+table, .grid-container {
+    table-layout: fixed;
+    width: 100%;
+    word-wrap: break-word;
+}
+
+/* Mejorar touch en móvil */
+@media (hover: none) and (pointer: coarse) {
+    .jugadora-card, button {
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+}
