@@ -4,7 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏐 Sistema de Rotaciones</title>
-    <link rel="stylesheet" href="styles.css?v=2025102029">
+    <link rel="stylesheet" href="styles.css?v=2025110414423">
+    <link rel="stylesheet" href="mobile-fixes.css?v=2025110414423">
+    <script>
+        // Verificar que se aplican los estilos móviles
+        document.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth <= 768) {
+                console.log('📱 Modo móvil detectado, aplicando correcciones...');
+                // Forzar estilos críticos
+                const banner = document.querySelector('.banner-jornada-pendiente');
+                if (banner) {
+                    banner.style.fontSize = '0.65rem';
+                    const actions = banner.querySelector('.banner-actions');
+                    if (actions) actions.style.gap = '3px';
+                }
+                console.log('✅ Correcciones móviles aplicadas');
+            }
+        });
+    </script>
 </head>
 <body>
     <!-- Banner de jornada pendiente -->

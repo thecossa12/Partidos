@@ -1,6 +1,74 @@
 /* ==================== BANNER JORNADA PENDIENTE ==================== */
 /* ACTUALIZADO: 2025-11-04 14:42 - TODO ULTRA-COMPACTO ✅ */
+/* FORZAR APLICACIÓN - VERSION 14423 */
 /* TEMPORAL: Ocultar completamente el setup */
+
+/* REGLAS SUPER ESPECÍFICAS PARA FORZAR APLICACIÓN */
+@media screen and (max-width: 768px) {
+    /* Banner ultra-compacto FORZADO */
+    .banner-jornada-pendiente .banner-content {
+        padding: 6px 8px !important;
+        gap: 4px !important;
+    }
+    
+    .banner-jornada-pendiente .banner-texto {
+        font-size: 0.65rem !important;
+        line-height: 1.1 !important;
+    }
+    
+    .banner-jornada-pendiente .banner-actions {
+        gap: 3px !important;
+        margin-top: 2px !important;
+    }
+    
+    .banner-jornada-pendiente .btn-continuar,
+    .banner-jornada-pendiente .btn-eliminar,
+    .banner-jornada-pendiente .btn-cerrar {
+        font-size: 0.6rem !important;
+        padding: 4px 6px !important;
+        max-width: 80px !important;
+        min-width: 60px !important;
+        border-radius: 3px !important;
+    }
+    
+    /* Campo de voleibol ultra-pequeño FORZADO */
+    .campo-voleibol {
+        min-height: 120px !important;
+        max-height: 130px !important;
+        gap: 2px !important;
+        padding: 4px !important;
+        font-size: 0.55rem !important;
+    }
+    
+    .campo-voleibol .posicion {
+        min-height: 35px !important;
+        max-height: 38px !important;
+        font-size: 0.55rem !important;
+        padding: 1px !important;
+        line-height: 0.9 !important;
+    }
+    
+    /* Leyenda vertical FORZADA */
+    .leyenda-entrenamientos .leyenda-items {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+        align-items: flex-start !important;
+    }
+    
+    /* Botón eliminar arreglado FORZADO */
+    .btn-reset-danger {
+        font-size: 0.8rem !important;
+        padding: 8px 12px !important;
+        max-width: 200px !important;
+        white-space: nowrap !important;
+    }
+    
+    /* Padding del body reducido */
+    body.banner-activo {
+        padding-top: 50px !important;
+    }
+}
 .setup-modal, #setupInicial {
     display: none !important;
     visibility: hidden !important;
