@@ -1,5 +1,5 @@
 /* ==================== BANNER JORNADA PENDIENTE ==================== */
-/* ACTUALIZADO: 2025-11-04 14:25 - PLANIFICADOR Y BANNER OPTIMIZADOS ✅ */
+/* ACTUALIZADO: 2025-11-04 14:42 - TODO ULTRA-COMPACTO ✅ */
 /* TEMPORAL: Ocultar completamente el setup */
 .setup-modal, #setupInicial {
     display: none !important;
@@ -25,8 +25,8 @@
 .banner-content {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 6px;
+    padding: 6px 10px;
     max-width: 1200px;
     margin: 0 auto;
 }
@@ -34,15 +34,15 @@
 .banner-info {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     flex: 1;
     width: 100%;
 }
 
 .banner-texto {
     font-weight: 500;
-    font-size: 0.8rem;
-    line-height: 1.2;
+    font-size: 0.75rem;
+    line-height: 1.1;
     flex: 1;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -50,7 +50,7 @@
 
 .banner-actions {
     display: flex;
-    gap: 6px;
+    gap: 4px;
     align-items: center;
     flex-wrap: nowrap;
     justify-content: center;
@@ -61,31 +61,31 @@
 @media (max-width: 768px) {
     .banner-content {
         flex-direction: column !important;
-        gap: 6px !important;
-        padding: 8px 10px !important;
+        gap: 4px !important;
+        padding: 6px 8px !important;
     }
     
     .banner-texto {
-        font-size: 0.75rem !important;
-        line-height: 1.2 !important;
+        font-size: 0.65rem !important;
+        line-height: 1.1 !important;
     }
     
     .banner-actions {
-        gap: 4px !important;
+        gap: 3px !important;
         flex-wrap: nowrap !important;
         justify-content: center !important;
-        margin-top: 4px !important;
+        margin-top: 2px !important;
     }
     
     .btn-continuar, .btn-eliminar, .btn-cerrar {
-        font-size: 0.7rem !important;
-        padding: 6px 8px !important;
+        font-size: 0.6rem !important;
+        padding: 4px 6px !important;
         flex: 1 !important;
-        max-width: 100px !important;
-        min-width: 70px !important;
+        max-width: 80px !important;
+        min-width: 60px !important;
         text-align: center !important;
         white-space: nowrap !important;
-        border-radius: 4px !important;
+        border-radius: 3px !important;
     }
 }
 
@@ -125,7 +125,7 @@ body.banner-activo {
 
 @media (max-width: 768px) {
     body.banner-activo {
-        padding-top: 60px !important;
+        padding-top: 50px !important;
     }
 }
 
@@ -133,10 +133,10 @@ body.banner-activo {
     background: #28a745;
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    border-radius: 3px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     transition: all 0.3s;
     white-space: nowrap;
 }
@@ -150,10 +150,10 @@ body.banner-activo {
     background: #dc3545;
     color: white;
     border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
+    padding: 4px 8px;
+    border-radius: 3px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     transition: all 0.3s;
     white-space: nowrap;
 }
@@ -218,10 +218,10 @@ body.banner-activo {
     background: transparent;
     color: white;
     border: 1px solid white;
-    padding: 5px 8px;
-    border-radius: 4px;
+    padding: 4px 6px;
+    border-radius: 3px;
     cursor: pointer;
-    font-size: 0.8rem;
+    font-size: 0.7rem;
     transition: all 0.3s;
 }
 
@@ -1088,21 +1088,26 @@ button:hover {
 }
 
 @media (max-width: 768px) {
-    .leyenda-items {
+    .leyenda-entrenamientos .leyenda-items {
         display: flex !important;
         flex-direction: column !important;
-        gap: 10px !important;
+        gap: 12px !important;
         align-items: flex-start !important;
         flex-wrap: nowrap !important;
     }
     
-    .leyenda-item {
+    .leyenda-entrenamientos .leyenda-item {
         display: flex !important;
         align-items: center !important;
-        gap: 10px !important;
+        gap: 12px !important;
         width: 100% !important;
         justify-content: flex-start !important;
+        order: 1 !important;
     }
+    
+    .leyenda-entrenamientos .leyenda-item:nth-child(1) { order: 1 !important; } /* Verde */
+    .leyenda-entrenamientos .leyenda-item:nth-child(2) { order: 2 !important; } /* Naranja */
+    .leyenda-entrenamientos .leyenda-item:nth-child(3) { order: 3 !important; } /* Rojo */
     
     .leyenda-entrenamientos {
         padding: 12px !important;
@@ -1688,6 +1693,24 @@ button:hover {
     transform: scale(1.02);
 }
 
+/* Arreglar botón eliminar seleccionados en móvil */
+@media (max-width: 768px) {
+    .btn-reset-danger {
+        background: #dc3545 !important;
+        color: white !important;
+        border: 2px solid #dc3545 !important;
+        font-weight: bold !important;
+        padding: 8px 12px !important;
+        font-size: 0.8rem !important;
+        border-radius: 6px !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        max-width: 200px !important;
+        width: auto !important;
+        overflow: visible !important;
+    }
+}
+
 /* Historial mejorado */
 .historial-filtros {
     background: #f8f9fa;
@@ -2144,25 +2167,26 @@ button:hover {
     }
     
     .campo-voleibol {
-        min-height: 150px !important;
-        max-height: 160px !important;
+        min-height: 120px !important;
+        max-height: 130px !important;
         grid-template-columns: repeat(3, 1fr) !important;
         grid-template-rows: repeat(2, 1fr) !important;
-        gap: 3px !important;
-        padding: 6px !important;
-        border-radius: 6px !important;
+        gap: 2px !important;
+        padding: 4px !important;
+        border-radius: 4px !important;
         background: #f8f9fa !important;
         max-width: 100% !important;
         width: 100% !important;
-        font-size: 0.6rem !important;
+        font-size: 0.55rem !important;
+        margin: 0 auto !important;
     }
     
     .posicion {
-        min-height: 40px !important;
-        max-height: 45px !important;
-        padding: 2px !important;
-        font-size: 0.6rem !important;
-        border-radius: 4px !important;
+        min-height: 35px !important;
+        max-height: 38px !important;
+        padding: 1px !important;
+        font-size: 0.55rem !important;
+        border-radius: 3px !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
         display: flex !important;
@@ -2171,7 +2195,8 @@ button:hover {
         align-items: center !important;
         text-align: center !important;
         max-width: 100% !important;
-        line-height: 1 !important;
+        line-height: 0.9 !important;
+        overflow: hidden !important;
     }
     
     .posicion:active {
