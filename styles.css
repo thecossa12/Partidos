@@ -1,5 +1,5 @@
 /* ==================== BANNER JORNADA PENDIENTE ==================== */
-/* ACTUALIZADO: 2025-11-04 13:35 - MEJORAS MÓVIL APLICADAS */
+/* ACTUALIZADO: 2025-11-04 13:45 - MÓVIL OPTIMIZADO ✅ */
 /* TEMPORAL: Ocultar completamente el setup */
 .setup-modal, #setupInicial {
     display: none !important;
@@ -50,11 +50,30 @@
 
 .banner-actions {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
     width: 100%;
+}
+
+/* Responsive específico para banner */
+@media (max-width: 768px) {
+    .banner-actions {
+        gap: 6px !important;
+        flex-wrap: nowrap !important;
+        justify-content: center !important;
+    }
+    
+    .btn-continuar, .btn-eliminar, .btn-cerrar {
+        font-size: 0.75rem !important;
+        padding: 8px 12px !important;
+        flex: 1 !important;
+        max-width: 120px !important;
+        text-align: center !important;
+        white-space: nowrap !important;
+        min-width: 80px !important;
+    }
 }
 
 /* Responsive específico para banner */
@@ -1045,8 +1064,31 @@ button:hover {
 
 .leyenda-items {
     display: flex;
-    gap: 20px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+@media (max-width: 768px) {
+    .leyenda-items {
+        display: flex;
+        flex-direction: column !important;
+        gap: 10px !important;
+        align-items: flex-start !important;
+    }
+    
+    .leyenda-item {
+        display: flex !important;
+        align-items: center !important;
+        gap: 10px !important;
+        width: 100% !important;
+        justify-content: flex-start !important;
+    }
+    
+    .leyenda-entrenamientos {
+        padding: 12px !important;
+        margin: 15px 0 !important;
+    }
 }
 
 .leyenda-item {
@@ -2054,7 +2096,7 @@ button:hover {
     
     /* Mejoras específicas para planificador de sets en móvil */
     .planificador-sets {
-        padding: 15px 10px !important;
+        padding: 10px 8px !important;
         width: 100% !important;
         max-width: 100% !important;
         overflow-x: hidden !important;
@@ -2062,37 +2104,46 @@ button:hover {
     
     .sets-container {
         flex-direction: column !important;
-        gap: 20px !important;
+        gap: 15px !important;
         width: 100% !important;
         max-width: 100% !important;
     }
     
     .set-planificacion {
-        padding: 15px !important;
-        border-radius: 12px !important;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+        padding: 12px !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1) !important;
         width: 100% !important;
         max-width: 100% !important;
         box-sizing: border-box !important;
     }
     
+    .set-planificacion h4 {
+        font-size: 1rem !important;
+        margin-bottom: 10px !important;
+        text-align: center !important;
+    }
+    
     .campo-voleibol {
-        min-height: 250px !important;
+        min-height: 180px !important;
+        max-height: 200px !important;
         grid-template-columns: repeat(3, 1fr) !important;
         grid-template-rows: repeat(2, 1fr) !important;
-        gap: 8px !important;
-        padding: 15px !important;
-        border-radius: 10px !important;
+        gap: 5px !important;
+        padding: 8px !important;
+        border-radius: 8px !important;
         background: #f8f9fa !important;
         max-width: 100% !important;
         width: 100% !important;
+        font-size: 0.7rem !important;
     }
     
     .posicion {
-        min-height: 80px !important;
-        padding: 8px !important;
-        font-size: 0.8rem !important;
-        border-radius: 8px !important;
+        min-height: 50px !important;
+        max-height: 60px !important;
+        padding: 4px !important;
+        font-size: 0.65rem !important;
+        border-radius: 6px !important;
         cursor: pointer !important;
         transition: all 0.2s ease !important;
         display: flex !important;
@@ -2101,6 +2152,7 @@ button:hover {
         align-items: center !important;
         text-align: center !important;
         max-width: 100% !important;
+        line-height: 1.1 !important;
     }
     
     .posicion:active {
@@ -2114,18 +2166,18 @@ button:hover {
     }
     
     .jugadoras-disponibles-container {
-        margin-top: 20px;
-        padding: 15px;
-        background: #fff;
-        border-radius: 10px;
-        box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        margin-top: 15px !important;
+        padding: 12px !important;
+        background: #fff !important;
+        border-radius: 8px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
     }
     
     .jugadoras-disponibles {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        justify-content: center;
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 8px !important;
+        justify-content: center !important;
     }
     
     .jugadora-disponible {
