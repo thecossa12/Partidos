@@ -3995,7 +3995,9 @@ VolleyballManager.prototype.validarYImportarDatos = function(data) {
         }
 
         // Mostrar modal de confirmación
-        this.mostrarModalImportacion(data);
+        this.mostrarModalImportacion(data, () => {
+            this.ejecutarImportacion(data);
+        });
 
     } catch (error) {
         console.error('❌ Error al validar datos:', error);
@@ -4003,8 +4005,7 @@ VolleyballManager.prototype.validarYImportarDatos = function(data) {
     }
 };
 
-VolleyballManager.prototype.mostrarModalImportacion = function(data) {
-    const self = this; // Capturar el contexto
+VolleyballManager.prototype.mostrarModalImportacion = function(data, onConfirm) {
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -4065,7 +4066,7 @@ VolleyballManager.prototype.mostrarModalImportacion = function(data) {
     
     modal.querySelector('#confirmarImportacion').addEventListener('click', () => {
         modal.remove();
-        self.ejecutarImportacion(data);
+        onConfirm();
     });
 
     document.body.appendChild(modal);
@@ -4124,8 +4125,7 @@ VolleyballManager.prototype.ejecutarImportacion = function(data) {
         }
         
         // Guardar en localStorage
-        localStorage.setItem('volleyball_jugadoras', JSON.stringify(this.jugadoras));
-        localStorage.setItem('volleyball_jornadas', JSON.stringify(this.jornadas));
+        this.guardarDatos();
         
         // Actualizar interfaz
         this.actualizarEquipo();
