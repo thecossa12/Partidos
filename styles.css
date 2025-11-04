@@ -3997,3 +3997,253 @@ table, .grid-container {
         touch-action: manipulation;
     }
 }
+
+/* ==================== RESPONSIVE DESIGN AUTOMÁTICO ==================== */
+/* MÓVILES PEQUEÑOS (320px - 480px) */
+@media screen and (max-width: 480px) {
+    /* Banner ultra-compacto automático */
+    .banner-jornada-pendiente {
+        font-size: 14px;
+    }
+    
+    .banner-content {
+        padding: 4px 8px;
+        gap: 4px;
+        flex-direction: column;
+    }
+    
+    .banner-texto {
+        font-size: 0.7rem;
+        line-height: 1.1;
+    }
+    
+    .banner-actions {
+        gap: 4px;
+        justify-content: center;
+    }
+    
+    .btn-continuar, .btn-eliminar {
+        font-size: 0.65rem;
+        padding: 4px 8px;
+        flex: 1;
+        max-width: 90px;
+        border-radius: 4px;
+    }
+    
+    .btn-cerrar {
+        font-size: 0.7rem;
+        padding: 4px 6px;
+        max-width: 35px;
+        background: #dc3545;
+        border: none;
+        color: white;
+    }
+    
+    .btn-cerrar::before {
+        content: "×";
+    }
+    
+    body.banner-activo {
+        padding-top: 45px;
+    }
+    
+    /* Leyenda automáticamente vertical */
+    .leyenda-entrenamientos {
+        padding: 8px;
+        margin: 10px 0;
+    }
+    
+    .leyenda-items {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: flex-start;
+    }
+    
+    .leyenda-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        font-size: 0.75rem;
+    }
+    
+    .leyenda-color {
+        width: 14px;
+        height: 14px;
+        flex-shrink: 0;
+    }
+    
+    /* Planificador sets ultra-adaptativo */
+    .planificador-sets {
+        padding: 6px;
+    }
+    
+    .set-planificacion {
+        padding: 8px;
+        margin-bottom: 12px;
+        border-radius: 8px;
+    }
+    
+    .set-planificacion h4 {
+        font-size: 0.9rem;
+        margin-bottom: 6px;
+        text-align: center;
+    }
+    
+    .campo-voleibol {
+        height: 100px;
+        max-height: 100px;
+        gap: 1px;
+        padding: 2px;
+        font-size: 0.5rem;
+        border-radius: 4px;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        grid-template-rows: repeat(2, 1fr);
+    }
+    
+    .posicion {
+        height: 30px;
+        font-size: 0.45rem;
+        padding: 1px;
+        line-height: 0.9;
+        border-radius: 2px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        overflow: hidden;
+    }
+    
+    .posicion span {
+        font-size: 0.4rem;
+    }
+    
+    /* Botón eliminar legible */
+    .btn-reset-danger {
+        font-size: 0.8rem;
+        padding: 8px 12px;
+        max-width: 220px;
+        word-wrap: break-word;
+        white-space: normal;
+        line-height: 1.2;
+    }
+}
+
+/* MÓVILES GRANDES (481px - 768px) */
+@media screen and (min-width: 481px) and (max-width: 768px) {
+    .banner-content {
+        padding: 6px 10px;
+        gap: 5px;
+    }
+    
+    .banner-texto {
+        font-size: 0.75rem;
+    }
+    
+    .btn-continuar, .btn-eliminar {
+        font-size: 0.7rem;
+        padding: 5px 10px;
+        max-width: 100px;
+    }
+    
+    .btn-cerrar {
+        font-size: 0.75rem;
+        padding: 5px 8px;
+        max-width: 40px;
+    }
+    
+    body.banner-activo {
+        padding-top: 50px;
+    }
+    
+    .leyenda-items {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .campo-voleibol {
+        height: 120px;
+        gap: 2px;
+        padding: 4px;
+        font-size: 0.55rem;
+    }
+    
+    .posicion {
+        height: 35px;
+        font-size: 0.5rem;
+        padding: 2px;
+    }
+    
+    .btn-reset-danger {
+        font-size: 0.85rem;
+        padding: 10px 15px;
+        max-width: 250px;
+    }
+}
+
+/* TABLETS (769px - 1024px) */
+@media screen and (min-width: 769px) and (max-width: 1024px) {
+    .banner-content {
+        flex-direction: row;
+        padding: 8px 15px;
+        gap: 10px;
+    }
+    
+    .banner-actions {
+        flex-shrink: 0;
+        width: auto;
+    }
+    
+    .leyenda-items {
+        display: flex;
+        flex-direction: row;
+        gap: 15px;
+        flex-wrap: wrap;
+    }
+    
+    .campo-voleibol {
+        height: 150px;
+        gap: 4px;
+        padding: 8px;
+        font-size: 0.65rem;
+    }
+    
+    .posicion {
+        height: 45px;
+        font-size: 0.6rem;
+        padding: 4px;
+    }
+}
+
+/* DESKTOP (1025px+) */
+@media screen and (min-width: 1025px) {
+    .banner-content {
+        flex-direction: row;
+        padding: 10px 20px;
+        gap: 15px;
+    }
+    
+    .leyenda-items {
+        display: flex;
+        flex-direction: row;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+    
+    .campo-voleibol {
+        height: 200px;
+        gap: 6px;
+        padding: 12px;
+        font-size: 0.8rem;
+    }
+    
+    .posicion {
+        height: 60px;
+        font-size: 0.75rem;
+        padding: 6px;
+    }
+}

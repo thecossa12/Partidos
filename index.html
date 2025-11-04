@@ -4,60 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏐 Sistema de Rotaciones</title>
-    <link rel="stylesheet" href="styles.css?v=2025110415101">
-    <link rel="stylesheet" href="mobile-fixes.css?v=2025110415101">
-    <script>
-        // Verificar y FORZAR estilos móviles
-        document.addEventListener('DOMContentLoaded', function() {
-            if (window.innerWidth <= 768) {
-                console.log('📱 Modo móvil detectado - FORZANDO correcciones...');
-                
-                // Forzar leyenda vertical
-                const leyendaItems = document.querySelector('.leyenda-items');
-                if (leyendaItems) {
-                    leyendaItems.style.cssText = 'display: flex !important; flex-direction: column !important; gap: 8px !important;';
-                    console.log('✅ Leyenda forzada a vertical');
-                }
-                
-                // Forzar banner compacto
-                const banner = document.querySelector('.banner-jornada-pendiente');
-                if (banner) {
-                    banner.style.fontSize = '12px';
-                    const bannerContent = banner.querySelector('.banner-content');
-                    if (bannerContent) {
-                        bannerContent.style.cssText = 'padding: 4px 6px !important; gap: 3px !important;';
-                    }
-                    
-                    const btnCerrar = banner.querySelector('.btn-cerrar');
-                    if (btnCerrar) {
-                        btnCerrar.innerHTML = '×';
-                        btnCerrar.style.cssText = 'background: #dc3545 !important; color: white !important; font-size: 0.6rem !important; padding: 3px 5px !important; max-width: 30px !important; border: none !important;';
-                    }
-                    console.log('✅ Banner forzado a compacto');
-                }
-                
-                // Forzar campo voleibol pequeño
-                const campoVoleibol = document.querySelectorAll('.campo-voleibol');
-                campoVoleibol.forEach(campo => {
-                    campo.style.cssText = 'min-height: 100px !important; max-height: 110px !important; gap: 1px !important; padding: 3px !important; font-size: 0.5rem !important;';
-                    const posiciones = campo.querySelectorAll('.posicion');
-                    posiciones.forEach(pos => {
-                        pos.style.cssText = 'min-height: 30px !important; max-height: 35px !important; font-size: 0.5rem !important; padding: 1px !important;';
-                    });
-                });
-                console.log('✅ Campo voleibol forzado a pequeño');
-                
-                // Forzar botón eliminar
-                const btnEliminar = document.querySelector('.btn-reset-danger');
-                if (btnEliminar) {
-                    btnEliminar.style.cssText = 'font-size: 0.85rem !important; padding: 10px 15px !important; max-width: 250px !important; background: #dc3545 !important; color: white !important;';
-                    console.log('✅ Botón eliminar forzado');
-                }
-                
-                console.log('🎯 TODAS las correcciones móviles FORZADAS');
-            }
-        });
-    </script>
+    <link rel="stylesheet" href="styles.css?v=2025110415202">
 </head>
 <body>
     <!-- Banner de jornada pendiente -->
