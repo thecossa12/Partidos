@@ -1,4 +1,4 @@
-class VolleyballManager {
+﻿class VolleyballManager {
     constructor() {
         console.log('🏗️ Iniciando constructor VolleyballManager...');
         this.jugadoras = this.cargarJugadoras();
@@ -91,6 +91,21 @@ class VolleyballManager {
         console.log('📄 Datos jornadas raw:', data);
         const jornadas = data ? JSON.parse(data) : [];
         console.log('📅 Jornadas parseadas:', jornadas.length);
+        
+        // Limpiar null/undefined de sets y planificación existentes
+        jornadas.forEach(jornada => {
+            if (jornada.sets) {
+                if (jornada.sets.set1) jornada.sets.set1 = jornada.sets.set1.filter(j => j !== null && j !== undefined);
+                if (jornada.sets.set2) jornada.sets.set2 = jornada.sets.set2.filter(j => j !== null && j !== undefined);
+                if (jornada.sets.set3) jornada.sets.set3 = jornada.sets.set3.filter(j => j !== null && j !== undefined);
+            }
+            if (jornada.planificacionManual) {
+                if (jornada.planificacionManual.set1) jornada.planificacionManual.set1 = jornada.planificacionManual.set1.filter(j => j !== null && j !== undefined);
+                if (jornada.planificacionManual.set2) jornada.planificacionManual.set2 = jornada.planificacionManual.set2.filter(j => j !== null && j !== undefined);
+                if (jornada.planificacionManual.set3) jornada.planificacionManual.set3 = jornada.planificacionManual.set3.filter(j => j !== null && j !== undefined);
+            }
+        });
+        
         return jornadas;
     }
 
@@ -255,7 +270,7 @@ class VolleyballManager {
         const btnCompletar = document.getElementById('setupCompletar');
         
         if (this.jugadoras.length === 0) {
-            lista.innerHTML = '<p>No hay jugadoras agregadas</p>';
+            lista.innerHTML = '<p>No hay nadie agregado aún</p>';
         } else {
             lista.innerHTML = this.jugadoras
                 .sort((a, b) => a.dorsal - b.dorsal)
@@ -303,15 +318,49 @@ class VolleyballManager {
     }
 
     cambiarTab(tab) {
+        console.log(`🔄 cambiarTab ejecutado con tab: "${tab}"`);
+        
         // Actualizar botones
         document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`[data-tab="${tab}"]`).classList.add('active');
+        console.log(`🔍 Buscando botón con selector: [data-tab="${tab}"]`);
         
-        // Actualizar contenido
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        document.getElementById(tab).classList.add('active');
+        const targetButton = document.querySelector(`[data-tab="${tab}"]`);
+        console.log(`🎯 Botón encontrado:`, !!targetButton);
+        if (targetButton) {
+            targetButton.classList.add('active');
+            console.log(`✅ Clase active agregada al botón ${tab}`);
+        }
+        
+        // Actualizar contenido - MÉTODO SIMPLIFICADO
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+            // Para admin, remover también la clase 'active' directamente
+            if (content.id === 'admin') {
+                content.classList.remove('active');
+            }
+        });
+        
+        console.log(`🔍 Buscando contenido con id: "${tab}"`);
+        const targetContent = document.getElementById(tab);
+        console.log(`🎯 Contenido encontrado:`, !!targetContent);
+        
+        if (targetContent) {
+            targetContent.classList.add('active');
+            console.log(`✅ Clase active agregada al contenido ${tab}`);
+            
+            // Para admin, forzar display
+            if (tab === 'admin') {
+                targetContent.style.display = 'block';
+                targetContent.style.minHeight = '600px';
+                targetContent.style.width = '100%';
+                console.log(`🚀 Admin: Estilos forzados aplicados`);
+            }
+            
+            console.log(`📏 Display CSS del contenido:`, getComputedStyle(targetContent).display);
+        }
         
         this.currentTab = tab;
+        console.log(`🏷️ currentTab actualizado a: ${this.currentTab}`);
         
         // Forzar actualización específica para la pestaña Equipo
         if (tab === 'jugadoras') {
@@ -432,15 +481,52 @@ class VolleyballManager {
 
     crearNuevaJornada() {
         const fechaInput = document.getElementById('fechaJornada');
-        const fecha = fechaInput.value;
+        const fechaSeleccionada = fechaInput.value;
         
-        if (!fecha) {
+        if (!fechaSeleccionada) {
             alert('Selecciona una fecha para la jornada');
             return;
         }
         
+        // Convertir la fecha seleccionada a Date object (YYYY-MM-DD)
+        const [year, month, day] = fechaSeleccionada.split('-').map(Number);
+        const fechaObj = new Date(year, month - 1, day); // month - 1 porque enero es 0
+        const diaSemana = fechaObj.getDay(); // 0=Domingo, 1=Lunes, ..., 6=Sábado
+        
+        console.log('🗓️ Fecha seleccionada:', fechaSeleccionada);
+        console.log('🗓️ Día de la semana seleccionado:', diaSemana);
+        
+        // Calcular el lunes de esa semana
+        // Si es domingo (0), retroceder 6 días; si es lunes (1), es 0; si es martes (2), retroceder 1 día, etc.
+        const diasHastaLunes = diaSemana === 0 ? -6 : -(diaSemana - 1);
+        const fechaLunesObj = new Date(year, month - 1, day);
+        fechaLunesObj.setDate(day + diasHastaLunes);
+        
+        // Calcular miércoles y sábado
+        const fechaMiercolesObj = new Date(year, month - 1, day);
+        fechaMiercolesObj.setDate(day + diasHastaLunes + 2);
+        
+        const fechaSabadoObj = new Date(year, month - 1, day);
+        fechaSabadoObj.setDate(day + diasHastaLunes + 5);
+        
+        // Convertir a formato YYYY-MM-DD
+        const formatoYYYYMMDD = (fecha) => {
+            const y = fecha.getFullYear();
+            const m = String(fecha.getMonth() + 1).padStart(2, '0');
+            const d = String(fecha.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+        
+        const fechaLunes = formatoYYYYMMDD(fechaLunesObj);
+        const fechaMiercoles = formatoYYYYMMDD(fechaMiercolesObj);
+        const fechaSabado = formatoYYYYMMDD(fechaSabadoObj);
+        
+        console.log('🗓️ Lunes de esa semana:', fechaLunes, 'Día:', fechaLunesObj.getDay());
+        console.log('🗓️ Miércoles de esa semana:', fechaMiercoles, 'Día:', fechaMiercolesObj.getDay());
+        console.log('🗓️ Sábado de esa semana:', fechaSabado, 'Día:', fechaSabadoObj.getDay());
+        
         // Verificar si ya existe una jornada para esa semana
-        const existeJornada = this.jornadas.find(j => j.fechaLunes === fecha);
+        const existeJornada = this.jornadas.find(j => j.fechaLunes === fechaLunes);
         if (existeJornada) {
             alert('Ya existe una jornada para esa semana');
             return;
@@ -448,7 +534,9 @@ class VolleyballManager {
         
         const nuevaJornada = {
             id: Date.now(),
-            fechaLunes: fecha,
+            fechaLunes: fechaLunes,
+            fechaMiercoles: fechaMiercoles,
+            fechaSabado: fechaSabado,
             asistenciaLunes: [],
             asistenciaMiercoles: [],
             asistenciaSabado: [],
@@ -465,7 +553,8 @@ class VolleyballManager {
         // Resetear planificación de sets para nueva jornada
         this.planificacionSets = {
             set1: [],
-            set2: []
+            set2: [],
+            set3: []
         };
         
         // Cerrar planificador si estaba abierto
@@ -508,7 +597,7 @@ class VolleyballManager {
             
             if (gridElement) {
                 if (this.jugadoras.length === 0) {
-                    gridElement.innerHTML = '<div class="no-jugadoras">⚠️ No hay jugadoras registradas. Ve a la pestaña "Equipo" para añadir jugadoras.</div>';
+                    gridElement.innerHTML = '<div class="no-jugadoras">⚠️ No hay nadie registrado. Ve a la pestaña "Equipo" para añadir jugador/as.</div>';
                     return;
                 }
                 
@@ -605,15 +694,17 @@ class VolleyballManager {
     }
 
     verificarJugadoraEnSets(jugadoraId) {
-        // Verificar si está en set1 o set2
-        const enSet1 = this.planificacionSets?.set1?.find(j => j.id === jugadoraId);
-        const enSet2 = this.planificacionSets?.set2?.find(j => j.id === jugadoraId);
+        // Verificar si está en set1, set2 o set3 (filtrar null primero)
+        const enSet1 = this.planificacionSets?.set1?.filter(j => j !== null && j !== undefined).find(j => j.id === jugadoraId);
+        const enSet2 = this.planificacionSets?.set2?.filter(j => j !== null && j !== undefined).find(j => j.id === jugadoraId);
+        const enSet3 = this.planificacionSets?.set3?.filter(j => j !== null && j !== undefined).find(j => j.id === jugadoraId);
         
         // Verificar si tiene sustituciones
         const tieneSustitucionesSet1 = this.tieneSustituciones(jugadoraId, 1);
         const tieneSustitucionesSet2 = this.tieneSustituciones(jugadoraId, 2);
+        const tieneSustitucionesSet3 = this.tieneSustituciones(jugadoraId, 3);
         
-        return !!(enSet1 || enSet2 || tieneSustitucionesSet1 || tieneSustitucionesSet2);
+        return !!(enSet1 || enSet2 || enSet3 || tieneSustitucionesSet1 || tieneSustitucionesSet2 || tieneSustitucionesSet3);
     }
 
     tieneSustituciones(jugadoraId, set) {
@@ -639,13 +730,15 @@ class VolleyballManager {
         
         console.log(`🧹 Limpiando completamente a ${jugadora.nombre} de planificación`);
         
-        // Quitar de sets
-        this.planificacionSets.set1 = this.planificacionSets.set1.filter(j => j.id !== jugadoraId);
-        this.planificacionSets.set2 = this.planificacionSets.set2.filter(j => j.id !== jugadoraId);
+        // Reemplazar la jugadora con null en lugar de eliminarla (para mantener posiciones)
+        this.planificacionSets.set1 = this.planificacionSets.set1.map(j => (j && j.id === jugadoraId) ? null : j);
+        this.planificacionSets.set2 = this.planificacionSets.set2.map(j => (j && j.id === jugadoraId) ? null : j);
+        this.planificacionSets.set3 = this.planificacionSets.set3.map(j => (j && j.id === jugadoraId) ? null : j);
         
-        // Quitar de sustituciones (ambos sets)
+        // Quitar de sustituciones (todos los sets)
         this.eliminarSustitucionesDeJugadora(jugadoraId, 'set1');
         this.eliminarSustitucionesDeJugadora(jugadoraId, 'set2');
+        this.eliminarSustitucionesDeJugadora(jugadoraId, 'set3');
         
         // Auto-guardar cambios
         this.autoGuardarCambiosSets();
@@ -877,7 +970,7 @@ class VolleyballManager {
         
         container.innerHTML = `
             <div class="indicador-minimo">
-                <strong>Jugadoras seleccionadas: ${totalJugadoras}/${minimo} mínimo</strong>
+                <strong>Seleccionados/as: ${totalJugadoras}/${minimo} mínimo</strong>
                 ${totalJugadoras < minimo ? 
                     `<span class="faltan"> - Faltan ${minimo - totalJugadoras}</span>` : 
                     '<span class="completo"> ✓ Listo para planificar</span>'}
@@ -931,7 +1024,8 @@ class VolleyballManager {
         if (!this.planificacionSets) {
             this.planificacionSets = {
                 set1: [],
-                set2: []
+                set2: [],
+                set3: []
             };
         }
         
@@ -961,10 +1055,22 @@ class VolleyballManager {
                         <button id="btnAddSuplente2" class="btn-add-suplente">+ Añadir Sustitución</button>
                     </div>
                 </div>
+                
+                <div class="set-column">
+                    <h4>Set 3 (Opcional)</h4>
+                    <div id="set3Container" class="set-container-campo">
+                        <div class="jugadoras-set" id="jugadorasSet3"></div>
+                    </div>
+                    <div class="suplentes-container">
+                        <h5>Suplentes Set 3</h5>
+                        <div id="suplentesSet3" class="suplentes-list"></div>
+                        <button id="btnAddSuplente3" class="btn-add-suplente">+ Añadir Sustitución</button>
+                    </div>
+                </div>
             </div>
             
             <div class="jugadoras-disponibles-container">
-                <h4>Jugadoras Disponibles</h4>
+                <h4>Disponibles</h4>
                 <div id="jugadorasDisponibles" class="jugadoras-disponibles-grid"></div>
             </div>
         `;
@@ -972,6 +1078,7 @@ class VolleyballManager {
         // Event listeners para suplentes
         document.getElementById('btnAddSuplente1')?.addEventListener('click', () => this.añadirSustitucion(1));
         document.getElementById('btnAddSuplente2')?.addEventListener('click', () => this.añadirSustitucion(2));
+        document.getElementById('btnAddSuplente3')?.addEventListener('click', () => this.añadirSustitucion(3));
         
         this.actualizarVistasSets();
         this.actualizarJugadorasDisponibles();
@@ -984,7 +1091,7 @@ class VolleyballManager {
         if (!this.jornadaActual?.sustituciones) {
             // Inicializar estructura de sustituciones vacía si no existe
             if (this.jornadaActual) {
-                this.jornadaActual.sustituciones = { set1: [], set2: [] };
+                this.jornadaActual.sustituciones = { set1: [], set2: [], set3: [] };
             }
             return;
         }
@@ -1033,6 +1140,27 @@ class VolleyballManager {
             }
         }
         
+        // Restaurar sustituciones del Set 3
+        if (this.jornadaActual.sustituciones.set3?.length > 0) {
+            const container3 = document.getElementById('suplentesSet3');
+            if (container3) {
+                this.jornadaActual.sustituciones.set3.forEach(sustitucion => {
+                    const entraJugadora = this.jugadoras.find(j => j.id === sustitucion.entraId);
+                    const saleJugadora = this.jugadoras.find(j => j.id === sustitucion.saleId);
+                    
+                    if (entraJugadora && saleJugadora) {
+                        const sustitucionElement = document.createElement('div');
+                        sustitucionElement.className = 'sustitucion-item';
+                        sustitucionElement.innerHTML = `
+                            <span>${entraJugadora.nombre} entra por ${saleJugadora.nombre} en el punto ${sustitucion.punto}</span>
+                            <button class="btn-eliminar-sustitucion" onclick="app.eliminarSustitucion(this)">×</button>
+                        `;
+                        container3.appendChild(sustitucionElement);
+                    }
+                });
+            }
+        }
+        
         console.log('✅ Sustituciones restauradas visualmente');
     }
 
@@ -1043,6 +1171,7 @@ class VolleyballManager {
         // Construir opciones disponibles
         const set1Count = this.planificacionSets.set1.length;
         const set2Count = this.planificacionSets.set2.length;
+        const set3Count = this.planificacionSets.set3.length;
         
         let opciones = '';
         let opcionesValidas = [];
@@ -1057,8 +1186,13 @@ class VolleyballManager {
             opcionesValidas.push('2');
         }
         
+        if (set3Count < 6) {
+            opciones += `3 - Set 3 - Opcional (${set3Count}/6)\n`;
+            opcionesValidas.push('3');
+        }
+        
         if (opcionesValidas.length === 0) {
-            alert('Ambos sets están completos (6 jugadoras cada uno)');
+            alert('Todos los sets están completos (6 jugadoras cada uno)');
             return;
         }
         
@@ -1081,7 +1215,8 @@ class VolleyballManager {
         
         // Verificar límites
         if ((set === '1' && this.planificacionSets.set1.length >= 6) ||
-            (set === '2' && this.planificacionSets.set2.length >= 6)) {
+            (set === '2' && this.planificacionSets.set2.length >= 6) ||
+            (set === '3' && this.planificacionSets.set3.length >= 6)) {
             alert('El set ya tiene 6 jugadoras');
             return;
         }
@@ -1089,8 +1224,9 @@ class VolleyballManager {
         // Verificar si ya está en ese set
         const yaEnSet1 = this.planificacionSets.set1.find(j => j.id === jugadoraId);
         const yaEnSet2 = this.planificacionSets.set2.find(j => j.id === jugadoraId);
+        const yaEnSet3 = this.planificacionSets.set3.find(j => j.id === jugadoraId);
         
-        if ((set === '1' && yaEnSet1) || (set === '2' && yaEnSet2)) {
+        if ((set === '1' && yaEnSet1) || (set === '2' && yaEnSet2) || (set === '3' && yaEnSet3)) {
             alert('La jugadora ya está en ese set');
             return;
         }
@@ -1102,6 +1238,9 @@ class VolleyballManager {
         } else if (set === '2') {
             this.planificacionSets.set2.push(jugadora);
             console.log(`${jugadora.nombre} añadida al Set 2. Total: ${this.planificacionSets.set2.length}`);
+        } else if (set === '3') {
+            this.planificacionSets.set3.push(jugadora);
+            console.log(`${jugadora.nombre} añadida al Set 3. Total: ${this.planificacionSets.set3.length}`);
         }
         
         // NO remover de disponibles - solo actualizar vistas
@@ -1117,16 +1256,18 @@ class VolleyballManager {
     autoGuardarCambiosSets() {
         if (!this.jornadaActual) return;
         
-        // Guardar estado actual de sets
+        // Guardar estado actual de sets (filtrar null para evitar undefined)
         this.jornadaActual.sets = {
-            set1: [...this.planificacionSets.set1],
-            set2: [...this.planificacionSets.set2]
+            set1: this.planificacionSets.set1.filter(j => j !== null && j !== undefined),
+            set2: this.planificacionSets.set2.filter(j => j !== null && j !== undefined),
+            set3: this.planificacionSets.set3.filter(j => j !== null && j !== undefined)
         };
         
         // Guardar sustituciones actuales
         this.jornadaActual.sustituciones = {
             set1: this.obtenerSustituciones(1),
-            set2: this.obtenerSustituciones(2)
+            set2: this.obtenerSustituciones(2),
+            set3: this.obtenerSustituciones(3)
         };
         
         // Guardar en localStorage
@@ -1136,49 +1277,253 @@ class VolleyballManager {
     }
 
     actualizarVistasSets() {
-        // Actualizar Set 1 - Campo de voleibol (3 arriba, 3 abajo)
+        // Actualizar Set 1 - Campo de voleibol con posiciones fijas (4,3,2 arriba / 5,6,1 abajo)
         const set1Container = document.getElementById('jugadorasSet1');
         if (set1Container) {
-            const jugadoras = this.planificacionSets.set1;
-            set1Container.innerHTML = `
-                <div class="fila-campo">
-                    ${this.generarPosicionesCampo(jugadoras, 0, 3, 'set1')}
-                </div>
-                <div class="fila-campo">
-                    ${this.generarPosicionesCampo(jugadoras, 3, 6, 'set1')}
-                </div>
-            `;
+            set1Container.innerHTML = this.generarCampoVoleibol('set1');
         }
         
-        // Actualizar Set 2 - Campo de voleibol (3 arriba, 3 abajo)
+        // Actualizar Set 2 - Campo de voleibol con posiciones fijas
         const set2Container = document.getElementById('jugadorasSet2');
         if (set2Container) {
-            const jugadoras = this.planificacionSets.set2;
-            set2Container.innerHTML = `
-                <div class="fila-campo">
-                    ${this.generarPosicionesCampo(jugadoras, 0, 3, 'set2')}
+            set2Container.innerHTML = this.generarCampoVoleibol('set2');
+        }
+        
+        // Actualizar Set 3 - Campo de voleibol con posiciones fijas
+        const set3Container = document.getElementById('jugadorasSet3');
+        if (set3Container) {
+            set3Container.innerHTML = this.generarCampoVoleibol('set3');
+        }
+    }
+
+    generarCampoVoleibol(setKey) {
+        // Asegurar que existe el array de jugadoras
+        if (!this.planificacionSets[setKey]) {
+            this.planificacionSets[setKey] = [];
+        }
+        
+        const jugadoras = this.planificacionSets[setKey];
+        
+        // Convertir array a objeto de posiciones si no lo es
+        if (Array.isArray(jugadoras) && jugadoras.length > 0 && typeof jugadoras[0] !== 'object') {
+            // Ya es un array de objetos jugadora
+        }
+        
+        // Crear objeto de posiciones (1-6)
+        const posiciones = {};
+        jugadoras.forEach((jugadora, index) => {
+            if (jugadora) {
+                posiciones[index + 1] = jugadora;
+            }
+        });
+        
+        // Orden de voleibol: 4,3,2 (arriba) / 5,6,1 (abajo)
+        const ordenArriba = [4, 3, 2];
+        const ordenAbajo = [5, 6, 1];
+        
+        let html = '<div class="fila-campo">';
+        ordenArriba.forEach(pos => {
+            html += this.generarPosicion(posiciones[pos], pos, setKey);
+        });
+        html += '</div><div class="fila-campo">';
+        ordenAbajo.forEach(pos => {
+            html += this.generarPosicion(posiciones[pos], pos, setKey);
+        });
+        html += '</div>';
+        
+        return html;
+    }
+
+    generarPosicion(jugadora, posicion, setKey) {
+        // Verificar que jugadora existe y no es null ni undefined
+        if (jugadora !== null && jugadora !== undefined && jugadora.nombre) {
+            // Obtener emoji según el rol
+            let emojiRol = '🏐'; // Jugadora normal
+            if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
+            else if (jugadora.posicion === 'central') emojiRol = '🛡️';
+            
+            return `
+                <div class="posicion-campo ocupada" onclick="app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
+                    <span class="numero-posicion">${posicion}</span>
+                    <span class="dorsal-campo">#${jugadora.dorsal}</span>
+                    <span class="rol-campo">${emojiRol}</span>
+                    <span class="nombre-campo">${jugadora.nombre}</span>
                 </div>
-                <div class="fila-campo">
-                    ${this.generarPosicionesCampo(jugadoras, 3, 6, 'set2')}
+            `;
+        } else {
+            return `
+                <div class="posicion-campo vacia" onclick="app.añadirJugadoraAPosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para añadir jugadora">
+                    <span class="numero-posicion">${posicion}</span>
+                    <span>Libre</span>
                 </div>
             `;
         }
     }
 
-    generarPosicionesCampo(jugadoras, inicio, fin, set) {
-        let html = '';
-        for (let i = inicio; i < fin; i++) {
-            if (jugadoras[i]) {
-                html += `
-                    <div class="posicion-campo ocupada" onclick="app.removerJugadoraDeSet(${jugadoras[i].id}, '${set}')" title="Click para quitar del set">
-                        <span class="dorsal-campo">#${jugadoras[i].dorsal}</span><span class="nombre-campo">${jugadoras[i].nombre}</span>
-                    </div>
-                `;
+    añadirJugadoraAPosicion(posicion, setKey) {
+        const setNum = setKey === 'set1' ? 1 : (setKey === 'set2' ? 2 : 3);
+        
+        // Obtener jugadoras disponibles (del sábado que NO estén en este set)
+        const jugadorasDelSabado = this.jornadaActual.asistenciaSabado.map(id =>
+            this.jugadoras.find(j => j.id === id)
+        ).filter(j => j);
+        
+        const jugadorasEnSet = this.planificacionSets[setKey] || [];
+        const jugadorasDisponibles = jugadorasDelSabado.filter(j =>
+            !jugadorasEnSet.find(js => js && js.id === j.id)
+        );
+        
+        if (jugadorasDisponibles.length === 0) {
+            alert('No hay personas disponibles para añadir');
+            return;
+        }
+        
+        // Mostrar modal con jugadoras disponibles
+        this.mostrarModalSeleccionJugadora(jugadorasDisponibles, posicion, setKey, setNum);
+    }
+
+    mostrarModalSeleccionJugadora(jugadorasDisponibles, posicion, setKey, setNum) {
+        const modal = document.getElementById('modal-seleccion-jugadora');
+        const titulo = document.getElementById('titulo-seleccion-jugadora');
+        const lista = document.getElementById('lista-jugadoras-modal');
+        
+        titulo.textContent = `Seleccionar Jugador/a - Posición ${posicion} (Set ${setNum})`;
+        
+        // ORDENAR jugadoras: primero por entrenamientos (2→1→0), luego por puntos (menor a mayor)
+        const jugadorasConDatos = jugadorasDisponibles.map(j => {
+            const asistioLunes = this.jornadaActual.asistenciaLunes.includes(j.id);
+            const asistioMiercoles = this.jornadaActual.asistenciaMiercoles.includes(j.id);
+            const entrenamientos = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
+            
+            return {
+                jugadora: j,
+                entrenamientos: entrenamientos,
+                puntosJugados: j.puntosJugados || 0
+            };
+        });
+        
+        // Ordenar: Verde (2) > Amarillo (1) > Rojo (0), dentro de cada grupo por puntos, luego por dorsal
+        jugadorasConDatos.sort((a, b) => {
+            // Primero por entrenamientos (descendente: 2, 1, 0)
+            if (b.entrenamientos !== a.entrenamientos) {
+                return b.entrenamientos - a.entrenamientos;
+            }
+            // Luego por puntos jugados (ascendente: menos puntos primero)
+            if (a.puntosJugados !== b.puntosJugados) {
+                return a.puntosJugados - b.puntosJugados;
+            }
+            // Finalmente por dorsal (ascendente: menor dorsal primero)
+            return a.jugadora.dorsal - b.jugadora.dorsal;
+        });
+        
+        // Obtener información de entrenamientos para cada jugadora
+        lista.innerHTML = jugadorasConDatos.map(({jugadora: j, entrenamientos}) => {
+            // Verificar si está en otros sets
+            const setsActuales = [];
+            if (setKey !== 'set1' && this.planificacionSets.set1.find(js => js && js.id === j.id)) setsActuales.push('1');
+            if (setKey !== 'set2' && this.planificacionSets.set2.find(js => js && js.id === j.id)) setsActuales.push('2');
+            if (setKey !== 'set3' && this.planificacionSets.set3.find(js => js && js.id === j.id)) setsActuales.push('3');
+            
+            // Emoji según la posición/rol
+            let emojiRol = '🏐'; // Jugadora normal
+            if (j.posicion === 'colocadora') emojiRol = '🎯';
+            else if (j.posicion === 'central') emojiRol = '🛡️';
+            
+            let estadoTexto = '';
+            let colorFondo = '';
+            if (entrenamientos === 2) {
+                estadoTexto = '✅ 2 entrenamientos';
+                colorFondo = 'background: #d4edda; border-color: #28a745;';
+            } else if (entrenamientos === 1) {
+                estadoTexto = '⚠️ 1 entrenamiento';
+                colorFondo = 'background: #fff3cd; border-color: #ffc107;';
             } else {
-                html += '<div class="posicion-campo vacia">Libre</div>';
+                estadoTexto = '❌ 0 entrenamientos';
+                colorFondo = 'background: #f8d7da; border-color: #dc3545;';
+            }
+            
+            if (setsActuales.length > 0) {
+                estadoTexto += ` • Ya en Set ${setsActuales.join(', ')}`;
+            }
+            
+            return `
+                <div class="jugadora-modal-item" style="${colorFondo}" onclick="app.seleccionarJugadoraParaPosicion(${j.id}, ${posicion}, '${setKey}')">
+                    <div class="jugadora-modal-info">
+                        <span class="jugadora-modal-dorsal">#${j.dorsal}</span>
+                        <span class="jugadora-modal-rol">${emojiRol}</span>
+                        <span class="jugadora-modal-nombre">${j.nombre}</span>
+                    </div>
+                    <span class="jugadora-modal-estado">${estadoTexto}</span>
+                </div>
+            `;
+        }).join('');
+        
+        modal.style.display = 'flex';
+        
+        // Listener para tecla ESC (agregar solo una vez)
+        if (!modal.hasAttribute('data-esc-listener')) {
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' || e.key === 'Esc') {
+                    const modalVisible = document.getElementById('modal-seleccion-jugadora');
+                    if (modalVisible && modalVisible.style.display === 'flex') {
+                        this.cerrarModalSeleccion();
+                    }
+                }
+            });
+            modal.setAttribute('data-esc-listener', 'true');
+        }
+    }
+
+    seleccionarJugadoraParaPosicion(jugadoraId, posicion, setKey) {
+        const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
+        
+        if (jugadora) {
+            // Asegurar que el array tenga 6 posiciones
+            while (this.planificacionSets[setKey].length < 6) {
+                this.planificacionSets[setKey].push(null);
+            }
+            
+            // Añadir en la posición específica (posición 1-6, array 0-5)
+            this.planificacionSets[setKey][posicion - 1] = jugadora;
+            
+            this.actualizarVistasSets();
+            this.actualizarJugadorasDisponibles();
+            
+            // Auto-guardar
+            if (this.jornadaActual && this.jornadaActual.id) {
+                this.autoGuardarCambiosSets();
+            }
+            
+            // Cerrar modal
+            this.cerrarModalSeleccion();
+        }
+    }
+
+    cerrarModalSeleccion() {
+        const modal = document.getElementById('modal-seleccion-jugadora');
+        modal.style.display = 'none';
+    }
+
+    removerJugadoraDePosicion(posicion, setKey) {
+        // Remover la jugadora de la posición específica (dejar null)
+        if (this.planificacionSets[setKey] && this.planificacionSets[setKey][posicion - 1]) {
+            const jugadora = this.planificacionSets[setKey][posicion - 1];
+            
+            if (confirm(`¿Quitar a ${jugadora.nombre} de la posición ${posicion}?`)) {
+                this.planificacionSets[setKey][posicion - 1] = null;
+                
+                // Eliminar sustituciones relacionadas
+                this.eliminarSustitucionesDeJugadora(jugadora.id, setKey);
+                
+                this.actualizarVistasSets();
+                this.actualizarJugadorasDisponibles();
+                
+                // Auto-guardar
+                if (this.jornadaActual && this.jornadaActual.id) {
+                    this.autoGuardarCambiosSets();
+                }
             }
         }
-        return html;
     }
 
     actualizarJugadorasDisponibles() {
@@ -1220,35 +1565,33 @@ class VolleyballManager {
         });
         
         container.innerHTML = jugadorasOrdenadas.map(j => {
-            // Limpiar arrays de sets de elementos undefined antes de buscar
-            this.planificacionSets.set1 = this.planificacionSets.set1.filter(js => js && js.id);
-            this.planificacionSets.set2 = this.planificacionSets.set2.filter(js => js && js.id);
-            
-            // Determinar estado en sets y suplentes
-            const enSet1 = this.planificacionSets.set1.find(js => js.id === j.id);
-            const enSet2 = this.planificacionSets.set2.find(js => js.id === j.id);
+            // Determinar estado en sets y suplentes (SIN FILTRAR para mantener posiciones)
+            const enSet1 = this.planificacionSets.set1.find(js => js && js.id === j.id);
+            const enSet2 = this.planificacionSets.set2.find(js => js && js.id === j.id);
+            const enSet3 = this.planificacionSets.set3.find(js => js && js.id === j.id);
             
             // Verificar si es suplente en algún set
             const esSuplente1 = this.verificarSiEsSuplente(j.id, 1);
             const esSuplente2 = this.verificarSiEsSuplente(j.id, 2);
+            const esSuplente3 = this.verificarSiEsSuplente(j.id, 3);
+            
+            // Contar en cuántos sets está
+            const setsConJugadora = [];
+            if (enSet1 || esSuplente1) setsConJugadora.push('1');
+            if (enSet2 || esSuplente2) setsConJugadora.push('2');
+            if (enSet3 || esSuplente3) setsConJugadora.push('3');
             
             let etiqueta = '';
-            if (enSet1 && enSet2) {
-                etiqueta = '<span class="etiqueta-estado">Ya en Set 1 y 2</span>';
-            } else if (enSet1 && esSuplente2) {
-                etiqueta = '<span class="etiqueta-estado">Ya en Set 1 y 2</span>';
-            } else if (esSuplente1 && enSet2) {
-                etiqueta = '<span class="etiqueta-estado">Ya en Set 1 y 2</span>';
-            } else if (esSuplente1 && esSuplente2) {
-                etiqueta = '<span class="etiqueta-estado">Ya en Set 1 y 2</span>';
-            } else if (enSet1 || esSuplente1) {
-                etiqueta = '<span class="etiqueta-estado">Ya en Set 1</span>';
-            } else if (enSet2 || esSuplente2) {
-                etiqueta = '<span class="etiqueta-estado">Ya en Set 2</span>';
+            if (setsConJugadora.length === 3) {
+                etiqueta = '<span class="etiqueta-estado">Ya en Set 1, 2 y 3</span>';
+            } else if (setsConJugadora.length === 2) {
+                etiqueta = `<span class="etiqueta-estado">Ya en Set ${setsConJugadora.join(' y ')}</span>`;
+            } else if (setsConJugadora.length === 1) {
+                etiqueta = `<span class="etiqueta-estado">Ya en Set ${setsConJugadora[0]}</span>`;
             }
             
             return `
-                <div class="jugadora-disponible ${j.color}" data-id="${j.id}" onclick="app.seleccionarJugadora(${j.id})">
+                <div class="jugadora-disponible ${j.color}" data-id="${j.id}">
                     ${etiqueta}
                     <span class="jugadora-info">#${j.dorsal} ${j.nombre}</span>
                 </div>
@@ -1282,6 +1625,8 @@ class VolleyballManager {
             this.planificacionSets.set1 = this.planificacionSets.set1.filter(j => j.id !== jugadoraId);
         } else if (set === 'set2') {
             this.planificacionSets.set2 = this.planificacionSets.set2.filter(j => j.id !== jugadoraId);
+        } else if (set === 'set3') {
+            this.planificacionSets.set3 = this.planificacionSets.set3.filter(j => j.id !== jugadoraId);
         }
         
         // Auto-eliminar sustituciones relacionadas con esta jugadora
@@ -1301,7 +1646,7 @@ class VolleyballManager {
         const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
         if (!jugadora) return;
         
-        const setNum = set === 'set1' ? 1 : 2;
+        const setNum = set === 'set1' ? 1 : (set === 'set2' ? 2 : 3);
         const container = document.getElementById(`suplentesSet${setNum}`);
         if (!container) return;
         
@@ -1351,8 +1696,8 @@ class VolleyballManager {
         console.log('🎯 Total jugadoras en sistema:', this.jugadoras.length);
         console.log('⚡ Asistencia sábado:', this.jornadaActual.asistenciaSabado);
         
-        // Obtener jugadoras del set correspondiente
-        const jugadorasSetOriginales = set === 1 ? this.planificacionSets.set1 : this.planificacionSets.set2;
+        // Obtener jugadoras del set correspondiente (filtrar null)
+        const jugadorasSetOriginales = (set === 1 ? this.planificacionSets.set1 : (set === 2 ? this.planificacionSets.set2 : this.planificacionSets.set3)).filter(j => j !== null && j !== undefined);
         console.log('🏐 Jugadoras originales del set:', jugadorasSetOriginales.length);
         
         // Obtener sustituciones ya realizadas en este set
@@ -1361,7 +1706,7 @@ class VolleyballManager {
         
         // Filtrar jugadoras que aún están en el campo (no han sido sustituidas)
         const jugadorasEnCampo = jugadorasSetOriginales.filter(j => 
-            !jugadorasQueSalieron.includes(j.id)
+            j && j.id && !jugadorasQueSalieron.includes(j.id)
         );
         console.log('👥 Jugadoras en campo:', jugadorasEnCampo.length);
         
@@ -1373,18 +1718,18 @@ class VolleyballManager {
         console.log('✅ Jugadoras válidas disponibles:', todasLasJugadoras.length);
         
         const jugadorasDisponibles = todasLasJugadoras.filter(j => 
-            !jugadorasSetOriginales.find(js => js.id === j.id)
+            !jugadorasSetOriginales.find(js => js && js.id === j.id)
         );
         
         console.log('🎪 Jugadoras disponibles para entrar:', jugadorasDisponibles.length);
         
         if (jugadorasEnCampo.length === 0) {
-            alert('No hay jugadoras en el campo para sustituir (todas han sido sustituidas)');
+            alert('No hay nadie en el campo para sustituir (todas/os han sido sustituidos)');
             return;
         }
         
         if (jugadorasDisponibles.length === 0) {
-            alert('No hay jugadoras disponibles para entrar como suplentes');
+            alert('No hay personas disponibles para entrar como suplentes');
             return;
         }
         
@@ -1412,7 +1757,7 @@ class VolleyballManager {
         if (titulo) titulo.textContent = `Sustitución Set ${set}`;
         
         // Limpiar y llenar el select de jugadoras que salen (en campo)
-        jugadoraSaleSelect.innerHTML = '<option value="">Seleccionar jugadora...</option>';
+        jugadoraSaleSelect.innerHTML = '<option value="">Seleccionar...</option>';
         jugadorasSet.forEach(j => {
             // Validar que la jugadora tenga datos completos
             if (!j || !j.nombre || j.dorsal === undefined) {
@@ -1427,7 +1772,7 @@ class VolleyballManager {
         });
         
         // Limpiar y llenar el select de jugadoras que entran (disponibles)
-        jugadoraEntraSelect.innerHTML = '<option value="">Seleccionar jugadora...</option>';
+        jugadoraEntraSelect.innerHTML = '<option value="">Seleccionar...</option>';
         jugadorasDisponibles.forEach(j => {
             // Validar que la jugadora tenga datos completos
             if (!j || !j.nombre || j.dorsal === undefined) {
@@ -1435,19 +1780,41 @@ class VolleyballManager {
                 return;
             }
             
-            // Determinar si ya ha jugado
-            const enSet1 = this.planificacionSets.set1.find(js => js.id === j.id);
-            const enSet2 = this.planificacionSets.set2.find(js => js.id === j.id);
+            // Determinar en qué sets ya ha jugado
+            const enSet1 = this.planificacionSets.set1.find(js => js && js.id === j.id);
+            const enSet2 = this.planificacionSets.set2.find(js => js && js.id === j.id);
+            const enSet3 = this.planificacionSets.set3.find(js => js && js.id === j.id);
             const esSuplente1 = this.verificarSiEsSuplente(j.id, 1);
             const esSuplente2 = this.verificarSiEsSuplente(j.id, 2);
+            const esSuplente3 = this.verificarSiEsSuplente(j.id, 3);
             
-            const yaJugo = enSet1 || enSet2 || esSuplente1 || esSuplente2;
-            const estado = yaJugo ? ' (Ya ha jugado)' : ' (No ha jugado)';
+            // Contar en cuántos sets está
+            const setsConJugadora = [];
+            if (enSet1 || esSuplente1) setsConJugadora.push('1');
+            if (enSet2 || esSuplente2) setsConJugadora.push('2');
+            if (enSet3 || esSuplente3) setsConJugadora.push('3');
+            
+            let estado = '';
+            let color = '#dc3545'; // Rojo por defecto (no ha jugado)
+            
+            if (setsConJugadora.length === 0) {
+                estado = ' (No ha jugado)';
+                color = '#dc3545';
+            } else if (setsConJugadora.length === 1) {
+                estado = ` (Ya en Set ${setsConJugadora[0]})`;
+                color = '#28a745';
+            } else if (setsConJugadora.length === 2) {
+                estado = ` (Ya en Set ${setsConJugadora.join(' y ')})`;
+                color = '#28a745';
+            } else {
+                estado = ' (Ya en Set 1, 2 y 3)';
+                color = '#28a745';
+            }
             
             const option = document.createElement('option');
             option.value = j.id;
             option.textContent = `#${j.dorsal} ${j.nombre}${estado}`;
-            option.style.color = yaJugo ? '#28a745' : '#dc3545';
+            option.style.color = color;
             jugadoraEntraSelect.appendChild(option);
         });
         
@@ -1760,7 +2127,7 @@ class VolleyballManager {
             recomendaciones.push({
                 tipo: 'advertencia',
                 icono: '⚠️',
-                texto: 'No hay jugadoras seleccionadas para el partido'
+                texto: 'No hay nadie seleccionado para el partido'
             });
             return recomendaciones;
         }
@@ -2137,16 +2504,18 @@ class VolleyballManager {
     guardarBorrador() {
         if (!this.jornadaActual) return;
         
-        // Guardar la planificación actual y sustituciones como borrador
+        // Guardar la planificación actual y sustituciones como borrador (filtrar null)
         this.jornadaActual.sets = {
-            set1: [...this.planificacionSets.set1],
-            set2: [...this.planificacionSets.set2]
+            set1: this.planificacionSets.set1.filter(j => j !== null && j !== undefined),
+            set2: this.planificacionSets.set2.filter(j => j !== null && j !== undefined),
+            set3: this.planificacionSets.set3.filter(j => j !== null && j !== undefined)
         };
         
         // Guardar sustituciones temporales
         this.jornadaActual.sustituciones = {
             set1: this.obtenerSustituciones(1),
-            set2: this.obtenerSustituciones(2)
+            set2: this.obtenerSustituciones(2),
+            set3: this.obtenerSustituciones(3)
         };
         
         // NO marcar como completada - mantener como borrador
@@ -2165,25 +2534,50 @@ class VolleyballManager {
         if (!this.jornadaActual) return;
         
         if (this.jornadaActual.asistenciaSabado.length < 6) {
-            alert('Se necesitan al menos 6 jugadoras para completar la jornada');
+            alert('Se necesitan al menos 6 jugador/as para completar la jornada');
+            return;
+        }
+        
+        // VALIDACIÓN 1: Verificar que Set 1 y Set 2 tengan 6 jugadoras en las POSICIONES
+        // Solo contar las primeras 6 posiciones (índices 0-5), ignorando extras
+        const set1Validas = this.planificacionSets.set1.slice(0, 6).filter(j => j !== null && j !== undefined);
+        const set2Validas = this.planificacionSets.set2.slice(0, 6).filter(j => j !== null && j !== undefined);
+        const set3Validas = this.planificacionSets.set3.slice(0, 6).filter(j => j !== null && j !== undefined);
+        
+        if (set1Validas.length !== 6) {
+            alert('⚠️ El Set 1 debe tener exactamente 6 jugador/as en las posiciones.\n\nActualmente tiene: ' + set1Validas.length + ' jugador/as.');
+            return;
+        }
+        
+        if (set2Validas.length !== 6) {
+            alert('⚠️ El Set 2 debe tener exactamente 6 jugador/as en las posiciones.\n\nActualmente tiene: ' + set2Validas.length + ' jugador/as.');
+            return;
+        }
+        
+        // VALIDACIÓN 2: Si Set 3 tiene jugadoras, debe tener exactamente 6 en las posiciones
+        if (set3Validas.length > 0 && set3Validas.length !== 6) {
+            alert('⚠️ El Set 3 está incompleto.\n\nTiene ' + set3Validas.length + ' jugador/as en las posiciones pero debe tener 6 o estar vacío.\n\nCompleta las 6 posiciones o elimina todas las jugador/as del Set 3.');
             return;
         }
         
         // Verificar que todas las jugadoras disponibles estén en algún set
         const jugadorasDisponibles = this.jornadaActual.asistenciaSabado;
         
-        // Obtener jugadoras en planificación original
+        // Obtener jugadoras en planificación original (filtrar null)
         const jugadorasEnSets = [...new Set([
-            ...this.planificacionSets.set1.map(j => j.id),
-            ...this.planificacionSets.set2.map(j => j.id)
+            ...this.planificacionSets.set1.filter(j => j !== null && j !== undefined).map(j => j.id),
+            ...this.planificacionSets.set2.filter(j => j !== null && j !== undefined).map(j => j.id),
+            ...this.planificacionSets.set3.filter(j => j !== null && j !== undefined).map(j => j.id)
         ])];
         
         // Obtener jugadoras que entran como sustitutas
         const sustitucionesSet1 = this.obtenerSustituciones(1);
         const sustitucionesSet2 = this.obtenerSustituciones(2);
+        const sustitucionesSet3 = this.obtenerSustituciones(3);
         const jugadorasSustitutas = [...new Set([
             ...sustitucionesSet1.map(s => s.entraId),
-            ...sustitucionesSet2.map(s => s.entraId)
+            ...sustitucionesSet2.map(s => s.entraId),
+            ...sustitucionesSet3.map(s => s.entraId)
         ])];
         
         // Combinar jugadoras en sets y sustitutas
@@ -2210,16 +2604,19 @@ class VolleyballManager {
         }
         
         // Guardar planificación manual y sustituciones si existen
-        if (this.planificacionSets && (this.planificacionSets.set1.length > 0 || this.planificacionSets.set2.length > 0)) {
+        if (this.planificacionSets && (this.planificacionSets.set1.length > 0 || this.planificacionSets.set2.length > 0 || this.planificacionSets.set3.length > 0)) {
+            // Filtrar null antes de guardar para evitar "undefined" en historial
             this.jornadaActual.planificacionManual = {
-                set1: [...this.planificacionSets.set1],
-                set2: [...this.planificacionSets.set2]
+                set1: this.planificacionSets.set1.filter(j => j !== null && j !== undefined),
+                set2: this.planificacionSets.set2.filter(j => j !== null && j !== undefined),
+                set3: this.planificacionSets.set3.filter(j => j !== null && j !== undefined)
             };
             
             // Guardar sustituciones
             this.jornadaActual.sustituciones = {
                 set1: this.obtenerSustituciones(1),
-                set2: this.obtenerSustituciones(2)
+                set2: this.obtenerSustituciones(2),
+                set3: this.obtenerSustituciones(3)
             };
         }
         
@@ -2420,37 +2817,50 @@ class VolleyballManager {
         // Usar las sustituciones guardadas en la jornada si existen
         let sustitucionesSet1 = [];
         let sustitucionesSet2 = [];
+        let sustitucionesSet3 = [];
         let planificacionSet1 = [];
         let planificacionSet2 = [];
+        let planificacionSet3 = [];
         
         if (this.jornadaActual.sustituciones) {
             sustitucionesSet1 = this.jornadaActual.sustituciones.set1 || [];
             sustitucionesSet2 = this.jornadaActual.sustituciones.set2 || [];
+            sustitucionesSet3 = this.jornadaActual.sustituciones.set3 || [];
             console.log('📚 Usando sustituciones guardadas de la jornada');
         } else {
             // Si no hay sustituciones guardadas, obtenerlas del DOM (para jornadas en progreso)
             sustitucionesSet1 = this.obtenerSustituciones(1);
             sustitucionesSet2 = this.obtenerSustituciones(2);
+            sustitucionesSet3 = this.obtenerSustituciones(3);
             console.log('🔄 Obteniendo sustituciones del DOM');
         }
         
         if (this.jornadaActual.planificacionManual) {
             planificacionSet1 = this.jornadaActual.planificacionManual.set1 || [];
             planificacionSet2 = this.jornadaActual.planificacionManual.set2 || [];
+            planificacionSet3 = this.jornadaActual.planificacionManual.set3 || [];
             console.log('📚 Usando planificación guardada de la jornada');
         } else if (this.planificacionSets) {
             planificacionSet1 = this.planificacionSets.set1 || [];
             planificacionSet2 = this.planificacionSets.set2 || [];
+            planificacionSet3 = this.planificacionSets.set3 || [];
             console.log('🔄 Usando planificación actual del DOM');
         }
         
+        // Filtrar null ANTES de cualquier operación
+        planificacionSet1 = planificacionSet1.filter(j => j !== null && j !== undefined && j.id);
+        planificacionSet2 = planificacionSet2.filter(j => j !== null && j !== undefined && j.id);
+        planificacionSet3 = planificacionSet3.filter(j => j !== null && j !== undefined && j.id);
+        
         console.log('🔄 Sustituciones Set 1:', sustitucionesSet1);
         console.log('🔄 Sustituciones Set 2:', sustitucionesSet2);
-        console.log('📋 Set 1 inicial:', planificacionSet1.map(j => j.nombre || `ID:${j.id}`));
-        console.log('📋 Set 2 inicial:', planificacionSet2.map(j => j.nombre || `ID:${j.id}`));
+        console.log('� Sustituciones Set 3:', sustitucionesSet3);
+        // Removed problematic console.log
+        // Removed problematic console.log
+        // Removed problematic console.log
         
         // Verificar si tenemos planificación de sets
-        if (planificacionSet1.length === 0 && planificacionSet2.length === 0) {
+        if (planificacionSet1.length === 0 && planificacionSet2.length === 0 && planificacionSet3.length === 0) {
             console.warn('⚠️ No hay planificación de sets disponible');
             return;
         }
@@ -2487,9 +2897,25 @@ class VolleyballManager {
             puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosSet;
         });
         
+        // Actualizar jugadoras del Set 3 (opcional)
+        planificacionSet3.forEach(jugadora => {
+            const sustitucion = sustitucionesSet3.find(s => s.saleId === jugadora.id);
+            let puntosSet = 25; // Por defecto jugó todo el set
+            
+            if (sustitucion) {
+                // Calcular puntos basado en cuándo salió
+                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                console.log(`🔄 SET3: ${jugadora.nombre || `ID:${jugadora.id}`} sale en punto ${sustitucion.punto} -> ${puntosSet} puntos`);
+            } else {
+                console.log(`✅ SET3: ${jugadora.nombre || `ID:${jugadora.id}`} jugó set completo -> 25 puntos`);
+            }
+            
+            puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosSet;
+        });
+        
         // Actualizar suplentes que entraron
         console.log('🔄 Actualizando puntos de suplentes...');
-        this.actualizarPuntosSuplentes(sustitucionesSet1, sustitucionesSet2, puntosJornada);
+        this.actualizarPuntosSuplentes(sustitucionesSet1, sustitucionesSet2, sustitucionesSet3, puntosJornada);
         
         console.log('📊 Puntos calculados para esta jornada:', puntosJornada);
         
@@ -2571,7 +2997,7 @@ class VolleyballManager {
         return punto;
     }
 
-    actualizarPuntosSuplentes(sustitucionesSet1, sustitucionesSet2, puntosJornada) {
+    actualizarPuntosSuplentes(sustitucionesSet1, sustitucionesSet2, sustitucionesSet3, puntosJornada) {
         console.log('🔄 === CALCULANDO PUNTOS SUPLENTES ===');
         
         // Actualizar suplentes del Set 1
@@ -2593,6 +3019,16 @@ class VolleyballManager {
                 console.log(`🔄 SET2: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos (25 - ${this.calcularPuntosPorSustitucion(sustitucion.punto)})`);
             }
         });
+        
+        // Actualizar suplentes del Set 3 (opcional)
+        sustitucionesSet3.forEach(sustitucion => {
+            const jugadora = this.jugadoras.find(j => j.id === sustitucion.entraId);
+            if (jugadora) {
+                const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+                puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
+                console.log(`🔄 SET3: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos (25 - ${this.calcularPuntosPorSustitucion(sustitucion.punto)})`);
+            }
+        });
     }
 
     volverAInicioJornada() {
@@ -2603,7 +3039,8 @@ class VolleyballManager {
         // Resetear planificación de sets
         this.planificacionSets = {
             set1: [],
-            set2: []
+            set2: [],
+            set3: []
         };
         
         // Cerrar planificador
@@ -2621,6 +3058,7 @@ class VolleyballManager {
     }
 
     // ==================== GESTIÓN DE EQUIPO ====================
+    
     actualizarEquipo() {
         console.log('🔧 Actualizando equipo... Jugadoras:', this.jugadoras.length);
         
@@ -2641,8 +3079,8 @@ class VolleyballManager {
         }
         
         if (this.jugadoras.length === 0) {
-            console.log('⚠️ No hay jugadoras registradas');
-            container.innerHTML = '<div class="empty-state"><h3>No hay jugadoras registradas</h3><p>Añade jugadoras usando el formulario de arriba</p></div>';
+            console.log('⚠️ No hay nadie registrado');
+            container.innerHTML = '<div class="empty-state"><h3>No hay nadie registrado</h3><p>Añade jugador/as usando el formulario de arriba</p></div>';
             return;
         }
 
@@ -2651,7 +3089,16 @@ class VolleyballManager {
             .sort((a, b) => a.dorsal - b.dorsal)
             .map(jugadora => {
                 const emoji = jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐');
-                const posicion = jugadora.posicion === 'colocadora' ? 'Colocadora' : (jugadora.posicion === 'central' ? 'Central' : 'Jugadora');
+                
+                // Posición con formato inclusivo
+                let posicion;
+                if (jugadora.posicion === 'colocadora') {
+                    posicion = 'Colocador/a';
+                } else if (jugadora.posicion === 'central') {
+                    posicion = 'Central';
+                } else {
+                    posicion = 'Jugador/a';
+                }
                 
                 // Calcular sustituciones totales (tanto si entra como si sale) - SOLO DE JORNADAS COMPLETADAS
                 let totalSustituciones = 0;
@@ -2780,6 +3227,170 @@ class VolleyballManager {
         }
     }
 
+    recalcularTodasLasEstadisticas() {
+        if (!confirm('📊 ¿Recalcular todas las estadísticas desde el historial de jornadas?\n\nEsto actualizará los puntos, partidos y entrenamientos de todas las jugadoras basándose en las jornadas guardadas.')) {
+            return;
+        }
+
+        console.log('🔄 Iniciando recalculación de estadísticas...');
+
+        // Resetear estadísticas de todas las jugadoras
+        this.jugadoras.forEach(jugadora => {
+            jugadora.puntosJugados = 0;
+            jugadora.partidosJugados = 0;
+            jugadora.entrenamientosAsistidos = 0;
+        });
+
+        // Procesar cada jornada completada
+        let jornadasProcesadas = 0;
+        this.jornadas.forEach(jornada => {
+            if (!jornada.completada) {
+                console.log(`⏭️ Omitiendo jornada no completada: ${jornada.fechaLunes}`);
+                return;
+            }
+
+            console.log(`📅 Procesando jornada: ${jornada.fechaLunes}`);
+            console.log('🔍 Estructura de la jornada:', {
+                asistenciaLunes: jornada.asistenciaLunes?.length || 0,
+                asistenciaMiercoles: jornada.asistenciaMiercoles?.length || 0,
+                asistenciaSabado: jornada.asistenciaSabado?.length || 0,
+                planificacionManual: !!jornada.planificacionManual,
+                sabado: !!jornada.sabado,
+                sets: !!jornada.sets,
+                sustituciones: !!jornada.sustituciones
+            });
+
+            // Procesar entrenamientos (Lunes y Miércoles)
+            if (jornada.asistenciaLunes && Array.isArray(jornada.asistenciaLunes)) {
+                console.log(`  📚 Lunes: ${jornada.asistenciaLunes.length} asistentes`);
+                jornada.asistenciaLunes.forEach(jugadoraId => {
+                    const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
+                    if (jugadora) {
+                        jugadora.entrenamientosAsistidos++;
+                        if (jugadora.id === 5) {
+                            console.log(`  🔵 ILINA (ID:5) Lunes: +1 entrenamiento (Total: ${jugadora.entrenamientosAsistidos})`);
+                        }
+                    }
+                });
+            }
+            
+            if (jornada.asistenciaMiercoles && Array.isArray(jornada.asistenciaMiercoles)) {
+                console.log(`  📚 Miércoles: ${jornada.asistenciaMiercoles.length} asistentes`);
+                jornada.asistenciaMiercoles.forEach(jugadoraId => {
+                    const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
+                    if (jugadora) {
+                        jugadora.entrenamientosAsistidos++;
+                        if (jugadora.id === 5) {
+                            console.log(`  � ILINA (ID:5) Miércoles: +1 entrenamiento (Total: ${jugadora.entrenamientosAsistidos})`);
+                        }
+                    }
+                });
+            }
+
+            // Procesar partido (Sábado) - Sets con sustituciones
+            const puntosJornada = {};
+
+            // Función para procesar jugadoras titulares de un set
+            const procesarSet = (setData, sustitucionesSet, nombreSet) => {
+                if (!setData || setData.length === 0) return;
+
+                // Filtrar null/undefined
+                const jugadorasTitulares = setData.filter(j => j !== null && j !== undefined);
+
+                jugadorasTitulares.forEach(jugadora => {
+                    // Verificar si fue sustituida
+                    const sustitucion = sustitucionesSet.find(s => s.saleId === jugadora.id);
+                    
+                    if (sustitucion) {
+                        // Jugadora titular sustituida - puntos parciales
+                        const puntosJugados = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                        puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
+                        if (jugadora.id === 5) {
+                            console.log(`  🔵 ILINA (ID:5) ${nombreSet}: sustituida en ${sustitucion.punto}' -> ${puntosJugados} puntos (Total jornada: ${puntosJornada[jugadora.id]})`);
+                        } else {
+                            console.log(`  ↔️ ${nombreSet}: ${jugadora.nombre} sustituida en ${sustitucion.punto}' -> ${puntosJugados} puntos`);
+                        }
+                    } else {
+                        // Jugadora titular completa - 25 puntos
+                        puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + 25;
+                        if (jugadora.id === 5) {
+                            console.log(`  🔵 ILINA (ID:5) ${nombreSet}: titular completo -> 25 puntos (Total jornada: ${puntosJornada[jugadora.id]})`);
+                        } else {
+                            console.log(`  ✅ ${nombreSet}: ${jugadora.nombre} titular completo -> 25 puntos`);
+                        }
+                    }
+                });
+            };
+
+            // Función para procesar suplentes de un set
+            const procesarSuplentes = (sustitucionesSet, nombreSet) => {
+                sustitucionesSet.forEach(sustitucion => {
+                    const jugadora = this.jugadoras.find(j => j.id === sustitucion.entraId);
+                    if (jugadora) {
+                        const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+                        puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
+                        console.log(`  🔄 ${nombreSet}: ${jugadora.nombre} entra en ${sustitucion.punto}' -> ${puntosJugados} puntos`);
+                    }
+                });
+            };
+
+            // Obtener sustituciones de cada set
+            const sustitucionesSet1 = jornada.sustituciones?.set1 || [];
+            const sustitucionesSet2 = jornada.sustituciones?.set2 || [];
+            const sustitucionesSet3 = jornada.sustituciones?.set3 || [];
+
+            // Procesar Set 1 (soportar 3 estructuras: planificacionManual, sabado, o sets)
+            const set1Data = jornada.planificacionManual?.set1 || jornada.sabado?.set1 || jornada.sets?.set1 || [];
+            if (set1Data.length > 0) {
+                console.log(`  🏐 SET1: ${set1Data.length} jugadoras, sustituciones: ${sustitucionesSet1.length}`);
+                procesarSet(set1Data, sustitucionesSet1, 'SET1');
+                procesarSuplentes(sustitucionesSet1, 'SET1');
+            }
+
+            // Procesar Set 2
+            const set2Data = jornada.planificacionManual?.set2 || jornada.sabado?.set2 || jornada.sets?.set2 || [];
+            if (set2Data.length > 0) {
+                console.log(`  🏐 SET2: ${set2Data.length} jugadoras, sustituciones: ${sustitucionesSet2.length}`);
+                procesarSet(set2Data, sustitucionesSet2, 'SET2');
+                procesarSuplentes(sustitucionesSet2, 'SET2');
+            }
+
+            // Procesar Set 3
+            const set3Data = jornada.planificacionManual?.set3 || jornada.sabado?.set3 || jornada.sets?.set3 || [];
+            if (set3Data.length > 0) {
+                console.log(`  🏐 SET3: ${set3Data.length} jugadoras, sustituciones: ${sustitucionesSet3.length}`);
+                procesarSet(set3Data, sustitucionesSet3, 'SET3');
+                procesarSuplentes(sustitucionesSet3, 'SET3');
+            }
+
+            // Aplicar puntos y partido jugado
+            Object.keys(puntosJornada).forEach(jugadoraId => {
+                const jugadora = this.jugadoras.find(j => j.id == jugadoraId);
+                if (jugadora) {
+                    jugadora.puntosJugados += puntosJornada[jugadoraId];
+                    jugadora.partidosJugados++;
+                    if (jugadora.id === 5) {
+                        console.log(`  🔵 ILINA (ID:5) RESUMEN: +${puntosJornada[jugadoraId]} puntos, +1 partido | TOTAL ACUMULADO: ${jugadora.puntosJugados} puntos, ${jugadora.partidosJugados} partidos`);
+                    } else {
+                        console.log(`  📊 ${jugadora.nombre}: +${puntosJornada[jugadoraId]} puntos, +1 partido`);
+                    }
+                }
+            });
+
+            jornadasProcesadas++;
+        });
+
+        // Guardar estadísticas actualizadas
+        this.guardarJugadoras();
+
+        // Actualizar todas las vistas
+        this.actualizarEquipo();
+        this.actualizarHistorial();
+
+        console.log('✅ Recalculación completada');
+        alert(`✅ Estadísticas recalculadas correctamente.\n\n${jornadasProcesadas} jornadas procesadas.\n${this.jugadoras.length} jugadoras actualizadas.`);
+    }
+
     // ==================== HISTORIAL ====================
     actualizarHistorial() {
         // Actualizar selects de filtros
@@ -2812,7 +3423,7 @@ class VolleyballManager {
         const select = document.getElementById('filtroJugadora');
         if (!select) return;
         
-        select.innerHTML = '<option value="">Todas las jugadoras</option>' +
+        select.innerHTML = '<option value="">Todos/as</option>' +
             this.jugadoras.map(j => `<option value="${j.id}">${j.nombre}</option>`).join('');
     }
 
@@ -2872,13 +3483,27 @@ class VolleyballManager {
             const jugadorasSabado = jornada.asistenciaSabado?.map(id => 
                 this.jugadoras.find(j => j.id === id)?.nombre
             ).filter(n => n) || [];
+            
+            // Determinar qué fecha mostrar: si existe fechaSabado, usarla; si no, calcular desde fechaLunes
+            let fechaMostrar;
+            if (jornada.fechaSabado) {
+                fechaMostrar = jornada.fechaSabado;
+            } else {
+                // Jornada antigua, calcular sábado desde lunes
+                const [y, m, d] = jornada.fechaLunes.split('-').map(Number);
+                const sabadoObj = new Date(y, m - 1, d + 5);
+                const ys = sabadoObj.getFullYear();
+                const ms = String(sabadoObj.getMonth() + 1).padStart(2, '0');
+                const ds = String(sabadoObj.getDate()).padStart(2, '0');
+                fechaMostrar = `${ys}-${ms}-${ds}`;
+            }
 
             return `
                 <div class="jornada-historial" data-jornada-id="${jornada.id}">
                     <div class="jornada-fecha">
                         <div class="jornada-info">
                             <input type="checkbox" class="checkbox-jornada" value="${jornada.id}">
-                            Semana del ${this.formatearFecha(jornada.fechaLunes)}
+                            Semana del ${this.formatearFecha(fechaMostrar)}
                             <span class="estado ${jornada.completada ? 'completada' : 'pendiente'}">
                                 ${jornada.completada ? '✅ Completada' : '⏳ Pendiente'}
                             </span>
@@ -2940,60 +3565,91 @@ class VolleyballManager {
         // Si hay planificación manual guardada O sets guardados en la jornada, mostrarlos
         const tienePlanificacion = jornada.planificacionManual || 
                                  (jornada.sets?.set1 && jornada.sets.set1.length > 0) || 
-                                 (jornada.sets?.set2 && jornada.sets.set2.length > 0);
+                                 (jornada.sets?.set2 && jornada.sets.set2.length > 0) ||
+                                 (jornada.sets?.set3 && jornada.sets.set3.length > 0);
         
         if (tienePlanificacion) {
             // Priorizar planificacionManual, sino usar los sets del borrador
             const set1Data = jornada.planificacionManual?.set1 || jornada.sets?.set1 || [];
             const set2Data = jornada.planificacionManual?.set2 || jornada.sets?.set2 || [];
+            const set3Data = jornada.planificacionManual?.set3 || jornada.sets?.set3 || [];
             
             let html = '';
             
             // Set 1
             if (set1Data && set1Data.length > 0) {
                 html += '<div class="set-historial">';
-                html += '<strong>Set 1:</strong> ';
-                html += set1Data.map(j => {
+                html += '<strong>Set 1:</strong><br>';
+                html += '<div class="asistentes-lista">';
+                html += set1Data.filter(j => j !== null && j !== undefined).map(j => {
                     // Si j es solo ID, buscar jugadora
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
+                    if (!jugadora || !jugadora.nombre) return '';
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `<span class="jugadora-asistente ${claseResaltado}">${jugadora.nombre}</span>`;
-                }).join('');
+                }).filter(html => html !== '').join('');
+                html += '</div>';
                 html += '</div>';
             }
             
             // Set 2
             if (set2Data && set2Data.length > 0) {
                 html += '<div class="set-historial">';
-                html += '<strong>Set 2:</strong> ';
-                html += set2Data.map(j => {
+                html += '<strong>Set 2:</strong><br>';
+                html += '<div class="asistentes-lista">';
+                html += set2Data.filter(j => j !== null && j !== undefined).map(j => {
                     // Si j es solo ID, buscar jugadora
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
+                    if (!jugadora || !jugadora.nombre) return '';
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `<span class="jugadora-asistente ${claseResaltado}">${jugadora.nombre}</span>`;
-                }).join('');
+                }).filter(html => html !== '').join('');
+                html += '</div>';
+                html += '</div>';
+            }
+            
+            // Set 3
+            if (set3Data && set3Data.length > 0) {
+                html += '<div class="set-historial">';
+                html += '<strong>Set 3:</strong><br>';
+                html += '<div class="asistentes-lista">';
+                html += set3Data.filter(j => j !== null && j !== undefined).map(j => {
+                    // Si j es solo ID, buscar jugadora
+                    const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
+                    if (!jugadora || !jugadora.nombre) return '';
+                    const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
+                    return `<span class="jugadora-asistente ${claseResaltado}">${jugadora.nombre}</span>`;
+                }).filter(html => html !== '').join('');
+                html += '</div>';
                 html += '</div>';
             }
             
             // Mostrar sustituciones si existen y tienen contenido
             const tieneSustitucionesSet1 = jornada.sustituciones?.set1?.length > 0;
             const tieneSustitucionesSet2 = jornada.sustituciones?.set2?.length > 0;
+            const tieneSustitucionesSet3 = jornada.sustituciones?.set3?.length > 0;
             
-            if (tieneSustitucionesSet1 || tieneSustitucionesSet2) {
+            if (tieneSustitucionesSet1 || tieneSustitucionesSet2 || tieneSustitucionesSet3) {
                 html += '<div class="sustituciones-historial">';
-                html += '<strong>Cambios realizados:</strong><br>';
+                html += '<strong>Cambios realizados:</strong>';
                 
                 // Sustituciones Set 1
                 if (tieneSustitucionesSet1) {
                     html += '<div class="sustituciones-set">';
-                    html += '<em>Set 1:</em> ';
-                    html += jornada.sustituciones.set1.map(sust => {
+                    html += '<em>Set 1:</em>';
+                    html += '<div class="cambios-lista">';
+                    html += jornada.sustituciones.set1.map((sust, index) => {
                         const jugadoraSale = this.jugadoras.find(j => j.id === sust.saleId);
                         const jugadoraEntra = this.jugadoras.find(j => j.id === sust.entraId);
                         
+                        // Validar que las jugadoras existan y tengan nombre
+                        if (!jugadoraSale || !jugadoraEntra || !jugadoraSale.nombre || !jugadoraEntra.nombre) {
+                            return ''; // Omitir sustituciones con datos incompletos
+                        }
+                        
                         // Agregar resaltado si coincide con el filtro
-                        let nombreSale = jugadoraSale?.nombre || 'Desconocida';
-                        let nombreEntra = jugadoraEntra?.nombre || 'Desconocida';
+                        let nombreSale = jugadoraSale.nombre;
+                        let nombreEntra = jugadoraEntra.nombre;
                         
                         if (jugadoraFiltrada) {
                             if (nombreSale === jugadoraFiltrada.nombre) {
@@ -3004,22 +3660,29 @@ class VolleyballManager {
                             }
                         }
                         
-                        return `${nombreEntra} entra por ${nombreSale} (${sust.punto}')`;
-                    }).join(', ');
-                    html += '</div>';
+                        return `• ${nombreEntra} entra por ${nombreSale} (${sust.punto}')`;
+                    }).filter(s => s !== '').join('<br>');
+                    html += '</div>'; // cierra cambios-lista
+                    html += '</div>'; // cierra sustituciones-set
                 }
                 
                 // Sustituciones Set 2
                 if (tieneSustitucionesSet2) {
                     html += '<div class="sustituciones-set">';
-                    html += '<em>Set 2:</em> ';
-                    html += jornada.sustituciones.set2.map(sust => {
+                    html += '<em>Set 2:</em>';
+                    html += '<div class="cambios-lista">';
+                    html += jornada.sustituciones.set2.map((sust, index) => {
                         const jugadoraSale = this.jugadoras.find(j => j.id === sust.saleId);  
                         const jugadoraEntra = this.jugadoras.find(j => j.id === sust.entraId);
                         
+                        // Validar que las jugadoras existan y tengan nombre
+                        if (!jugadoraSale || !jugadoraEntra || !jugadoraSale.nombre || !jugadoraEntra.nombre) {
+                            return ''; // Omitir sustituciones con datos incompletos
+                        }
+                        
                         // Agregar resaltado si coincide con el filtro
-                        let nombreSale = jugadoraSale?.nombre || 'Desconocida';
-                        let nombreEntra = jugadoraEntra?.nombre || 'Desconocida';
+                        let nombreSale = jugadoraSale.nombre;
+                        let nombreEntra = jugadoraEntra.nombre;
                         
                         if (jugadoraFiltrada) {
                             if (nombreSale === jugadoraFiltrada.nombre) {
@@ -3030,16 +3693,50 @@ class VolleyballManager {
                             }
                         }
                         
-                        return `${nombreEntra} entra por ${nombreSale} (${sust.punto}')`;
-                    }).join(', ');
-                    html += '</div>';
+                        return `• ${nombreEntra} entra por ${nombreSale} (${sust.punto}')`;
+                    }).filter(s => s !== '').join('<br>');
+                    html += '</div>'; // cierra cambios-lista
+                    html += '</div>'; // cierra sustituciones-set
                 }
                 
-                html += '</div>';
+                // Sustituciones Set 3
+                if (tieneSustitucionesSet3) {
+                    html += '<div class="sustituciones-set">';
+                    html += '<em>Set 3:</em>';
+                    html += '<div class="cambios-lista">';
+                    html += jornada.sustituciones.set3.map((sust, index) => {
+                        const jugadoraSale = this.jugadoras.find(j => j.id === sust.saleId);  
+                        const jugadoraEntra = this.jugadoras.find(j => j.id === sust.entraId);
+                        
+                        // Validar que las jugadoras existan y tengan nombre
+                        if (!jugadoraSale || !jugadoraEntra || !jugadoraSale.nombre || !jugadoraEntra.nombre) {
+                            return ''; // Omitir sustituciones con datos incompletos
+                        }
+                        
+                        // Agregar resaltado si coincide con el filtro
+                        let nombreSale = jugadoraSale.nombre;
+                        let nombreEntra = jugadoraEntra.nombre;
+                        
+                        if (jugadoraFiltrada) {
+                            if (nombreSale === jugadoraFiltrada.nombre) {
+                                nombreSale = `<span class="jugadora-filtrada">${nombreSale}</span>`;
+                            }
+                            if (nombreEntra === jugadoraFiltrada.nombre) {
+                                nombreEntra = `<span class="jugadora-filtrada">${nombreEntra}</span>`;
+                            }
+                        }
+                        
+                        return `• ${nombreEntra} entra por ${nombreSale} (${sust.punto}')`;
+                    }).filter(s => s !== '').join('<br>');
+                    html += '</div>'; // cierra cambios-lista
+                    html += '</div>'; // cierra sustituciones-set
+                }
+                
+                html += '</div>'; // cierra sustituciones-historial
             }
 
             // Si no hay sets pero hay jugadoras disponibles, mostrar lista simple
-            if (set1Data.length === 0 && set2Data.length === 0) {
+            if (set1Data.length === 0 && set2Data.length === 0 && set3Data.length === 0) {
                 html += `
                     <div class="asistentes-lista">
                         ${jugadorasSabado.map(j => {
@@ -3118,13 +3815,15 @@ class VolleyballManager {
         if (jornada.sets) {
             this.planificacionSets = {
                 set1: jornada.sets.set1 || [],
-                set2: jornada.sets.set2 || []
+                set2: jornada.sets.set2 || [],
+                set3: jornada.sets.set3 || []
             };
         } else {
             // Si no hay sets guardados, resetear
             this.planificacionSets = {
                 set1: [],
-                set2: []
+                set2: [],
+                set3: []
             };
         }
 
@@ -3196,22 +3895,27 @@ class VolleyballManager {
     actualizarTitulosDias() {
         if (!this.jornadaActual) return;
         
-        console.log('🗓️ DEBUG FECHAS - Fecha lunes de jornada:', this.jornadaActual.fechaLunes);
+        console.log('🗓️ DEBUG FECHAS - Jornada actual:', this.jornadaActual);
         
-        // Calcular fechas basadas en el lunes de la jornada
-        const fechaLunes = new Date(this.jornadaActual.fechaLunes + 'T00:00:00');
-        console.log('🗓️ DEBUG FECHAS - Fecha lunes parseada:', fechaLunes);
-        console.log('🗓️ DEBUG FECHAS - Día de la semana del lunes:', fechaLunes.getDay()); // Debe ser 1
+        // Si la jornada tiene las fechas guardadas, usarlas directamente
+        let fechaLunes, fechaMiercoles, fechaSabado;
         
-        const fechaMiercoles = new Date(fechaLunes);
-        fechaMiercoles.setDate(fechaLunes.getDate() + 2);
-        console.log('🗓️ DEBUG FECHAS - Fecha miércoles:', fechaMiercoles);
-        console.log('🗓️ DEBUG FECHAS - Día de la semana del miércoles:', fechaMiercoles.getDay()); // Debe ser 3
+        if (this.jornadaActual.fechaMiercoles && this.jornadaActual.fechaSabado) {
+            // Jornada nueva con fechas específicas guardadas
+            fechaLunes = new Date(this.jornadaActual.fechaLunes.split('-').join('/'));
+            fechaMiercoles = new Date(this.jornadaActual.fechaMiercoles.split('-').join('/'));
+            fechaSabado = new Date(this.jornadaActual.fechaSabado.split('-').join('/'));
+        } else {
+            // Jornada antigua, calcular fechas a partir del lunes
+            const [y, m, d] = this.jornadaActual.fechaLunes.split('-').map(Number);
+            fechaLunes = new Date(y, m - 1, d);
+            fechaMiercoles = new Date(y, m - 1, d + 2);
+            fechaSabado = new Date(y, m - 1, d + 5);
+        }
         
-        const fechaSabado = new Date(fechaLunes);
-        fechaSabado.setDate(fechaLunes.getDate() + 5);
-        console.log('🗓️ DEBUG FECHAS - Fecha sábado:', fechaSabado);
-        console.log('🗓️ DEBUG FECHAS - Día de la semana del sábado:', fechaSabado.getDay()); // Debe ser 6
+        console.log('🗓️ DEBUG FECHAS - Fecha lunes:', fechaLunes.toLocaleDateString('es-ES'));
+        console.log('🗓️ DEBUG FECHAS - Fecha miércoles:', fechaMiercoles.toLocaleDateString('es-ES'));
+        console.log('🗓️ DEBUG FECHAS - Fecha sábado:', fechaSabado.toLocaleDateString('es-ES'));
 
         // Formatear fechas cortas (día/mes)
         const formatearCorto = (fecha) => {
@@ -3268,8 +3972,8 @@ class VolleyballManager {
     generarGridAsistencia(container, asistenciasIds, dia) {
         container.innerHTML = '';
         
-        // Añadir leyenda de colores SOLO para jornadas nuevas (no al continuar editando)
-        const esContinuarEditando = this.jornadaActual && this.jornadaActual.id && this.jornadaActual.sets;
+        // Añadir leyenda de colores SOLO para el sábado en jornadas nuevas (no al continuar editando)
+        const esContinuarEditando = this.jornadaActual && this.jornadaActual.id;
         
         if (dia === 'sabado' && this.jornadaActual && !esContinuarEditando) {
             const leyenda = document.createElement('div');
@@ -3298,7 +4002,7 @@ class VolleyballManager {
             const isSelected = asistenciasIds.includes(jugadora.id);
             const card = document.createElement('div');
             
-            // Determinar el color según asistencia a entrenamientos (solo para sábado Y solo jornadas nuevas)
+            // Determinar el color según asistencia a entrenamientos (solo para sábado en jornadas NUEVAS, NO al editar)
             let colorClass = '';
             if (dia === 'sabado' && this.jornadaActual && !esContinuarEditando) {
                 const asistioLunes = this.jornadaActual.asistenciaLunes.includes(jugadora.id);
@@ -3351,12 +4055,14 @@ class VolleyballManager {
         // Botones de equipo - CON VERIFICACIÓN EXTRA
         const btnAdd = document.getElementById('addJugadora');
         const btnReset = document.getElementById('resetearEquipo');
+        const btnRecalcular = document.getElementById('recalcularEstadisticas');
         const btnGuardar = document.getElementById('guardarJugadora');
         const btnCancelar = document.getElementById('cancelarJugadora');
         
         console.log('🔍 Verificando elementos del equipo:', {
             btnAdd: !!btnAdd,
             btnReset: !!btnReset,
+            btnRecalcular: !!btnRecalcular,
             btnGuardar: !!btnGuardar,
             btnCancelar: !!btnCancelar
         });
@@ -3380,6 +4086,11 @@ class VolleyballManager {
         if (btnReset) {
             btnReset.addEventListener('click', () => this.resetearEquipo());
             console.log('✅ Event listener resetearEquipo configurado');
+        }
+        
+        if (btnRecalcular) {
+            btnRecalcular.addEventListener('click', () => this.recalcularTodasLasEstadisticas());
+            console.log('✅ Event listener recalcularEstadisticas configurado');
         }
         
         if (btnGuardar) {
@@ -3709,6 +4420,16 @@ function verInfoJugadoraGlobal(jugadoraId) {
         alert('Jugadora no encontrada');
         return;
     }
+    
+    // Posición con formato inclusivo
+    let posicionTexto;
+    if (jugadora.posicion === 'colocadora') {
+        posicionTexto = '🎯 Colocador/a';
+    } else if (jugadora.posicion === 'central') {
+        posicionTexto = '🛡️ Central';
+    } else {
+        posicionTexto = '🏐 Jugador/a';
+    }
 
     // Calcular sustituciones totales (tanto si entra como si sale) - SOLO DE JORNADAS COMPLETADAS
     let totalSustituciones = 0;
@@ -3744,7 +4465,7 @@ function verInfoJugadoraGlobal(jugadoraId) {
             </div>
             
             <div style="margin-bottom: 20px;">
-                <p><strong>Posición:</strong> ${jugadora.posicion === 'colocadora' ? '🎯 Colocadora' : (jugadora.posicion === 'central' ? '🛡️ Central' : '🏐 Jugadora')}</p>
+                <p><strong>Posición:</strong> ${posicionTexto}</p>
                 <p><strong>Partidos Jugados:</strong> ${jugadora.partidosJugados || 0}</p>
                 <p><strong>Sustituciones:</strong> ${totalSustituciones}</p>
                 <p><strong>Puntos Totales:</strong> ${jugadora.puntosJugados || 0}</p>
@@ -4125,7 +4846,12 @@ VolleyballManager.prototype.ejecutarImportacion = function(data) {
         }
         
         // Guardar en localStorage
-        this.guardarDatos();
+        this.guardarJugadoras();
+        this.guardarJornadas();
+        
+        console.log('✅ Datos guardados en localStorage');
+        console.log('👥 Jugadoras importadas:', this.jugadoras.length);
+        console.log('📋 Jornadas importadas:', this.jornadas.length);
         
         // Actualizar interfaz
         this.actualizarEquipo();
@@ -4208,10 +4934,26 @@ window.repararFormulario = repararFormulario;
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🏐 Iniciando sistema de voleibol...');
+    
+    // CERRAR TODOS LOS MODALES AL CARGAR
+    setTimeout(() => closeAllModals(), 100);
+    
+    // ==================== PROTECCIÓN DE AUTENTICACIÓN ====================
+    // Verificar autenticación antes de inicializar la app
+    if (!Auth.requireAuth()) {
+        console.log('❌ Usuario no autenticado - redirigiendo a login');
+        return; // Sale de la función si no está autenticado
+    }
+    
+    console.log('✅ Usuario autenticado:', Auth.getCurrentUser());
+    
     try {
         app = new VolleyballManager();
         window.app = app; // Para debugging
         console.log('✅ Sistema iniciado correctamente');
+        
+        // CERRAR MODALES NUEVAMENTE DESPUÉS DE CARGAR
+        setTimeout(() => closeAllModals(), 500);
         
         // Test directo del botón después de la inicialización
         setTimeout(() => {
@@ -4227,3 +4969,1109 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error('❌ Error al iniciar el sistema:', error);
     }
 });
+
+// ==================== FUNCIONES DE ADMINISTRACIÓN ====================
+
+function initializeAdminPanel() {
+    console.log('🔧 Inicializando panel de admin');
+    
+    // CERRAR TODOS LOS MODALES PRIMERO
+    closeAllModals();
+    
+    // Configurar eventos del panel de administración
+    setupAdminEvents();
+    // Inicializar editor de usuarios del sistema
+    initSystemUsersEditor();
+    
+    console.log('✅ Panel de admin inicializado');
+}
+
+function setupAdminEvents() {
+    // Logout
+    // Botón logout en admin panel
+    const logoutBtn = document.getElementById('logout-btn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', function() {
+            if (confirm('¿Estás seguro de que quieres cerrar sesión?')) {
+                logout(); // Función global de logout
+            }
+        });
+    }
+
+    // Botones de sistema
+    document.getElementById('backup-data-btn').addEventListener('click', backupSystemData);
+    document.getElementById('clear-data-btn').addEventListener('click', clearSystemData);
+    document.getElementById('reset-users-btn').addEventListener('click', resetUsers);
+
+    // Modal de confirmación
+    document.getElementById('confirm-no').addEventListener('click', function() {
+        document.getElementById('confirm-modal').style.display = 'none';
+    });
+
+    // Cerrar modal al hacer clic fuera
+    document.getElementById('confirm-modal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            this.style.display = 'none';
+        }
+    });
+}
+
+function createNewUser() {
+    const username = document.getElementById('new-username').value.trim();
+    const name = document.getElementById('new-name').value.trim();
+    const password = document.getElementById('new-password').value;
+    const isAdmin = document.getElementById('new-is-admin').value === 'true';
+
+    const result = Auth.createUser(username, password, name, isAdmin);
+    
+    if (result.success) {
+        showNotification('✅ ' + result.message, 'success');
+        // Limpiar formulario
+        document.getElementById('create-user-form').reset();
+        // Recargar lista
+        loadUsersList();
+    } else {
+        showNotification('❌ ' + result.message, 'error');
+    }
+}
+
+function loadUsersList() {
+    const result = Auth.listUsers();
+    
+    if (!result.success) {
+        showNotification('❌ ' + result.message, 'error');
+        return;
+    }
+
+    const usersList = document.getElementById('users-list');
+    usersList.innerHTML = '';
+
+    if (result.users.length === 0) {
+        usersList.innerHTML = '<p style="text-align: center; color: #7f8c8d;">No hay usuarios registrados</p>';
+        return;
+    }
+
+    result.users.forEach(user => {
+        const userElement = createUserElement(user);
+        usersList.appendChild(userElement);
+    });
+}
+
+function createUserElement(user) {
+    const userDiv = document.createElement('div');
+    userDiv.className = 'user-item';
+    
+    const lastLogin = user.lastLogin 
+        ? new Date(user.lastLogin).toLocaleDateString() 
+        : 'Nunca';
+    
+    userDiv.innerHTML = `
+        <div class="user-info">
+            <div class="user-username">${escapeHtml(user.username)}</div>
+            <div class="user-name">${escapeHtml(user.name)}</div>
+            <div class="user-badge ${user.isAdmin ? 'admin' : 'user'}">
+                ${user.isAdmin ? '👑 Administrador' : '👤 Usuario'}
+            </div>
+            <small style="color: #7f8c8d;">Último acceso: ${lastLogin}</small>
+        </div>
+        <div class="user-actions">
+            <button class="btn-user-action btn-edit-user" data-username="${user.username}" onclick="openEditUserModalSafe(this)">
+                ✏️ Editar Usuario
+            </button>
+            <button class="btn-user-action btn-delete-user" 
+                    data-username="${user.username}" onclick="confirmDeleteUserSafe(this)"
+                    ${user.username === 'admin' ? 'disabled title="No se puede eliminar el usuario admin"' : ''}>
+                🗑️ Eliminar
+            </button>
+        </div>
+    `;
+    
+    return userDiv;
+}
+
+// Funciones seguras que usan data attributes
+function openEditUserModalSafe(button) {
+    const username = button.getAttribute('data-username');
+    openEditUserModal(username);
+}
+
+function confirmDeleteUserSafe(button) {
+    const username = button.getAttribute('data-username');
+    confirmDeleteUser(username);
+}
+
+function openEditUserModal(username) {
+    console.log('🔍 Abriendo modal para usuario:', username);
+    
+    // Función helper para convertir objeto a array
+    function objectToUserArray(userObj) {
+        if (Array.isArray(userObj)) {
+            return userObj; // Ya es array
+        }
+        if (typeof userObj === 'object' && userObj !== null) {
+            // Convertir objeto {username: userData} a array [{username, ...userData}]
+            return Object.keys(userObj).map(username => ({
+                username: username,
+                ...userObj[username]
+            }));
+        }
+        return [];
+    }
+    
+    // Intentar diferentes fuentes de usuarios
+    let users = [];
+    
+    try {
+        // Intentar Auth.getUsers() primero
+        const authUsers = Auth.getUsers();
+        const authArray = objectToUserArray(authUsers);
+        
+        if (authArray.length > 0) {
+            users = authArray;
+            console.log('👥 Usuarios de Auth.getUsers() (convertido):', users.map(u => u.username));
+        } else {
+            throw new Error('Auth.getUsers() no devolvió datos válidos');
+        }
+    } catch (e) {
+        console.warn('⚠️ Auth.getUsers() falló, usando localStorage directo:', e.message);
+        
+        // Fallback a localStorage directo
+        const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        const systemUsers = JSON.parse(localStorage.getItem('system_users') || '{}');
+        
+        // Convertir y usar el que tenga datos
+        const localArray = objectToUserArray(localUsers);
+        const systemArray = objectToUserArray(systemUsers);
+        
+        if (localArray.length > 0) {
+            users = localArray;
+            console.log('👥 Usuarios de localStorage "users":', users.map(u => u.username));
+        } else if (systemArray.length > 0) {
+            users = systemArray;
+            console.log('👥 Usuarios de localStorage "system_users":', users.map(u => u.username));
+        } else {
+            console.error('❌ No se encontraron usuarios en ningún lado');
+            showNotification('❌ No se encontraron usuarios registrados', 'error');
+            return;
+        }
+    }
+    
+    const user = users.find(u => u.username === username);
+    
+    if (!user) {
+        console.error('❌ Usuario no encontrado:', username);
+        console.log('📋 Lista completa de usuarios:', users);
+        showNotification(`❌ Usuario "${username}" no encontrado`, 'error');
+        return;
+    }
+    
+    console.log('✅ Usuario encontrado:', user);
+    
+    // Llenar el formulario con los datos actuales
+    document.getElementById('edit-user-username').value = user.username;
+    document.getElementById('edit-user-name').value = user.name || '';
+    document.getElementById('edit-user-password').value = '';
+    document.getElementById('edit-user-type').value = user.isAdmin ? 'true' : 'false';
+    
+    // Guardar username original para la edición
+    document.getElementById('edit-user-modal').setAttribute('data-original-username', username);
+    
+    // Mostrar modal
+    document.getElementById('edit-user-modal').style.display = 'flex';
+}
+
+function editUser() {
+    const originalUsername = document.getElementById('edit-user-modal').getAttribute('data-original-username');
+    const newUsername = document.getElementById('edit-user-username').value.trim();
+    const newName = document.getElementById('edit-user-name').value.trim();
+    const newPassword = document.getElementById('edit-user-password').value;
+    const isAdmin = document.getElementById('edit-user-type').value === 'true';
+
+    if (!newUsername || !newName) {
+        showNotification('❌ El usuario y nombre son obligatorios', 'error');
+        return;
+    }
+
+    if (newPassword && newPassword.length < 4) {
+        showNotification('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+        return;
+    }
+
+    // Función helper para convertir objeto a array (reutilizable)
+    function objectToUserArray(userObj) {
+        if (Array.isArray(userObj)) {
+            return userObj; // Ya es array
+        }
+        if (typeof userObj === 'object' && userObj !== null) {
+            // Convertir objeto {username: userData} a array [{username, ...userData}]
+            return Object.keys(userObj).map(username => ({
+                username: username,
+                ...userObj[username]
+            }));
+        }
+        return [];
+    }
+    
+    // Función helper para convertir array a objeto
+    function userArrayToObject(userArray) {
+        const obj = {};
+        userArray.forEach(user => {
+            const {username, ...userData} = user;
+            obj[username] = userData;
+        });
+        return obj;
+    }
+    
+    // Obtener usuarios de forma segura
+    let users = [];
+    let storageKey = 'users'; // Por defecto
+    let useObjectFormat = false; // Si necesitamos guardar como objeto
+    
+    try {
+        const authUsers = Auth.getUsers();
+        users = objectToUserArray(authUsers);
+        
+        if (users.length === 0) {
+            throw new Error('Auth.getUsers() no devolvió datos válidos');
+        }
+        
+        // Detectar formato basándose en lo que existe en localStorage
+        if (localStorage.getItem('system_users')) {
+            storageKey = 'system_users';
+            useObjectFormat = true; // system_users usa formato objeto
+        }
+        
+    } catch (e) {
+        console.warn('⚠️ Usando localStorage directo para editUser');
+        
+        const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
+        const systemUsers = JSON.parse(localStorage.getItem('system_users') || '{}');
+        
+        const localArray = objectToUserArray(localUsers);
+        const systemArray = objectToUserArray(systemUsers);
+        
+        if (localArray.length > 0) {
+            users = localArray;
+            storageKey = 'users';
+            useObjectFormat = false;
+        } else if (systemArray.length > 0) {
+            users = systemArray;
+            storageKey = 'system_users';
+            useObjectFormat = true;
+        }
+    }
+    
+    const userIndex = users.findIndex(u => u.username === originalUsername);
+    
+    if (userIndex === -1) {
+        showNotification('❌ Usuario no encontrado', 'error');
+        return;
+    }
+
+    // Verificar si el nuevo username ya existe (excepto el usuario actual)
+    const existingUser = users.find(u => u.username === newUsername && u.username !== originalUsername);
+    if (existingUser) {
+        showNotification('❌ Ya existe un usuario con ese nombre', 'error');
+        return;
+    }
+
+    // Actualizar usuario
+    const user = users[userIndex];
+    user.username = newUsername;
+    user.name = newName;
+    user.isAdmin = isAdmin;
+    
+    // Solo cambiar contraseña si se proporcionó una nueva
+    if (newPassword) {
+        user.password = newPassword;
+    }
+
+    // Guardar cambios en el formato correcto
+    const dataToSave = useObjectFormat ? userArrayToObject(users) : users;
+    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+    console.log(`💾 Usuarios guardados en localStorage["${storageKey}"] formato:`, useObjectFormat ? 'objeto' : 'array');
+    
+    // Si se cambió el username del usuario logueado, actualizar la sesión
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+    if (currentUser.username === originalUsername) {
+        currentUser.username = newUsername;
+        currentUser.name = newName;
+        currentUser.isAdmin = isAdmin;
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        updateCurrentUserInfo();
+    }
+
+    showNotification('✅ Usuario actualizado correctamente', 'success');
+    document.getElementById('edit-user-modal').style.display = 'none';
+    loadUsersList();
+}
+
+function changeUserPassword() {
+    const username = document.getElementById('change-password-user').value;
+    const newPassword = document.getElementById('change-password-new').value;
+
+    const result = Auth.changePassword(username, newPassword);
+    
+    if (result.success) {
+        showNotification('✅ ' + result.message, 'success');
+        document.getElementById('change-password-modal').style.display = 'none';
+    } else {
+        showNotification('❌ ' + result.message, 'error');
+    }
+}
+
+function confirmDeleteUser(username) {
+    showConfirmModal(
+        '⚠️ Confirmar Eliminación',
+        `¿Estás seguro de que quieres eliminar al usuario "${username}"?\n\nEsta acción no se puede deshacer.`,
+        () => deleteUser(username)
+    );
+}
+
+function deleteUser(username) {
+    const result = Auth.deleteUser(username);
+    
+    if (result.success) {
+        showNotification('✅ ' + result.message, 'success');
+        loadUsersList();
+    } else {
+        showNotification('❌ ' + result.message, 'error');
+    }
+}
+
+function backupSystemData() {
+    try {
+        // Obtener todos los datos del sistema
+        const systemData = {
+            users: Auth.getUsers(),
+            jornadas: obtenerJornadas(),
+            jugadoras: obtenerJugadoras(),
+            configuracion: obtenerConfiguracion(),
+            timestamp: new Date().toISOString(),
+            version: '1.0'
+        };
+
+        // Crear archivo de respaldo
+        const dataStr = JSON.stringify(systemData, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        
+        // Descargar archivo
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(dataBlob);
+        link.download = `voleibol-backup-${new Date().toISOString().split('T')[0]}.json`;
+        link.click();
+        
+        showNotification('✅ Respaldo creado exitosamente', 'success');
+    } catch (error) {
+        console.error('Error al crear respaldo:', error);
+        showNotification('❌ Error al crear respaldo', 'error');
+    }
+}
+
+function clearSystemData() {
+    showConfirmModal(
+        '⚠️ Limpiar Datos del Sistema',
+        '¿Estás seguro de que quieres eliminar TODOS los datos del sistema?\n\n• Jornadas\n• Entrenamientos\n• Configuración\n• Historial\n\nLos usuarios NO se eliminarán.\n\nEsta acción NO se puede deshacer.',
+        () => {
+            try {
+                // Limpiar datos pero mantener usuarios
+                localStorage.removeItem('jornadas');
+                localStorage.removeItem('jugadoras');
+                localStorage.removeItem('configuracion');
+                localStorage.removeItem('equipos');
+                localStorage.removeItem('entrenamientos');
+                
+                showNotification('✅ Datos del sistema eliminados', 'success');
+                
+                // Recargar página para refrescar la interfaz
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } catch (error) {
+                console.error('Error al limpiar datos:', error);
+                showNotification('❌ Error al limpiar datos', 'error');
+            }
+        }
+    );
+}
+
+function resetUsers() {
+    showConfirmModal(
+        '⚠️ Resetear Usuarios',
+        '¿Estás seguro de que quieres ELIMINAR TODOS los usuarios?\n\nSe conservará únicamente:\n• admin / admin\n\nTodos los demás usuarios se perderán.\n\nEsta acción NO se puede deshacer.',
+        () => {
+            try {
+                // Eliminar todos los usuarios excepto admin
+                const defaultUsers = {
+                    admin: {
+                        password: Auth.hashPassword('admin'),
+                        name: 'Administrador',
+                        isAdmin: true,
+                        createdAt: new Date().toISOString(),
+                        lastLogin: null
+                    }
+                };
+                
+                Auth.saveUsers(defaultUsers);
+                showNotification('✅ Usuarios reseteados. Solo queda admin/admin', 'success');
+                loadUsersList();
+            } catch (error) {
+                console.error('Error al resetear usuarios:', error);
+                showNotification('❌ Error al resetear usuarios', 'error');
+            }
+        }
+    );
+}
+
+function showConfirmModal(title, message, onConfirm) {
+    console.log('📋 Mostrando modal:', title);
+    
+    // Limpiar contenido
+    document.getElementById('confirm-title').textContent = title;
+    document.getElementById('confirm-message').textContent = message;
+    
+    // Mostrar modal
+    document.getElementById('confirm-modal').style.display = 'flex';
+    
+    // Limpiar eventos anteriores
+    const confirmBtn = document.getElementById('confirm-yes');
+    const cancelBtn = document.getElementById('confirm-no');
+    
+    // Clonar botones para limpiar eventos
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    const newCancelBtn = cancelBtn.cloneNode(true);
+    
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+    cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+    
+    // Agregar eventos frescos
+    newConfirmBtn.addEventListener('click', function() {
+        console.log('✅ Botón confirmar presionado');
+        document.getElementById('confirm-modal').style.display = 'none';
+        if (onConfirm) {
+            try {
+                onConfirm();
+            } catch(e) {
+                console.error('Error en onConfirm:', e);
+            }
+        }
+    });
+    
+    newCancelBtn.addEventListener('click', function() {
+        console.log('❌ Botón cancelar presionado');
+        document.getElementById('confirm-modal').style.display = 'none';
+    });
+}
+
+// FUNCIÓN PARA CERRAR TODOS LOS MODALES
+function closeAllModals() {
+    console.log('🚪 Cerrando todos los modales');
+    
+    // Lista de todos los modales
+    const modals = [
+        'confirm-modal',
+        'edit-user-modal',
+        'change-password-modal',
+        'modalSustitucion'
+    ];
+    
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+            console.log(`✅ Modal ${modalId} cerrado`);
+        }
+    });
+}
+
+// FUNCIÓN DE PRUEBA PARA MODALES
+window.testModal = function() {
+    console.log('🧪 === TESTING MODALES ===');
+    
+    // Probar modal de confirmación
+    showConfirmModal(
+        '🧪 Prueba de Modal',
+        'Este es un test del nuevo modal de confirmación.\n\n¿Se ve bien?',
+        () => {
+            console.log('✅ Modal funcionó - botón SÍ');
+            showNotification('✅ Modal de confirmación funciona correctamente', 'success');
+        }
+    );
+};
+
+// FUNCIÓN DE DEBUG PARA USUARIOS
+window.debugUsers = function() {
+    console.log('🔍 === DEBUG USUARIOS COMPLETO ===');
+    
+    console.log('1. localStorage "users":', JSON.parse(localStorage.getItem('users') || '[]'));
+    console.log('2. localStorage "system_users":', JSON.parse(localStorage.getItem('system_users') || '[]'));
+    
+    try {
+        const authUsers = Auth.getUsers();
+        console.log('3. Auth.getUsers() resultado:', authUsers);
+        console.log('3. Auth.getUsers() es array:', Array.isArray(authUsers));
+        console.log('3. Auth.getUsers() tipo:', typeof authUsers);
+        console.log('3. Auth.getUsers() length:', authUsers ? authUsers.length : 'N/A');
+        if (Array.isArray(authUsers)) {
+            console.log('3. Auth users usernames:', authUsers.map(u => u.username));
+        }
+    } catch (e) {
+        console.error('3. Auth.getUsers() ERROR:', e);
+    }
+    
+    console.log('4. currentUser:', JSON.parse(localStorage.getItem('currentUser') || '{}'));
+    
+    // Verificar todas las claves de localStorage
+    console.log('5. Todas las claves de localStorage:');
+    for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key.includes('user') || key.includes('User')) {
+            console.log(`   ${key}:`, JSON.parse(localStorage.getItem(key) || '{}'));
+        }
+    }
+    
+    console.log('🔍 === FIN DEBUG ===');
+};
+
+// FUNCIÓN DE TESTING RÁPIDO
+window.testEditUser = function() {
+    console.log('🧪 === TESTING EDITAR USUARIO ===');
+    
+    // Simular apertura del modal para 'juan'
+    try {
+        openEditUserModal('juan');
+        console.log('✅ openEditUserModal funcionó');
+    } catch (e) {
+        console.error('❌ Error en openEditUserModal:', e);
+    }
+};
+
+// FUNCIÓN PARA TESTING DE CREACIÓN DE USUARIO
+window.testCreateUser = function() {
+    console.log('🧪 === TESTING CREAR USUARIO ===');
+    
+    // Crear usuario de prueba
+    const result = Auth.createUser('test123', 'pass123', 'Usuario Test', false);
+    console.log('📋 Resultado:', result);
+    
+    // Verificar que se guardó
+    const users = Auth.getUsers();
+    console.log('👥 Usuarios después de crear:', Object.keys(users));
+    
+    if (users['test123']) {
+        console.log('✅ Usuario test123 creado correctamente');
+        console.log('📋 Datos del usuario:', users['test123']);
+    } else {
+        console.error('❌ Usuario test123 NO se encontró después de crear');
+    }
+};
+
+// FUNCIÓN PARA LOGOUT FORZADO
+window.forceLogout = function() {
+    console.log('🚪 === LOGOUT FORZADO ===');
+    
+    // Limpiar todo manualmente
+    sessionStorage.clear();
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('voleibol_session');
+    localStorage.removeItem('voleibol_users');
+    
+    console.log('✅ Todo limpiado');
+    console.log('📋 localStorage después:', Object.keys(localStorage));
+    
+    // Recargar página
+    window.location.reload();
+};
+
+// FUNCIÓN PARA VERIFICAR SESIONES
+window.debugSession = function() {
+    console.log('🔍 === DEBUG SESIONES ===');
+    
+    console.log('1. sessionStorage voleibol_session:', sessionStorage.getItem('voleibol_session'));
+    console.log('2. localStorage voleibol_session:', localStorage.getItem('voleibol_session'));
+    console.log('3. localStorage currentUser:', localStorage.getItem('currentUser'));
+    console.log('4. localStorage voleibol_users:', localStorage.getItem('voleibol_users'));
+    
+    console.log('5. Todas las claves localStorage:', Object.keys(localStorage));
+    console.log('6. Todas las claves sessionStorage:', Object.keys(sessionStorage));
+    
+    // Probar función de auth.js
+    if (typeof getSessionFromMultipleSources !== 'undefined') {
+        console.log('7. getSessionFromMultipleSources():', getSessionFromMultipleSources());
+    } else {
+        console.log('7. getSessionFromMultipleSources() no disponible');
+    }
+};
+
+// FUNCIÓN PARA CREAR USUARIO DE TESTING INMEDIATAMENTE
+window.createTestUser = function() {
+    console.log('🧪 === CREANDO USUARIO DE TESTING ===');
+    
+    // Crear usuario directamente sin usar el formulario
+    const result = Auth.createUser('test123', '1234', 'Usuario Test', false);
+    console.log('📋 Resultado creación:', result);
+    
+    // Verificar inmediatamente
+    const users = Auth.getUsers();
+    console.log('👥 Usuarios después de crear:', users);
+    console.log('🔍 Usuario test123 existe:', !!users['test123']);
+    
+    if (users['test123']) {
+        console.log('✅ Usuario test123 creado correctamente');
+        console.log('📋 Datos completos:', users['test123']);
+        
+        // Probar login inmediatamente
+        console.log('🔐 Probando login...');
+        console.log('Username: test123, Password: 1234');
+    } else {
+        console.error('❌ Usuario test123 NO se encontró');
+    }
+    
+    return result;
+};
+
+// Función auxiliar para escapar HTML y prevenir XSS
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+}
+
+// Función para mostrar notificaciones
+function showNotification(message, type = 'info') {
+    // Validar mensaje
+    if (!message || message === 'undefined' || typeof message === 'undefined') {
+        console.warn('showNotification: mensaje inválido recibido:', message);
+        message = 'Operación completada';
+    }
+    
+    const container = document.getElementById('notifications-container');
+    if (!container) {
+        console.warn('Contenedor de notificaciones no encontrado');
+        return;
+    }
+
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+        color: white;
+        padding: 12px 20px;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        max-width: 300px;
+        word-wrap: break-word;
+        animation: slideIn 0.3s ease-in;
+        cursor: pointer;
+    `;
+    
+    notification.textContent = String(message); // Asegurar que sea string
+    
+    // Agregar animación CSS si no existe
+    if (!document.getElementById('notification-styles')) {
+        const style = document.createElement('style');
+        style.id = 'notification-styles';
+        style.textContent = `
+            @keyframes slideIn {
+                from { transform: translateX(100%); opacity: 0; }
+                to { transform: translateX(0); opacity: 1; }
+            }
+            @keyframes slideOut {
+                from { transform: translateX(0); opacity: 1; }
+                to { transform: translateX(100%); opacity: 0; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    container.appendChild(notification);
+    
+    // Remover automáticamente después de 5 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    }, 5000);
+    
+    // Remover al hacer click
+    notification.addEventListener('click', () => {
+        if (notification.parentNode) {
+            notification.style.animation = 'slideOut 0.3s ease-out';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }
+    });
+}
+
+// ===== GESTIÓN DE USUARIOS PREDEFINIDOS DEL SISTEMA =====
+let systemUsersConfig = [];
+
+function initSystemUsersEditor() {
+    console.log('🔧 Inicializando editor de usuarios del sistema');
+    
+    // Event listeners
+    document.getElementById('add-system-user-btn').addEventListener('click', addSystemUserRow);
+    document.getElementById('save-system-users-btn').addEventListener('click', saveSystemUsersLocally);
+    document.getElementById('load-current-users-btn').addEventListener('click', loadCurrentSystemUsers);
+    document.getElementById('generate-code-btn').addEventListener('click', generateGitHubCode);
+    // NO configurar copy-github-code-btn aquí porque el elemento no existe hasta que se genera el código
+    
+    // Cargar usuarios actuales por defecto
+    loadCurrentSystemUsers();
+}
+
+function loadCurrentSystemUsers() {
+    console.log('📥 Cargando usuarios actuales del sistema');
+    const users = Auth.getUsers();
+    systemUsersConfig = [];
+    
+    Object.keys(users).forEach(username => {
+        const user = users[username];
+        systemUsersConfig.push({
+            username: user.username || username,
+            password: user.password,
+            name: user.name,
+            isAdmin: user.isAdmin
+        });
+    });
+    
+    renderSystemUsersEditor();
+    showNotification('✅ Usuarios actuales cargados', 'success');
+}
+
+function addSystemUserRow() {
+    systemUsersConfig.push({
+        username: '',
+        password: '',
+        name: '',
+        isAdmin: false
+    });
+    renderSystemUsersEditor();
+}
+
+function removeSystemUserRow(index) {
+    systemUsersConfig.splice(index, 1);
+    renderSystemUsersEditor();
+}
+
+function saveSystemUsersLocally() {
+    console.log('💾 Guardando usuarios localmente');
+    
+    // Validar campos
+    const invalid = systemUsersConfig.find(u => !u.username || !u.password || !u.name);
+    if (invalid) {
+        showNotification('❌ Todos los campos son obligatorios', 'error');
+        return;
+    }
+    
+    // Validar duplicados
+    const usernames = systemUsersConfig.map(u => u.username);
+    const duplicates = usernames.filter((item, index) => usernames.indexOf(item) !== index);
+    if (duplicates.length > 0) {
+        showNotification(`❌ Usuarios duplicados: ${duplicates.join(', ')}`, 'error');
+        return;
+    }
+    
+    // Convertir a objeto
+    const usersObject = {};
+    systemUsersConfig.forEach(user => {
+        usersObject[user.username] = {
+            username: user.username,
+            password: user.password,
+            name: user.name,
+            isAdmin: user.isAdmin,
+            createdAt: new Date().toISOString(),
+            lastLogin: null
+        };
+    });
+    
+    // Guardar en localStorage
+    Auth.saveUsers(usersObject);
+    
+    console.log('✅ Usuarios guardados:', Object.keys(usersObject));
+    showNotification('✅ Usuarios guardados correctamente', 'success');
+}
+
+function generateGitHubCode() {
+    console.log('📝 Generando código para GitHub');
+    
+    // Validar campos
+    const invalid = systemUsersConfig.find(u => !u.username || !u.password || !u.name);
+    if (invalid) {
+        showNotification('❌ Todos los campos son obligatorios', 'error');
+        return;
+    }
+    
+    // Validar duplicados
+    const usernames = systemUsersConfig.map(u => u.username);
+    const duplicates = usernames.filter((item, index) => usernames.indexOf(item) !== index);
+    if (duplicates.length > 0) {
+        showNotification(`❌ Usuarios duplicados: ${duplicates.join(', ')}`, 'error');
+        return;
+    }
+    
+    // Generar código
+    let code = 'const systemUsers = {\n';
+    
+    systemUsersConfig.forEach((user, index) => {
+        code += `    ${user.username}: {\n`;
+        code += `        username: '${user.username}',\n`;
+        code += `        password: '${user.password}',\n`;
+        code += `        name: '${user.name}',\n`;
+        code += `        isAdmin: ${user.isAdmin},\n`;
+        code += `        createdAt: '${new Date().toISOString()}',\n`;
+        code += `        lastLogin: null\n`;
+        code += `    }${index < systemUsersConfig.length - 1 ? ',' : ''}\n`;
+    });
+    
+    code += '};';
+    
+    // Mostrar código
+    document.getElementById('github-code').textContent = code;
+    document.getElementById('github-code-section').style.display = 'block';
+    
+    // Configurar botón de copiar AHORA que el elemento existe
+    const copyBtn = document.getElementById('copy-github-code-btn');
+    if (copyBtn && !copyBtn.hasAttribute('data-listener-set')) {
+        copyBtn.addEventListener('click', copyGitHubCode);
+        copyBtn.setAttribute('data-listener-set', 'true');
+    }
+    
+    // Scroll al código
+    document.getElementById('github-code-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    showNotification('✅ Código generado. Copia y pega en auth.js línea ~202', 'success');
+}
+
+function copyGitHubCode() {
+    const code = document.getElementById('github-code').textContent;
+    
+    navigator.clipboard.writeText(code).then(() => {
+        showNotification('✅ Código copiado al portapapeles', 'success');
+        
+        const btn = document.getElementById('copy-github-code-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Copiado';
+        
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        showNotification('❌ Error al copiar. Selecciona y copia manualmente', 'error');
+        console.error('Error:', err);
+    });
+}
+
+function renderSystemUsersEditor() {
+    const container = document.getElementById('system-users-editor');
+    
+    if (systemUsersConfig.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #999;">No hay usuarios configurados. Haz clic en "Agregar Usuario al Sistema" para comenzar.</p>';
+        return;
+    }
+    
+    let html = '<div class="system-users-grid">';
+    html += '<style>.system-users-grid { display: flex; flex-direction: column; gap: 15px; }</style>';
+    html += '<style>.system-user-row { display: grid; grid-template-columns: 1.5fr 1.5fr 2fr 150px 100px; gap: 10px; align-items: center; padding: 15px; background: #f9f9f9; border-radius: 8px; }</style>';
+    html += '<style>.system-user-row input, .system-user-row select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }</style>';
+    html += '<style>.system-user-row label { font-size: 11px; color: #666; margin-bottom: 3px; display: block; }</style>';
+    
+    systemUsersConfig.forEach((user, index) => {
+        html += `
+            <div class="system-user-row">
+                <div>
+                    <label>Usuario</label>
+                    <input type="text" 
+                           class="system-user-username" 
+                           data-index="${index}" 
+                           value="${user.username}" 
+                           placeholder="usuario123"
+                           style="width: 100%;">
+                </div>
+                <div>
+                    <label>Contraseña</label>
+                    <input type="text" 
+                           class="system-user-password" 
+                           data-index="${index}" 
+                           value="${user.password}" 
+                           placeholder="1234"
+                           style="width: 100%;">
+                </div>
+                <div>
+                    <label>Nombre Completo</label>
+                    <input type="text" 
+                           class="system-user-name" 
+                           data-index="${index}" 
+                           value="${user.name}" 
+                           placeholder="Juan Pérez"
+                           style="width: 100%;">
+                </div>
+                <div>
+                    <label>Tipo</label>
+                    <select class="system-user-admin" data-index="${index}" style="width: 100%;">
+                        <option value="false" ${!user.isAdmin ? 'selected' : ''}>Usuario</option>
+                        <option value="true" ${user.isAdmin ? 'selected' : ''}>Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label>&nbsp;</label>
+                    <button onclick="removeSystemUserRow(${index})" 
+                            class="btn-system btn-danger" 
+                            style="width: 100%; padding: 8px;">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    container.innerHTML = html;
+    
+    // Agregar event listeners para actualizar datos
+    container.querySelectorAll('.system-user-username').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            systemUsersConfig[index].username = e.target.value.trim();
+        });
+    });
+    
+    container.querySelectorAll('.system-user-password').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            systemUsersConfig[index].password = e.target.value;
+        });
+    });
+    
+    container.querySelectorAll('.system-user-name').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            systemUsersConfig[index].name = e.target.value.trim();
+        });
+    });
+    
+    container.querySelectorAll('.system-user-admin').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const index = parseInt(e.target.dataset.index);
+            systemUsersConfig[index].isAdmin = e.target.value === 'true';
+        });
+    });
+}
+
+function generateSystemUsersCode() {
+    console.log('� Guardando usuarios del sistema');
+    
+    // Validar que no haya campos vacíos
+    const invalid = systemUsersConfig.find(u => !u.username || !u.password || !u.name);
+    if (invalid) {
+        showNotification('❌ Todos los campos son obligatorios', 'error');
+        return;
+    }
+    
+    // Validar que no haya usernames duplicados
+    const usernames = systemUsersConfig.map(u => u.username);
+    const duplicates = usernames.filter((item, index) => usernames.indexOf(item) !== index);
+    if (duplicates.length > 0) {
+        showNotification(`❌ Nombres de usuario duplicados: ${duplicates.join(', ')}`, 'error');
+        return;
+    }
+    
+    // Convertir array a objeto
+    const usersObject = {};
+    systemUsersConfig.forEach(user => {
+        usersObject[user.username] = {
+            username: user.username,
+            password: user.password,
+            name: user.name,
+            isAdmin: user.isAdmin,
+            createdAt: new Date().toISOString(),
+            lastLogin: null
+        };
+    });
+    
+    // Guardar directamente en localStorage
+    Auth.saveUsers(usersObject);
+    
+    console.log('✅ Usuarios guardados:', Object.keys(usersObject));
+    showNotification('✅ Usuarios guardados. Disponibles inmediatamente sin tocar código.', 'success');
+}
+
+function generateGitHubCode() {
+    console.log('📝 Generando código para GitHub');
+    
+    // Validar que no haya campos vacíos
+    const invalid = systemUsersConfig.find(u => !u.username || !u.password || !u.name);
+    if (invalid) {
+        showNotification('❌ Todos los campos son obligatorios', 'error');
+        return;
+    }
+    
+    // Validar que no haya usernames duplicados
+    const usernames = systemUsersConfig.map(u => u.username);
+    const duplicates = usernames.filter((item, index) => usernames.indexOf(item) !== index);
+    if (duplicates.length > 0) {
+        showNotification(`❌ Nombres de usuario duplicados: ${duplicates.join(', ')}`, 'error');
+        return;
+    }
+    
+    // Generar código
+    let code = 'const systemUsers = {\n';
+    
+    systemUsersConfig.forEach((user, index) => {
+        code += `    ${user.username}: {\n`;
+        code += `        username: '${user.username}',\n`;
+        code += `        password: '${user.password}',\n`;
+        code += `        name: '${user.name}',\n`;
+        code += `        isAdmin: ${user.isAdmin},\n`;
+        code += `        createdAt: '${new Date().toISOString()}',\n`;
+        code += `        lastLogin: null\n`;
+        code += `    }${index < systemUsersConfig.length - 1 ? ',' : ''}\n`;
+    });
+    
+    code += '};';
+    
+    // Mostrar código
+    document.getElementById('github-code').textContent = code;
+    document.getElementById('github-code-section').style.display = 'block';
+    
+    // Scroll al código
+    document.getElementById('github-code-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    showNotification('✅ Código generado. Copia y pega en auth.js para GitHub', 'success');
+}
+
+function copyGitHubCode() {
+    const code = document.getElementById('github-code').textContent;
+    
+    navigator.clipboard.writeText(code).then(() => {
+        showNotification('✅ Código copiado al portapapeles. Pégalo en auth.js línea ~202', 'success');
+        
+        // Cambiar texto del botón temporalmente
+        const btn = document.getElementById('copy-github-code-btn');
+        const originalText = btn.textContent;
+        btn.textContent = '✅ Copiado';
+        
+        setTimeout(() => {
+            btn.textContent = originalText;
+        }, 2000);
+    }).catch(err => {
+        showNotification('❌ Error al copiar. Copia manualmente el código', 'error');
+        console.error('Error al copiar:', err);
+    });
+}
+
+// Hacer funciones globales
+window.removeSystemUserRow = removeSystemUserRow;

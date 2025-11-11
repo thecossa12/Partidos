@@ -7,6 +7,25 @@
     <link rel="stylesheet" href="styles.css?v=2025102029">
 </head>
 <body>
+    <!-- Contenedor para notificaciones -->
+    <div id="notifications-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000;"></div>
+
+    <!-- Loading inicial -->
+    <div id="loading-screen" style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
+        <h2>🔄 Cargando aplicación...</h2>
+        <p>Verificando autenticación...</p>
+    </div>
+
+    <!-- Pantalla de acceso denegado -->
+    <div id="access-denied" style="display: none; text-align: center; padding: 50px; font-family: Arial, sans-serif; background: #f8d7da; color: #721c24;">
+        <h2>🚫 Acceso Denegado</h2>
+        <p>Tu sesión ha expirado o no tienes permisos.</p>
+        <button onclick="window.location.href='login.html'" 
+                style="padding: 12px 24px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
+            🔐 Ir a Login
+        </button>
+    </div>
+
     <!-- Banner de jornada pendiente -->
     <div id="bannerJornadaPendiente" class="banner-jornada-pendiente" style="display: none;">
         <div class="banner-content">
@@ -28,13 +47,20 @@
     </div>
 
     <!-- Aplicación Principal -->
-    <div class="container" id="mainApp">
+    <div class="container" id="mainApp" style="display: none;">
         <div class="header">
             <h1>🏐 Sistema de Rotaciones</h1>
+            <div class="user-info" style="position: absolute; top: 20px; right: 20px; background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 14px;">
+                <span id="current-user">Cargando...</span>
+                <button onclick="logout()" style="margin-left: 10px; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    🚪 Logout
+                </button>
+            </div>
             <div class="tabs">
                 <button class="tab-button active" data-tab="jornadas">📅 Jornadas</button>
                 <button class="tab-button" data-tab="jugadoras">👥 Equipo</button>
                 <button class="tab-button" data-tab="historial">📊 Historial</button>
+                <button class="tab-button" data-tab="admin" id="admin-tab" style="display: none;">⚙️ Admin</button>
             </div>
         </div>
 
@@ -68,7 +94,7 @@
                 <div id="pasoLunes" class="jornada-paso active">
                     <div class="paso-header">
                         <h4 id="tituloLunes">📅 Entrenamiento Lunes</h4>
-                        <p>Selecciona las jugadoras que asistieron al entrenamiento</p>
+                        <p>Selecciona quiénes asistieron al entrenamiento</p>
                     </div>
                     <div class="jugadoras-grid" id="asistenciaLunesGrid"></div>
                     <div class="paso-actions">
@@ -80,7 +106,7 @@
                 <div id="pasoMiercoles" class="jornada-paso">
                     <div class="paso-header">
                         <h4 id="tituloMiercoles">📅 Entrenamiento Miércoles</h4>
-                        <p>Selecciona las jugadoras que asistieron al entrenamiento</p>
+                        <p>Selecciona quiénes asistieron al entrenamiento</p>
                     </div>
                     <div class="jugadoras-grid" id="asistenciaMiercolesGrid"></div>
                     <div class="paso-actions">
@@ -93,7 +119,7 @@
                 <div id="pasoSabado" class="jornada-paso">
                     <div class="paso-header">
                         <h4 id="tituloSabado">🏐 Partido Sábado</h4>
-                        <p>Selecciona las jugadoras que van a ir al partido y planifica la rotación</p>
+                        <p>Selecciona quiénes van a ir al partido y planifica la rotación</p>
                     </div>
                     
                     <div class="partido-config">
@@ -140,19 +166,20 @@
             <div class="section-header">
                 <h3>👥 Gestión del Equipo</h3>
                 <div class="equipo-actions">
-                    <button id="addJugadora" class="btn-add">+ Añadir Jugadora</button>
+                    <button id="addJugadora" class="btn-add">+ Añadir Jugador/a</button>
+                    <button id="recalcularEstadisticas" class="btn-recalcular">📊 Recalcular Estadísticas</button>
                     <button id="resetearEquipo" class="btn-reset">🔄 Reset Equipo</button>
                 </div>
             </div>
             
             <div id="formJugadora" class="form-jugadora" style="display: none;">
-                <h4>Añadir Jugadora</h4>
+                <h4>Añadir Jugador/a</h4>
                 <div class="form-row">
                     <input type="text" id="nombreJugadora" placeholder="Nombre">
                     <input type="number" id="dorsalJugadora" placeholder="Dorsal" min="1" max="99">
                     <select id="posicionJugadora">
-                        <option value="jugadora">Jugadora</option>
-                        <option value="colocadora">Colocadora</option>
+                        <option value="jugadora">Jugador/a</option>
+                        <option value="colocadora">Colocador/a</option>
                         <option value="central">Central</option>
                     </select>
                         <button id="guardarJugadora" class="btn-save" type="button">Guardar</button>
@@ -180,9 +207,9 @@
                     </div>
                     
                     <div class="filtro-item">
-                        <label>Filtrar por jugadora:</label>
+                        <label>Filtrar por jugador/a:</label>
                         <select id="filtroJugadora">
-                            <option value="">Todas las jugadoras</option>
+                            <option value="">Todos/as</option>
                         </select>
                     </div>
                     
@@ -199,6 +226,77 @@
             
             <div id="listaHistorial"></div>
         </div>
+
+        <!-- Contenido de Administración -->
+        <div id="admin" class="tab-content">
+            <div class="admin-container">
+                <div class="admin-header">
+                    <h3>⚙️ Panel de Administración</h3>
+                    <div class="admin-info">
+                        <span id="current-user-info"></span>
+                        <button id="logout-btn" class="btn-logout">🚪 Cerrar Sesión</button>
+                    </div>
+                </div>
+
+                <!-- Gestión de Usuarios Predefinidos -->
+                <div class="admin-section">
+                    <h4>👥 Gestión de Usuarios del Sistema</h4>
+                    <p style="color: #666; margin-bottom: 15px;">
+                        ⚙️ Administra los usuarios que podrán acceder al sistema.
+                    </p>
+                    
+                    <div class="admin-card">
+                        <h5>Usuarios del Sistema</h5>
+                        <div id="system-users-editor">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+                        <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button id="add-system-user-btn" class="btn-create-user">➕ Agregar Usuario</button>
+                            <button id="save-system-users-btn" class="btn-system" style="background: #28a745; color: white;">💾 Guardar Cambios</button>
+                            <button id="load-current-users-btn" class="btn-system" style="background: #17a2b8; color: white;">🔄 Recargar</button>
+                            <button id="generate-code-btn" class="btn-system" style="background: #ff9800; color: white;">📋 Generar Código para GitHub</button>
+                        </div>
+                    </div>
+
+                    <!-- Código para GitHub -->
+                    <div class="admin-card" id="github-code-section" style="display: none;">
+                        <h5>📋 Código para GitHub</h5>
+                        <p style="color: #666; margin-bottom: 10px;">
+                            Para que estos usuarios estén disponibles en GitHub Pages:
+                        </p>
+                        <ol style="color: #666; margin-bottom: 15px; padding-left: 20px;">
+                            <li>Copia el código de abajo</li>
+                            <li>Abre el archivo <code>auth.js</code></li>
+                            <li>Busca la línea que dice <code>const systemUsers = {</code> (aproximadamente línea 202)</li>
+                            <li>Reemplaza TODO el objeto <code>systemUsers</code> con el código copiado</li>
+                            <li>Guarda <code>auth.js</code> y súbelo a GitHub</li>
+                        </ol>
+                        <div style="position: relative;">
+                            <button id="copy-github-code-btn" class="btn-system" style="position: absolute; top: 10px; right: 10px; z-index: 10; background: #28a745; color: white;">
+                                📋 Copiar Código
+                            </button>
+                            <pre id="github-code" style="background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; max-height: 400px; font-family: 'Courier New', monospace; font-size: 12px; border: 2px solid #28a745;"></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gestión de Sistema -->
+                <div class="admin-section">
+                    <h4>🔧 Gestión del Sistema</h4>
+                    
+                    <div class="admin-card">
+                        <h5>Opciones de Sistema</h5>
+                        <div class="system-actions">
+                            <button id="backup-data-btn" class="btn-system">💾 Respaldar Datos</button>
+                            <button id="clear-data-btn" class="btn-system btn-danger">🗑️ Limpiar Datos</button>
+                            <button id="reset-users-btn" class="btn-system btn-danger">👥 Resetear Usuarios</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        </div>
+
     </div>
 
     <!-- Modal para sustituciones -->
@@ -207,13 +305,13 @@
             <h4>Añadir Sustitución</h4>
             <div class="sustitucion-form">
                 <div class="form-group">
-                    <label>Jugadora que sale:</label>
+                    <label>Sale:</label>
                     <select id="jugadoraSale">
                         <option value="">Seleccionar...</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Jugadora que entra:</label>
+                    <label>Entra:</label>
                     <select id="jugadoraEntra">
                         <option value="">Seleccionar...</option>
                     </select>
@@ -230,6 +328,82 @@
         </div>
     </div>
 
+    <!-- Modal para editar usuario -->
+    <div id="edit-user-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>✏️ Editar Usuario</h4>
+                <button type="button" class="modal-close" id="close-edit-user">&times;</button>
+            </div>
+            <form id="edit-user-form">
+                <div class="form-section">
+                    <h5>📝 Información del Usuario</h5>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-user-username">👤 Usuario:</label>
+                            <input type="text" id="edit-user-username" placeholder="Nombre de usuario" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-user-name">📋 Nombre completo:</label>
+                            <input type="text" id="edit-user-name" placeholder="Nombre y apellido" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="edit-user-password">🔑 Nueva Contraseña:</label>
+                            <input type="password" id="edit-user-password" placeholder="Nueva contraseña (mín. 4 caracteres)">
+                            <small class="form-help">Dejar vacío para mantener la contraseña actual</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="edit-user-type">🎭 Tipo de Usuario:</label>
+                            <select id="edit-user-type">
+                                <option value="false">Usuario Normal</option>
+                                <option value="true">Administrador</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn-confirmar">💾 Guardar Cambios</button>
+                    <button type="button" id="cancel-edit-user" class="btn-cancelar">❌ Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de confirmación mejorado -->
+    <div id="confirm-modal" class="modal" style="display: none;">
+        <div class="modal-content confirm-modal-content">
+            <div class="confirm-header">
+                <div class="confirm-icon">⚠️</div>
+                <h4 id="confirm-title">Confirmar Acción</h4>
+            </div>
+            <div class="confirm-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="confirm-actions">
+                <button id="confirm-yes" class="btn-confirm-yes">✅ Confirmar</button>
+                <button id="confirm-no" class="btn-confirm-no">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para seleccionar jugadora -->
+    <div id="modal-seleccion-jugadora" class="modal" style="display: none;">
+        <div class="modal-content modal-seleccion-content">
+            <div class="modal-header">
+                <h4 id="titulo-seleccion-jugadora">Seleccionar Jugador/a</h4>
+                <button class="btn-cerrar-modal" onclick="app.cerrarModalSeleccion()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="lista-jugadoras-modal" class="lista-jugadoras-modal">
+                    <!-- Se genera dinámicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="auth.js"></script>
     <script src="app.js?v=2025102036"></script>
 </body>
 </html>
