@@ -264,6 +264,11 @@
 
     // ==================== INICIALIZACIÓN ====================
     inicializarApp() {
+        // Sincronizar todas las jornadas existentes al iniciar
+        this.jornadas.forEach(jornada => {
+            this.sincronizarReferenciasJugadoras(jornada);
+        });
+        
         // TEMPORAL: Siempre mostrar la app principal, sin setup
         this.mostrarAppPrincipal();
     }
@@ -2686,6 +2691,9 @@
     completarJornada() {
         if (!this.jornadaActual) return;
         
+        // IMPORTANTE: Sincronizar referencias antes de validar y completar
+        this.sincronizarReferenciasJugadoras(this.jornadaActual);
+        
         if (this.jornadaActual.asistenciaSabado.length < 6) {
             alert('Se necesitan al menos 6 jugador/as para completar la jornada');
             return;
@@ -3327,12 +3335,102 @@
         const jugadora = this.jugadoras.find(j => j.id === id);
         if (!jugadora) return;
         
-        const nuevoNombre = prompt('Nuevo nombre:', jugadora.nombre);
-        if (nuevoNombre && nuevoNombre.trim()) {
-            jugadora.nombre = nuevoNombre.trim();
+        // Abrir modal y rellenar con datos actuales
+        const modal = document.getElementById('modalEditarJugadora');
+        const nombreInput = document.getElementById('editNombre');
+        const dorsalInput = document.getElementById('editDorsal');
+        const posicionSelect = document.getElementById('editPosicion');
+        
+        nombreInput.value = jugadora.nombre;
+        dorsalInput.value = jugadora.dorsal;
+        posicionSelect.value = jugadora.posicion || 'jugadora';
+        
+        modal.style.display = 'flex';
+        
+        // Configurar botones (limpiar eventos previos)
+        const btnConfirmar = document.getElementById('confirmarEdicion');
+        const btnCancelar = document.getElementById('cancelarEdicion');
+        
+        // Remover listeners previos
+        const newBtnConfirmar = btnConfirmar.cloneNode(true);
+        const newBtnCancelar = btnCancelar.cloneNode(true);
+        btnConfirmar.parentNode.replaceChild(newBtnConfirmar, btnConfirmar);
+        btnCancelar.parentNode.replaceChild(newBtnCancelar, btnCancelar);
+        
+        // Nuevo listener para confirmar
+        newBtnConfirmar.addEventListener('click', () => {
+            const nuevoNombre = nombreInput.value.trim();
+            const nuevoDorsal = parseInt(dorsalInput.value);
+            const nuevaPosicion = posicionSelect.value;
+            
+            // Validaciones
+            if (!nuevoNombre) {
+                alert('El nombre no puede estar vacío');
+                return;
+            }
+            
+            if (!nuevoDorsal || nuevoDorsal < 1 || nuevoDorsal > 99) {
+                alert('Ingresa un dorsal válido (1-99)');
+                return;
+            }
+            
+            // Verificar que el dorsal no esté usado por otra jugadora
+            const dorsalDuplicado = this.jugadoras.find(j => j.id !== id && j.dorsal === nuevoDorsal);
+            if (dorsalDuplicado) {
+                alert(`El dorsal ${nuevoDorsal} ya está siendo usado por ${dorsalDuplicado.nombre}`);
+                return;
+            }
+            
+            // Guardar valores antiguos para actualizar referencias
+            const nombreAntiguo = jugadora.nombre;
+            const dorsalAntiguo = jugadora.dorsal;
+            
+            // Actualizar jugadora
+            jugadora.nombre = nuevoNombre;
+            jugadora.dorsal = nuevoDorsal;
+            jugadora.posicion = nuevaPosicion;
+            
+            // IMPORTANTE: Actualizar todas las referencias en jornadas
+            this.jornadas.forEach(jornada => {
+                // Las referencias se mantienen por ID, no por nombre
+                // Pero aseguramos que los datos estén sincronizados
+                if (jornada.planificacionManual) {
+                    ['set1', 'set2', 'set3'].forEach(setKey => {
+                        if (jornada.planificacionManual[setKey]) {
+                            jornada.planificacionManual[setKey] = jornada.planificacionManual[setKey].map(j => {
+                                if (j && j.id === id) {
+                                    return { ...jugadora }; // Actualizar con datos nuevos
+                                }
+                                return j;
+                            });
+                        }
+                    });
+                }
+            });
+            
             this.guardarJugadoras();
+            this.guardarJornadas();
             this.actualizarEquipo();
-        }
+            
+            // Cerrar modal
+            modal.style.display = 'none';
+            
+            console.log(`✅ Jugadora editada: ${nombreAntiguo} (#${dorsalAntiguo}) → ${nuevoNombre} (#${nuevoDorsal})`);
+        });
+        
+        // Listener para cancelar
+        newBtnCancelar.addEventListener('click', () => {
+            modal.style.display = 'none';
+        });
+        
+        // Cerrar con ESC
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                modal.style.display = 'none';
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
     }
 
     eliminarJugadora(id) {
@@ -3956,6 +4054,58 @@
         }
     }
 
+    // Sincronizar referencias de jugadoras en una jornada
+    // Esto actualiza los objetos de jugadoras en los sets con los datos actuales
+    sincronizarReferenciasJugadoras(jornada) {
+        if (!jornada) return;
+        
+        console.log('🔄 Sincronizando referencias de jugadoras en jornada...');
+        
+        // Sincronizar en planificación manual
+        if (jornada.planificacionManual) {
+            ['set1', 'set2', 'set3'].forEach(setKey => {
+                if (jornada.planificacionManual[setKey]) {
+                    jornada.planificacionManual[setKey] = jornada.planificacionManual[setKey].map(jugadoraEnSet => {
+                        if (!jugadoraEnSet || !jugadoraEnSet.id) return jugadoraEnSet;
+                        
+                        // Buscar la jugadora actual con ese ID
+                        const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
+                        
+                        if (jugadoraActual) {
+                            // Retornar una copia actualizada de la jugadora
+                            return { ...jugadoraActual };
+                        } else {
+                            console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
+                            return jugadoraEnSet; // Mantener la referencia antigua
+                        }
+                    });
+                }
+            });
+        }
+        
+        // Sincronizar en sets (si existen)
+        if (jornada.sets) {
+            ['set1', 'set2', 'set3'].forEach(setKey => {
+                if (jornada.sets[setKey]) {
+                    jornada.sets[setKey] = jornada.sets[setKey].map(jugadoraEnSet => {
+                        if (!jugadoraEnSet || !jugadoraEnSet.id) return jugadoraEnSet;
+                        
+                        const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
+                        
+                        if (jugadoraActual) {
+                            return { ...jugadoraActual };
+                        } else {
+                            console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
+                            return jugadoraEnSet;
+                        }
+                    });
+                }
+            });
+        }
+        
+        console.log('✅ Referencias sincronizadas');
+    }
+
     continuarEditandoJornada(jornadaId) {
         console.log('🔄 Continuando edición de jornada:', jornadaId);
         
@@ -3968,6 +4118,9 @@
 
         // Establecer como jornada actual
         this.jornadaActual = jornada;
+        
+        // IMPORTANTE: Sincronizar referencias de jugadoras antes de cargar
+        this.sincronizarReferenciasJugadoras(jornada);
         
         // Cargar datos existentes si los hay
         if (jornada.sets) {
@@ -4001,14 +4154,6 @@
         
         // Actualizar títulos de días con fechas específicas
         this.actualizarTitulosDias();
-        
-        // Configurar los campos del partido si existen
-        if (jornada.puntosSet1) {
-            document.getElementById('puntosSet1Jornada').value = jornada.puntosSet1;
-        }
-        if (jornada.puntosSet2) {
-            document.getElementById('puntosSet2Jornada').value = jornada.puntosSet2;
-        }
         
         // Cargar asistencias en los grids
         this.cargarAsistenciasEnGrids(jornada);

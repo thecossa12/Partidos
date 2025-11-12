@@ -126,20 +126,6 @@
                         <h4 id="tituloSabado">🏐 Partido Sábado</h4>
                         <p>Selecciona quiénes van a ir al partido y planifica la rotación</p>
                     </div>
-                    
-                    <div class="partido-config">
-                        <h5>Configuración del Partido</h5>
-                        <div class="config-grid">
-                            <div class="form-group">
-                                <label for="puntosSet1Jornada">Set 1:</label>
-                                <input type="number" id="puntosSet1Jornada" value="25" min="15" max="50">
-                            </div>
-                            <div class="form-group">
-                                <label for="puntosSet2Jornada">Set 2:</label>
-                                <input type="number" id="puntosSet2Jornada" value="25" min="15" max="50">
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="jugadoras-grid" id="asistenciaSabadoGrid"></div>
                     
@@ -278,6 +264,37 @@
         </div>
         </div>
 
+    </div>
+
+    <!-- Modal para editar jugadora -->
+    <div id="modalEditarJugadora" class="modal-sustitucion" style="display: none;">
+        <div class="modal-content">
+            <h4>✏️ Editar Jugador/a</h4>
+            <div class="sustitucion-form">
+                <div class="form-group">
+                    <label>Nombre:</label>
+                    <input type="text" id="editNombre" placeholder="Nombre de la jugadora">
+                </div>
+                <div class="form-group">
+                    <label>Dorsal:</label>
+                    <input type="number" id="editDorsal" placeholder="Número del dorsal" min="1" max="99">
+                </div>
+                <div class="form-group">
+                    <label>Rol/Posición:</label>
+                    <select id="editPosicion">
+                        <option value="jugadora">Jugadora</option>
+                        <option value="colocadora">Colocadora</option>
+                        <option value="central">Central</option>
+                        <option value="libero">Líbero</option>
+                        <option value="opuesta">Opuesta</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button id="confirmarEdicion" class="btn-confirmar">💾 Guardar</button>
+                    <button id="cancelarEdicion" class="btn-cancelar">❌ Cancelar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Modal para sustituciones -->
