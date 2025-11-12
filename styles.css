@@ -1913,7 +1913,7 @@ button:hover {
 .set-historial strong {
     color: #2e7d32;
     display: block;
-    margin-bottom: 8px;
+    margin-bottom: 2px;
     font-size: 0.95rem;
 }
 
@@ -2717,7 +2717,7 @@ button:hover {
     
     .set-historial strong {
         display: block;
-        margin-bottom: 8px;
+        margin-bottom: 2px;
         font-size: 1rem;
     }
     
