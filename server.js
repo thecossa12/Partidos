@@ -11,6 +11,12 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(bodyParser.json());
+
+// Ruta raíz - redirigir a login (ANTES de servir archivos estáticos)
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
+
 app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz
 
 let db;
@@ -346,11 +352,6 @@ app.post('/api/migrate', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-});
-
-// Ruta raíz - redirigir a login
-app.get('/', (req, res) => {
-    res.redirect('/login.html');
 });
 
 // Iniciar servidor

@@ -1887,7 +1887,7 @@ button:hover {
     color: #1976d2;
     padding: 4px 8px;
     border-radius: 12px;
-    margin: 2px;
+    margin: 1px;
     font-size: 0.8rem;
     border: 1px solid #bbdefb;
 }
@@ -1920,7 +1920,7 @@ button:hover {
 .set-historial .asistentes-lista {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 2px;
     margin-top: 5px;
 }
 
@@ -2485,33 +2485,33 @@ button:hover {
     }
     
     .posicion-campo {
-        min-height: 35px;
-        max-height: 40px;
-        padding: 4px 5px;
+        min-height: 38px;
+        max-height: 45px;
+        padding: 3px 4px;
         font-size: 0.55rem;
         border-width: 1px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2px;
+        gap: 1px;
     }
     
     .dorsal-campo {
-        font-size: 0.6rem;
+        font-size: 0.5rem;
         display: inline;
         line-height: 1;
         font-weight: bold;
     }
     
     .rol-campo {
-        font-size: 0.9rem;
-        margin: 0 3px;
+        font-size: 0.65rem;
+        margin: 0 2px;
         display: inline;
     }
     
     .nombre-campo {
-        font-size: 0.55rem;
+        font-size: 0.6rem;
         max-width: 100%;
         display: block;
         line-height: 1.1;
@@ -2519,6 +2519,7 @@ button:hover {
         text-overflow: ellipsis;
         white-space: nowrap;
         text-align: center;
+        font-weight: 600;
     }
     
     .numero-posicion {
@@ -2696,14 +2697,14 @@ button:hover {
     .jugadora-asistente {
         padding: 6px 10px;
         font-size: 0.85rem;
-        margin: 4px;
+        margin: 1px;
         display: inline-block;
     }
     
     .asistentes-lista {
         display: flex;
         flex-wrap: wrap;
-        gap: 5px;
+        gap: 2px;
     }
     
     .set-historial {
