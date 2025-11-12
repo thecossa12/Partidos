@@ -10,6 +10,11 @@
     <!-- Contenedor para notificaciones -->
     <div id="notifications-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000;"></div>
 
+    <!-- Indicador de sincronización MongoDB -->
+    <div id="sync-indicator" style="position: fixed; bottom: 20px; right: 20px; z-index: 10000; background: #28a745; color: white; padding: 8px 12px; border-radius: 20px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: none;">
+        ☁️ Sincronizado
+    </div>
+
     <!-- Loading inicial -->
     <div id="loading-screen" style="text-align: center; padding: 50px; font-family: Arial, sans-serif;">
         <h2>🔄 Cargando aplicación...</h2>
@@ -168,6 +173,7 @@
                 <div class="equipo-actions">
                     <button id="addJugadora" class="btn-add">+ Añadir Jugador/a</button>
                     <button id="recalcularEstadisticas" class="btn-recalcular">📊 Recalcular Estadísticas</button>
+                    <button id="migrateToMongoDB" class="btn-migrate" style="background: #28a745;">☁️ Migrar a MongoDB</button>
                     <button id="resetearEquipo" class="btn-reset">🔄 Reset Equipo</button>
                 </div>
             </div>
@@ -404,6 +410,7 @@
     </div>
 
     <script src="auth.js"></script>
+    <script src="api-utils.js"></script>
     <script src="app.js?v=2025102036"></script>
 </body>
 </html>

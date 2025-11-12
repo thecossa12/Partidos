@@ -1,18 +1,115 @@
 ﻿class VolleyballManager {
     constructor() {
         console.log('🏗️ Iniciando constructor VolleyballManager...');
-        this.jugadoras = this.cargarJugadoras();
-        console.log('👥 Jugadoras cargadas en constructor:', this.jugadoras.length);
-        this.jornadas = this.cargarJornadas();
-        console.log('📅 Jornadas cargadas en constructor:', this.jornadas.length);
+        // Detectar automáticamente la URL del API (producción o local)
+        this.API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+            ? 'http://localhost:3000/api'
+            : window.location.origin + '/api';
+        console.log('🌐 API URL:', this.API_URL);
+        this.syncEnabled = true; // Habilitar sincronización automática
+        this.getUserId(); // Inicializar userId
+        this.jugadoras = [];
+        this.jornadas = [];
         this.currentTab = 'jornadas';
         this.eventListenersConfigurados = false; // Prevenir duplicación de event listeners
-        this.inicializarApp();
+        this.inicializarAppAsync();
         console.log('✅ Constructor completado');
     }
 
+    async inicializarAppAsync() {
+        this.jugadoras = await this.cargarJugadoras();
+        console.log('� Jugadoras cargadas en constructor:', this.jugadoras.length);
+        this.jornadas = await this.cargarJornadas();
+        console.log('📅 Jornadas cargadas en constructor:', this.jornadas.length);
+        this.inicializarApp();
+    }
+
+    // ==================== SINCRONIZACIÓN MONGODB ====================
+    getUserId() {
+        const authData = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
+        this.userId = authData.username || 'admin';
+        return this.userId;
+    }
+
+    showSyncIndicator(status, message) {
+        const indicator = document.getElementById('sync-indicator');
+        if (!indicator) return;
+        
+        if (status === 'syncing') {
+            indicator.style.background = '#ffc107';
+            indicator.innerHTML = '🔄 Sincronizando...';
+            indicator.style.display = 'block';
+        } else if (status === 'success') {
+            indicator.style.background = '#28a745';
+            indicator.innerHTML = '☁️ Sincronizado';
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 2000);
+        } else if (status === 'offline') {
+            indicator.style.background = '#6c757d';
+            indicator.innerHTML = '📴 Modo Offline';
+            indicator.style.display = 'block';
+            setTimeout(() => {
+                indicator.style.display = 'none';
+            }, 3000);
+        }
+    }
+
+    async syncToMongoDB(type, operation, data) {
+        if (!this.syncEnabled) return;
+        
+        this.showSyncIndicator('syncing');
+        
+        try {
+            const userId = this.getUserId();
+            
+            // Sincronización completa de todos los datos
+            const response = await fetch(`${this.API_URL}/sync`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jugadores: this.jugadoras || [],
+                    jornadas: this.jornadas || [],
+                    userId
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error('Error en la sincronización');
+            }
+            
+            const result = await response.json();
+            console.log('☁️ Sincronizado con MongoDB:', result);
+            
+            this.showSyncIndicator('success');
+        } catch (error) {
+            console.warn('⚠️ Error sincronizando con MongoDB (continuando en modo offline):', error.message);
+            this.showSyncIndicator('offline');
+        }
+    }
+
+    async loadFromMongoDB() {
+        try {
+            const userId = this.getUserId();
+            
+            // Intentar cargar jugadores de MongoDB
+            const jugadoresRes = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
+            if (jugadoresRes.ok) {
+                const jugadores = await jugadoresRes.json();
+                if (jugadores.length > 0) {
+                    console.log('☁️ Cargando jugadores desde MongoDB:', jugadores.length);
+                    return { jugadores };
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar desde MongoDB, usando localStorage');
+        }
+        return null;
+    }
+
     // ==================== SISTEMA DE ALMACENAMIENTO ====================
-    cargarJugadoras() {
+    async cargarJugadoras() {
         // Prevenir múltiples cargas
         if (this._jugadorasCargadas) {
             console.log('⚠️ Intento de cargar jugadoras duplicado - usando cache');
@@ -22,7 +119,27 @@
         console.log('📂 Cargando jugadoras desde localStorage...', new Error().stack);
         const data = localStorage.getItem('volleyball_jugadoras');
         console.log('📄 Datos raw:', data);
-        const jugadoras = data ? JSON.parse(data) : [];
+        let jugadoras = data ? JSON.parse(data) : [];
+        
+        // Si localStorage está vacío, intentar cargar desde MongoDB
+        if (jugadoras.length === 0) {
+            try {
+                const userId = this.getUserId();
+                const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
+                if (response.ok) {
+                    const jugadoresMongo = await response.json();
+                    if (jugadoresMongo.length > 0) {
+                        console.log('☁️ Recuperando jugadores desde MongoDB:', jugadoresMongo.length);
+                        jugadoras = jugadoresMongo;
+                        // Guardar en localStorage como backup
+                        localStorage.setItem('volleyball_jugadoras', JSON.stringify(jugadoras));
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
+            }
+        }
+        
         console.log('👥 Jugadoras parseadas:', jugadoras.length);
         
         this._jugadorasCargadas = true;
@@ -38,6 +155,8 @@
 
     guardarJugadoras() {
         localStorage.setItem('volleyball_jugadoras', JSON.stringify(this.jugadoras));
+        // Sincronización automática con MongoDB
+        this.syncToMongoDB('jugadores', 'save');
     }
     guardarJugadora() {
         console.log('🏐 Iniciando guardarJugadora()...');
@@ -85,11 +204,31 @@
         
         console.log('✅ Jugadora guardada exitosamente');
 }
-    cargarJornadas() {
+    async cargarJornadas() {
         console.log('📂 Cargando jornadas desde localStorage...');
         const data = localStorage.getItem('volleyball_jornadas');
         console.log('📄 Datos jornadas raw:', data);
-        const jornadas = data ? JSON.parse(data) : [];
+        let jornadas = data ? JSON.parse(data) : [];
+        
+        // Si localStorage está vacío, intentar cargar desde MongoDB
+        if (jornadas.length === 0) {
+            try {
+                const userId = this.getUserId();
+                const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}`);
+                if (response.ok) {
+                    const jornadasMongo = await response.json();
+                    if (jornadasMongo.length > 0) {
+                        console.log('☁️ Recuperando jornadas desde MongoDB:', jornadasMongo.length);
+                        jornadas = jornadasMongo;
+                        // Guardar en localStorage como backup
+                        localStorage.setItem('volleyball_jornadas', JSON.stringify(jornadas));
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
+            }
+        }
+        
         console.log('📅 Jornadas parseadas:', jornadas.length);
         
         // Limpiar null/undefined de sets y planificación existentes
@@ -111,6 +250,8 @@
 
     guardarJornadas() {
         localStorage.setItem('volleyball_jornadas', JSON.stringify(this.jornadas));
+        // Sincronización automática con MongoDB
+        this.syncToMongoDB('jornadas', 'save');
     }
 
     // ==================== INICIALIZACIÓN ====================
@@ -4113,6 +4254,57 @@
         }
         
         document.getElementById('resetearEstadisticas')?.addEventListener('click', () => this.resetearEstadisticas());
+        
+        // Botón para migrar a MongoDB
+        document.getElementById('migrateToMongoDB')?.addEventListener('click', async () => {
+            if (!confirm('⚠️ ¿Estás seguro de que quieres migrar todos los datos a MongoDB?\n\nEsto enviará todos los jugadores y jornadas de localStorage a la base de datos.\n\nAsegúrate de que el servidor está corriendo en http://localhost:3000')) {
+                return;
+            }
+            
+            try {
+                // Obtener el usuario actual del localStorage
+                const authData = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
+                const userId = authData.username || 'admin'; // Usar username como userId
+                
+                const jugadores = this.jugadoras || [];
+                const jornadas = this.jornadas || [];
+                
+                if (jugadores.length === 0 && jornadas.length === 0) {
+                    alert('❌ No hay datos para migrar');
+                    return;
+                }
+                
+                console.log('🔄 Iniciando migración...', { 
+                    userId, 
+                    jugadores: jugadores.length, 
+                    jornadas: jornadas.length 
+                });
+                
+                const response = await fetch(`${this.API_URL}/migrate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ jugadores, jornadas, userId })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Error en la respuesta del servidor');
+                }
+                
+                const result = await response.json();
+                
+                alert(`✅ ¡Migración completada con éxito!\n\n` +
+                      `👤 Usuario: ${result.userId}\n` +
+                      `👥 Jugadores migrados: ${result.jugadoresCount}\n` +
+                      `📅 Jornadas migradas: ${result.jornadasCount}\n\n` +
+                      `Verifica los datos en MongoDB Atlas`);
+                
+                console.log('✅ Migración exitosa:', result);
+                
+            } catch (error) {
+                console.error('❌ Error en la migración:', error);
+                alert('❌ Error durante la migración:\n\n' + error.message + '\n\nAsegúrate de que el servidor está corriendo en http://localhost:3000');
+            }
+        });
         
         // Historial
         document.getElementById('filtrarHistorial')?.addEventListener('click', () => this.filtrarHistorial());

@@ -1,0 +1,22 @@
+# Dependencias
+node_modules/
+
+# Variables de entorno (NO subir credenciales)
+.env
+
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Backups locales
+backup_old_files/
+BackUp Con Exportar/
+
+# Test files
+test.js
+test-*.html
+migrate.html
