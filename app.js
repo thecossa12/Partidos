@@ -56,6 +56,34 @@
         }
     }
 
+    // Limpiar datos para MongoDB (eliminar null, undefined, y referencias circulares)
+    limpiarDatosParaMongo(obj) {
+        if (obj === null || obj === undefined) {
+            return null;
+        }
+        
+        if (Array.isArray(obj)) {
+            return obj
+                .filter(item => item !== null && item !== undefined)
+                .map(item => this.limpiarDatosParaMongo(item));
+        }
+        
+        if (typeof obj === 'object') {
+            const cleaned = {};
+            for (const key in obj) {
+                if (obj.hasOwnProperty(key)) {
+                    const value = obj[key];
+                    if (value !== null && value !== undefined) {
+                        cleaned[key] = this.limpiarDatosParaMongo(value);
+                    }
+                }
+            }
+            return cleaned;
+        }
+        
+        return obj;
+    }
+
     async syncToMongoDB(type, operation, data) {
         if (!this.syncEnabled) return;
         
@@ -64,18 +92,24 @@
         try {
             const userId = this.getUserId();
             
+            // Limpiar datos antes de enviar a MongoDB
+            const jugadoresLimpios = this.limpiarDatosParaMongo(this.jugadoras || []);
+            const jornadasLimpias = this.limpiarDatosParaMongo(this.jornadas || []);
+            
             // Sincronización completa de todos los datos
             const response = await fetch(`${this.API_URL}/sync`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    jugadores: this.jugadoras || [],
-                    jornadas: this.jornadas || [],
+                    jugadores: jugadoresLimpios,
+                    jornadas: jornadasLimpias,
                     userId
                 })
             });
             
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('❌ Error del servidor:', errorText);
                 throw new Error('Error en la sincronización');
             }
             
@@ -2754,23 +2788,42 @@
         console.log('- Jugadoras sin asignar:', jugadorasSinAsignar.length);
         
         if (jugadorasSinAsignar.length > 0) {
-            const nombresNoAsignadas = jugadorasSinAsignar.map(id => {
-                const jugadora = this.jugadoras.find(j => j.id === id);
-                return jugadora ? jugadora.nombre : 'Desconocida';
-            }).join(', ');
+            const nombresNoAsignadas = jugadorasSinAsignar
+                .map(id => {
+                    const jugadora = this.jugadoras.find(j => j.id === id);
+                    return jugadora ? jugadora.nombre : null;
+                })
+                .filter(nombre => nombre !== null) // Eliminar jugadoras que ya no existen
+                .join(', ');
             
-            console.log('🚫 Jugadoras sin asignar encontradas:', nombresNoAsignadas);
-            alert(`⚠️ No puedes completar la jornada. Las siguientes jugadoras disponibles no están asignadas a ningún set:\n\n${nombresNoAsignadas}\n\nAsegúrate de que todas las jugadoras disponibles estén en al menos un set antes de completar.`);
-            return false; // Cambiar a return false para ser más explícito
+            // Si después de filtrar no hay nombres, significa que las jugadoras sin asignar ya no existen
+            if (!nombresNoAsignadas) {
+                console.log('✅ Las jugadoras sin asignar ya no existen en el equipo, continuando...');
+            } else {
+                console.log('🚫 Jugadoras sin asignar encontradas:', nombresNoAsignadas);
+                alert(`⚠️ No puedes completar la jornada. Las siguientes jugadoras disponibles no están asignadas a ningún set:\n\n${nombresNoAsignadas}\n\nAsegúrate de que todas las jugadoras disponibles estén en al menos un set antes de completar.`);
+                return false;
+            }
         }
         
         // Guardar planificación manual y sustituciones si existen
         if (this.planificacionSets && (this.planificacionSets.set1.length > 0 || this.planificacionSets.set2.length > 0 || this.planificacionSets.set3.length > 0)) {
-            // Filtrar null antes de guardar para evitar "undefined" en historial
+            // Filtrar null, undefined y jugadoras sin datos válidos antes de guardar
+            const limpiarSet = (set) => {
+                return set
+                    .filter(j => j !== null && j !== undefined)
+                    .filter(j => j.id && j.nombre) // Solo jugadoras con ID y nombre válidos
+                    .map(j => {
+                        // Sincronizar con datos actuales de la jugadora
+                        const jugadoraActual = this.jugadoras.find(jug => jug.id === j.id);
+                        return jugadoraActual ? { ...jugadoraActual } : j;
+                    });
+            };
+            
             this.jornadaActual.planificacionManual = {
-                set1: this.planificacionSets.set1.filter(j => j !== null && j !== undefined),
-                set2: this.planificacionSets.set2.filter(j => j !== null && j !== undefined),
-                set3: this.planificacionSets.set3.filter(j => j !== null && j !== undefined)
+                set1: limpiarSet(this.planificacionSets.set1),
+                set2: limpiarSet(this.planificacionSets.set2),
+                set3: limpiarSet(this.planificacionSets.set3)
             };
             
             // Guardar sustituciones
@@ -4061,24 +4114,38 @@
         
         console.log('🔄 Sincronizando referencias de jugadoras en jornada...');
         
+        // Limpiar asistencias de jugadoras que ya no existen
+        const jugadorasExistentes = new Set(this.jugadoras.map(j => j.id));
+        
+        if (jornada.asistenciaLunes) {
+            jornada.asistenciaLunes = jornada.asistenciaLunes.filter(id => jugadorasExistentes.has(id));
+        }
+        if (jornada.asistenciaMiercoles) {
+            jornada.asistenciaMiercoles = jornada.asistenciaMiercoles.filter(id => jugadorasExistentes.has(id));
+        }
+        if (jornada.asistenciaSabado) {
+            jornada.asistenciaSabado = jornada.asistenciaSabado.filter(id => jugadorasExistentes.has(id));
+        }
+        
         // Sincronizar en planificación manual
         if (jornada.planificacionManual) {
             ['set1', 'set2', 'set3'].forEach(setKey => {
                 if (jornada.planificacionManual[setKey]) {
-                    jornada.planificacionManual[setKey] = jornada.planificacionManual[setKey].map(jugadoraEnSet => {
-                        if (!jugadoraEnSet || !jugadoraEnSet.id) return jugadoraEnSet;
-                        
-                        // Buscar la jugadora actual con ese ID
-                        const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
-                        
-                        if (jugadoraActual) {
-                            // Retornar una copia actualizada de la jugadora
-                            return { ...jugadoraActual };
-                        } else {
-                            console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
-                            return jugadoraEnSet; // Mantener la referencia antigua
-                        }
-                    });
+                    jornada.planificacionManual[setKey] = jornada.planificacionManual[setKey]
+                        .filter(jugadoraEnSet => jugadoraEnSet !== null && jugadoraEnSet !== undefined && jugadoraEnSet.id)
+                        .map(jugadoraEnSet => {
+                            // Buscar la jugadora actual con ese ID
+                            const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
+                            
+                            if (jugadoraActual) {
+                                // Retornar una copia actualizada de la jugadora
+                                return { ...jugadoraActual };
+                            } else {
+                                console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
+                                return null; // Marcar para eliminar
+                            }
+                        })
+                        .filter(j => j !== null); // Eliminar jugadoras no encontradas
                 }
             });
         }
@@ -4087,18 +4154,19 @@
         if (jornada.sets) {
             ['set1', 'set2', 'set3'].forEach(setKey => {
                 if (jornada.sets[setKey]) {
-                    jornada.sets[setKey] = jornada.sets[setKey].map(jugadoraEnSet => {
-                        if (!jugadoraEnSet || !jugadoraEnSet.id) return jugadoraEnSet;
-                        
-                        const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
-                        
-                        if (jugadoraActual) {
-                            return { ...jugadoraActual };
-                        } else {
-                            console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
-                            return jugadoraEnSet;
-                        }
-                    });
+                    jornada.sets[setKey] = jornada.sets[setKey]
+                        .filter(jugadoraEnSet => jugadoraEnSet !== null && jugadoraEnSet !== undefined && jugadoraEnSet.id)
+                        .map(jugadoraEnSet => {
+                            const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
+                            
+                            if (jugadoraActual) {
+                                return { ...jugadoraActual };
+                            } else {
+                                console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
+                                return null;
+                            }
+                        })
+                        .filter(j => j !== null);
                 }
             });
         }
