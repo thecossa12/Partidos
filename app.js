@@ -56,7 +56,7 @@
         }
     }
 
-    // Limpiar datos para MongoDB (eliminar null, undefined, y referencias circulares)
+    // Limpiar datos para MongoDB (eliminar null, undefined, _id de MongoDB y referencias circulares)
     limpiarDatosParaMongo(obj) {
         if (obj === null || obj === undefined) {
             return null;
@@ -72,6 +72,9 @@
             const cleaned = {};
             for (const key in obj) {
                 if (obj.hasOwnProperty(key)) {
+                    // Saltar _id de MongoDB para evitar conflictos
+                    if (key === '_id') continue;
+                    
                     const value = obj[key];
                     if (value !== null && value !== undefined) {
                         cleaned[key] = this.limpiarDatosParaMongo(value);

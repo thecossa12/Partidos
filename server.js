@@ -249,7 +249,7 @@ app.post('/api/users/login', async (req, res) => {
 
 // ==================== ENDPOINT DE SINCRONIZACIÓN ====================
 
-// Sincronización completa (reemplaza todos los datos del usuario)
+// Sincronización completa (usa upsert para actualizar o insertar)
 app.post('/api/sync', async (req, res) => {
     try {
         const { jugadores, jornadas, userId } = req.body;
@@ -258,28 +258,54 @@ app.post('/api/sync', async (req, res) => {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        // Borrar datos existentes del usuario
-        await db.collection('jugadores').deleteMany({ userId });
-        await db.collection('jornadas').deleteMany({ userId });
+        let jugadoresCount = 0;
+        let jornadasCount = 0;
         
-        // Insertar nuevos datos
-        const jugadoresConUserId = jugadores?.map(j => ({ ...j, userId })) || [];
-        const jornadasConUserId = jornadas?.map(j => ({ ...j, userId })) || [];
-        
-        if (jugadoresConUserId.length > 0) {
-            await db.collection('jugadores').insertMany(jugadoresConUserId);
+        // Sincronizar jugadores usando bulkWrite con upsert
+        if (jugadores && jugadores.length > 0) {
+            const jugadoresOperations = jugadores.map(jugador => {
+                // Eliminar _id de MongoDB si existe para evitar conflictos
+                const { _id, ...jugadorSinMongoId } = jugador;
+                
+                return {
+                    updateOne: {
+                        filter: { id: jugador.id, userId },
+                        update: { $set: { ...jugadorSinMongoId, userId } },
+                        upsert: true
+                    }
+                };
+            });
+            
+            const resultJugadores = await db.collection('jugadores').bulkWrite(jugadoresOperations);
+            jugadoresCount = resultJugadores.upsertedCount + resultJugadores.modifiedCount;
         }
         
-        if (jornadasConUserId.length > 0) {
-            await db.collection('jornadas').insertMany(jornadasConUserId);
+        // Sincronizar jornadas usando bulkWrite con upsert
+        if (jornadas && jornadas.length > 0) {
+            const jornadasOperations = jornadas.map(jornada => {
+                // Eliminar _id de MongoDB si existe para evitar conflictos
+                const { _id, ...jornadaSinMongoId } = jornada;
+                
+                return {
+                    updateOne: {
+                        filter: { id: jornada.id, userId },
+                        update: { $set: { ...jornadaSinMongoId, userId } },
+                        upsert: true
+                    }
+                };
+            });
+            
+            const resultJornadas = await db.collection('jornadas').bulkWrite(jornadasOperations);
+            jornadasCount = resultJornadas.upsertedCount + resultJornadas.modifiedCount;
         }
         
         res.json({ 
             success: true,
-            jugadoresCount: jugadoresConUserId.length,
-            jornadasCount: jornadasConUserId.length
+            jugadoresCount: jugadores?.length || 0,
+            jornadasCount: jornadas?.length || 0
         });
     } catch (error) {
+        console.error('Error en sync:', error);
         res.status(500).json({ error: error.message });
     }
 });
