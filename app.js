@@ -116,28 +116,31 @@
             return this.jugadoras || [];
         }
         
-        console.log('📂 Cargando jugadoras desde localStorage...', new Error().stack);
-        const data = localStorage.getItem('volleyball_jugadoras');
-        console.log('📄 Datos raw:', data);
-        let jugadoras = data ? JSON.parse(data) : [];
+        console.log('📂 Cargando jugadoras desde MongoDB (prioridad)...');
+        let jugadoras = [];
         
-        // Si localStorage está vacío, intentar cargar desde MongoDB
-        if (jugadoras.length === 0) {
-            try {
-                const userId = this.getUserId();
-                const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
-                if (response.ok) {
-                    const jugadoresMongo = await response.json();
-                    if (jugadoresMongo.length > 0) {
-                        console.log('☁️ Recuperando jugadores desde MongoDB:', jugadoresMongo.length);
-                        jugadoras = jugadoresMongo;
-                        // Guardar en localStorage como backup
-                        localStorage.setItem('volleyball_jugadoras', JSON.stringify(jugadoras));
-                    }
+        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario)
+        try {
+            const userId = this.getUserId();
+            console.log('👤 Cargando jugadoras para userId:', userId);
+            const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
+            if (response.ok) {
+                jugadoras = await response.json();
+                console.log('☁️ Jugadoras cargadas desde MongoDB:', jugadoras.length);
+                
+                // Guardar en localStorage como backup (SIN mezclar con otros usuarios)
+                if (jugadoras.length > 0) {
+                    localStorage.setItem(`volleyball_jugadoras_${userId}`, JSON.stringify(jugadoras));
                 }
-            } catch (error) {
-                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
             }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar desde MongoDB, intentando localStorage:', error.message);
+            
+            // FALLBACK: usar localStorage SOLO del usuario actual
+            const userId = this.getUserId();
+            const data = localStorage.getItem(`volleyball_jugadoras_${userId}`);
+            jugadoras = data ? JSON.parse(data) : [];
+            console.log('💾 Jugadoras cargadas desde localStorage (userId-específico):', jugadoras.length);
         }
         
         console.log('👥 Jugadoras parseadas:', jugadoras.length);
@@ -154,7 +157,8 @@
     }
 
     guardarJugadoras() {
-        localStorage.setItem('volleyball_jugadoras', JSON.stringify(this.jugadoras));
+        const userId = this.getUserId();
+        localStorage.setItem(`volleyball_jugadoras_${userId}`, JSON.stringify(this.jugadoras));
         // Sincronización automática con MongoDB
         this.syncToMongoDB('jugadores', 'save');
     }
@@ -205,28 +209,31 @@
         console.log('✅ Jugadora guardada exitosamente');
 }
     async cargarJornadas() {
-        console.log('📂 Cargando jornadas desde localStorage...');
-        const data = localStorage.getItem('volleyball_jornadas');
-        console.log('📄 Datos jornadas raw:', data);
-        let jornadas = data ? JSON.parse(data) : [];
+        console.log('📂 Cargando jornadas desde MongoDB (prioridad)...');
+        let jornadas = [];
         
-        // Si localStorage está vacío, intentar cargar desde MongoDB
-        if (jornadas.length === 0) {
-            try {
-                const userId = this.getUserId();
-                const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}`);
-                if (response.ok) {
-                    const jornadasMongo = await response.json();
-                    if (jornadasMongo.length > 0) {
-                        console.log('☁️ Recuperando jornadas desde MongoDB:', jornadasMongo.length);
-                        jornadas = jornadasMongo;
-                        // Guardar en localStorage como backup
-                        localStorage.setItem('volleyball_jornadas', JSON.stringify(jornadas));
-                    }
+        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario)
+        try {
+            const userId = this.getUserId();
+            console.log('👤 Cargando jornadas para userId:', userId);
+            const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}`);
+            if (response.ok) {
+                jornadas = await response.json();
+                console.log('☁️ Jornadas cargadas desde MongoDB:', jornadas.length);
+                
+                // Guardar en localStorage como backup (SIN mezclar con otros usuarios)
+                if (jornadas.length > 0) {
+                    localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(jornadas));
                 }
-            } catch (error) {
-                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
             }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar desde MongoDB, intentando localStorage:', error.message);
+            
+            // FALLBACK: usar localStorage SOLO del usuario actual
+            const userId = this.getUserId();
+            const data = localStorage.getItem(`volleyball_jornadas_${userId}`);
+            jornadas = data ? JSON.parse(data) : [];
+            console.log('💾 Jornadas cargadas desde localStorage (userId-específico):', jornadas.length);
         }
         
         console.log('📅 Jornadas parseadas:', jornadas.length);
@@ -249,7 +256,8 @@
     }
 
     guardarJornadas() {
-        localStorage.setItem('volleyball_jornadas', JSON.stringify(this.jornadas));
+        const userId = this.getUserId();
+        localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
         // Sincronización automática con MongoDB
         this.syncToMongoDB('jornadas', 'save');
     }
@@ -1530,35 +1538,26 @@
         
         titulo.textContent = `Seleccionar Jugador/a - Posición ${posicion} (Set ${setNum})`;
         
-        // ORDENAR jugadoras: primero por entrenamientos (2→1→0), luego por puntos (menor a mayor)
+        // ORDENAR jugadoras: primero por puntos jugados (menor a mayor), luego por dorsal
         const jugadorasConDatos = jugadorasDisponibles.map(j => {
-            const asistioLunes = this.jornadaActual.asistenciaLunes.includes(j.id);
-            const asistioMiercoles = this.jornadaActual.asistenciaMiercoles.includes(j.id);
-            const entrenamientos = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
-            
             return {
                 jugadora: j,
-                entrenamientos: entrenamientos,
                 puntosJugados: j.puntosJugados || 0
             };
         });
         
-        // Ordenar: Verde (2) > Amarillo (1) > Rojo (0), dentro de cada grupo por puntos, luego por dorsal
+        // Ordenar: por puntos jugados (ascendente: menos puntos primero), luego por dorsal
         jugadorasConDatos.sort((a, b) => {
-            // Primero por entrenamientos (descendente: 2, 1, 0)
-            if (b.entrenamientos !== a.entrenamientos) {
-                return b.entrenamientos - a.entrenamientos;
-            }
-            // Luego por puntos jugados (ascendente: menos puntos primero)
+            // Primero por puntos jugados (ascendente: menos puntos primero)
             if (a.puntosJugados !== b.puntosJugados) {
                 return a.puntosJugados - b.puntosJugados;
             }
-            // Finalmente por dorsal (ascendente: menor dorsal primero)
+            // Luego por dorsal (ascendente: menor dorsal primero)
             return a.jugadora.dorsal - b.jugadora.dorsal;
         });
         
-        // Obtener información de entrenamientos para cada jugadora
-        lista.innerHTML = jugadorasConDatos.map(({jugadora: j, entrenamientos}) => {
+        // Generar lista de jugadoras
+        lista.innerHTML = jugadorasConDatos.map(({jugadora: j}) => {
             // Verificar si está en otros sets
             const setsActuales = [];
             if (setKey !== 'set1' && this.planificacionSets.set1.find(js => js && js.id === j.id)) setsActuales.push('1');
@@ -1572,19 +1571,15 @@
             
             let estadoTexto = '';
             let colorFondo = '';
-            if (entrenamientos === 2) {
-                estadoTexto = '✅ 2 entrenamientos';
-                colorFondo = 'background: #d4edda; border-color: #28a745;';
-            } else if (entrenamientos === 1) {
-                estadoTexto = '⚠️ 1 entrenamiento';
-                colorFondo = 'background: #fff3cd; border-color: #ffc107;';
-            } else {
-                estadoTexto = '❌ 0 entrenamientos';
-                colorFondo = 'background: #f8d7da; border-color: #dc3545;';
-            }
             
             if (setsActuales.length > 0) {
-                estadoTexto += ` • Ya en Set ${setsActuales.join(', ')}`;
+                // Ya está jugando en otro set
+                estadoTexto = `⚠️ Ya en Set ${setsActuales.join(', ')}`;
+                colorFondo = 'background: #fff3cd; border-color: #ffc107;';
+            } else {
+                // No está jugando en ningún set
+                estadoTexto = '✅ Disponible';
+                colorFondo = 'background: #d4edda; border-color: #28a745;';
             }
             
             return `
@@ -5874,21 +5869,50 @@ function initSystemUsersEditor() {
 
 function loadCurrentSystemUsers() {
     console.log('📥 Cargando usuarios actuales del sistema');
-    const users = Auth.getUsers();
-    systemUsersConfig = [];
     
-    Object.keys(users).forEach(username => {
-        const user = users[username];
-        systemUsersConfig.push({
-            username: user.username || username,
-            password: user.password,
-            name: user.name,
-            isAdmin: user.isAdmin
+    // Primero intentar cargar desde MongoDB
+    const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:3000/api'
+        : window.location.origin + '/api';
+    
+    fetch(`${API_URL}/users`)
+        .then(response => response.json())
+        .then(usersArray => {
+            console.log('☁️ Usuarios cargados desde MongoDB:', usersArray.length);
+            systemUsersConfig = [];
+            
+            usersArray.forEach(user => {
+                systemUsersConfig.push({
+                    username: user.username,
+                    password: user.password,
+                    name: user.name,
+                    isAdmin: user.isAdmin || false
+                });
+            });
+            
+            renderSystemUsersEditor();
+            showNotification('✅ Usuarios cargados desde la base de datos', 'success');
+        })
+        .catch(error => {
+            console.warn('⚠️ No se pudo cargar desde MongoDB, usando localStorage:', error.message);
+            
+            // Fallback a localStorage
+            const users = Auth.getUsers();
+            systemUsersConfig = [];
+            
+            Object.keys(users).forEach(username => {
+                const user = users[username];
+                systemUsersConfig.push({
+                    username: user.username || username,
+                    password: user.password,
+                    name: user.name,
+                    isAdmin: user.isAdmin
+                });
+            });
+            
+            renderSystemUsersEditor();
+            showNotification('✅ Usuarios cargados desde localStorage', 'info');
         });
-    });
-    
-    renderSystemUsersEditor();
-    showNotification('✅ Usuarios actuales cargados', 'success');
 }
 
 function addSystemUserRow() {

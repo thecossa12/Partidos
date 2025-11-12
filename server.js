@@ -322,9 +322,9 @@ app.post('/api/migrate', async (req, res) => {
     }
 });
 
-// Ruta raíz - servir index.html
+// Ruta raíz - redirigir a login
 app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'index.html'));
+    res.redirect('/login.html');
 });
 
 // Iniciar servidor
