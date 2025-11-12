@@ -548,7 +548,10 @@ function logout() {
     // Limpiar TODAS las fuentes de sesión
     try {
         console.log('📋 localStorage ANTES del logout:', Object.keys(localStorage));
-        console.log('👥 system_users ANTES del logout:', localStorage.getItem('system_users'));
+        
+        // Obtener userId antes de limpiar la sesión
+        const authData = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
+        const userId = authData.username;
         
         // Limpiar sessionStorage - solo las claves de sesión
         sessionStorage.removeItem('volleyball_session');
@@ -556,18 +559,29 @@ function logout() {
         sessionStorage.removeItem('current_user');
         sessionStorage.removeItem('voleibol_session');
         
-        // Limpiar localStorage - SOLO las claves de sesión, NO los usuarios
+        // Limpiar localStorage - SOLO las claves de sesión y datos del usuario actual
         localStorage.removeItem('volleyball_session');
         localStorage.removeItem('volleyball_auth');
         localStorage.removeItem('current_user');
         localStorage.removeItem('voleibol_session');
         localStorage.removeItem('currentUser');
         localStorage.removeItem('voleibol_users');
+        
+        // IMPORTANTE: Limpiar datos específicos del usuario (jugadoras y jornadas)
+        if (userId) {
+            localStorage.removeItem(`volleyball_jugadoras_${userId}`);
+            localStorage.removeItem(`volleyball_jornadas_${userId}`);
+            console.log(`🗑️ Limpiados datos del usuario: ${userId}`);
+        }
+        
+        // También limpiar claves antiguas sin userId (por compatibilidad)
+        localStorage.removeItem('volleyball_jugadoras');
+        localStorage.removeItem('volleyball_jornadas');
+        
         // NO borrar system_users - esos son los usuarios del sistema
         
         console.log('✅ Sesión limpiada');
         console.log('📋 localStorage DESPUÉS del logout:', Object.keys(localStorage));
-        console.log('👥 system_users DESPUÉS del logout:', localStorage.getItem('system_users'));
         
     } catch (e) {
         console.log('⚠️ Error limpiando sesión:', e.message);

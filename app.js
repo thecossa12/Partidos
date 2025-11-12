@@ -683,6 +683,7 @@
         
         const nuevaJornada = {
             id: Date.now(),
+            fechaSeleccionada: fechaSeleccionada, // Guardar la fecha que seleccionó el usuario
             fechaLunes: fechaLunes,
             fechaMiercoles: fechaMiercoles,
             fechaSabado: fechaSabado,
@@ -722,8 +723,11 @@
         if (!this.jornadaActual) return;
         
         document.getElementById('jornadaActual').style.display = 'block';
+        
+        // Usar fechaSeleccionada si existe, sino usar fechaLunes (para compatibilidad con jornadas antiguas)
+        const fechaMostrar = this.jornadaActual.fechaSeleccionada || this.jornadaActual.fechaLunes;
         document.getElementById('tituloJornada').textContent = 
-            `Jornada: Semana del ${this.formatearFecha(this.jornadaActual.fechaLunes)}`;
+            `Jornada: Semana del ${this.formatearFecha(fechaMostrar)}`;
         
         // Actualizar títulos de días con fechas específicas
         this.actualizarTitulosDias();
@@ -1538,26 +1542,35 @@
         
         titulo.textContent = `Seleccionar Jugador/a - Posición ${posicion} (Set ${setNum})`;
         
-        // ORDENAR jugadoras: primero por puntos jugados (menor a mayor), luego por dorsal
+        // ORDENAR jugadoras: primero por entrenamientos (2→1→0), luego por puntos (menor a mayor)
         const jugadorasConDatos = jugadorasDisponibles.map(j => {
+            const asistioLunes = this.jornadaActual.asistenciaLunes.includes(j.id);
+            const asistioMiercoles = this.jornadaActual.asistenciaMiercoles.includes(j.id);
+            const entrenamientos = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
+            
             return {
                 jugadora: j,
+                entrenamientos: entrenamientos,
                 puntosJugados: j.puntosJugados || 0
             };
         });
         
-        // Ordenar: por puntos jugados (ascendente: menos puntos primero), luego por dorsal
+        // Ordenar: Verde (2) > Naranja (1) > Rojo (0), dentro de cada grupo por puntos, luego por dorsal
         jugadorasConDatos.sort((a, b) => {
-            // Primero por puntos jugados (ascendente: menos puntos primero)
+            // Primero por entrenamientos (descendente: 2, 1, 0)
+            if (b.entrenamientos !== a.entrenamientos) {
+                return b.entrenamientos - a.entrenamientos;
+            }
+            // Luego por puntos jugados (ascendente: menos puntos primero)
             if (a.puntosJugados !== b.puntosJugados) {
                 return a.puntosJugados - b.puntosJugados;
             }
-            // Luego por dorsal (ascendente: menor dorsal primero)
+            // Finalmente por dorsal (ascendente: menor dorsal primero)
             return a.jugadora.dorsal - b.jugadora.dorsal;
         });
         
         // Generar lista de jugadoras
-        lista.innerHTML = jugadorasConDatos.map(({jugadora: j}) => {
+        lista.innerHTML = jugadorasConDatos.map(({jugadora: j, entrenamientos}) => {
             // Verificar si está en otros sets
             const setsActuales = [];
             if (setKey !== 'set1' && this.planificacionSets.set1.find(js => js && js.id === j.id)) setsActuales.push('1');
@@ -1572,14 +1585,18 @@
             let estadoTexto = '';
             let colorFondo = '';
             
-            if (setsActuales.length > 0) {
-                // Ya está jugando en otro set
-                estadoTexto = `⚠️ Ya en Set ${setsActuales.join(', ')}`;
-                colorFondo = 'background: #fff3cd; border-color: #ffc107;';
+            // Colores según entrenamientos
+            if (entrenamientos === 2) {
+                colorFondo = 'background: #d4edda; border-color: #28a745;'; // Verde
+            } else if (entrenamientos === 1) {
+                colorFondo = 'background: #fff3cd; border-color: #ffc107;'; // Naranja/Amarillo
             } else {
-                // No está jugando en ningún set
-                estadoTexto = '✅ Disponible';
-                colorFondo = 'background: #d4edda; border-color: #28a745;';
+                colorFondo = 'background: #f8d7da; border-color: #dc3545;'; // Rojo
+            }
+            
+            // Texto SOLO si está en otro set
+            if (setsActuales.length > 0) {
+                estadoTexto = `⚠️ Ya en Set ${setsActuales.join(', ')}`;
             }
             
             return `
@@ -1589,7 +1606,7 @@
                         <span class="jugadora-modal-rol">${emojiRol}</span>
                         <span class="jugadora-modal-nombre">${j.nombre}</span>
                     </div>
-                    <span class="jugadora-modal-estado">${estadoTexto}</span>
+                    ${estadoTexto ? `<span class="jugadora-modal-estado">${estadoTexto}</span>` : ''}
                 </div>
             `;
         }).join('');
@@ -3634,6 +3651,11 @@
                 fechaMostrar = `${ys}-${ms}-${ds}`;
             }
 
+            // Si existe fechaSeleccionada, usarla en lugar de fechaMostrar calculada
+            if (jornada.fechaSeleccionada) {
+                fechaMostrar = jornada.fechaSeleccionada;
+            }
+
             return `
                 <div class="jornada-historial" data-jornada-id="${jornada.id}">
                     <div class="jornada-fecha">
@@ -3973,8 +3995,9 @@
         document.getElementById('jornada-nueva').style.display = 'none';
         document.getElementById('jornadaActual').style.display = 'block';
         
-        // Actualizar el título de la jornada
-        document.getElementById('tituloJornada').textContent = `Jornada: Semana del ${this.formatearFecha(jornada.fechaLunes)}`;
+        // Actualizar el título de la jornada - usar fechaSeleccionada si existe
+        const fechaMostrar = jornada.fechaSeleccionada || jornada.fechaLunes;
+        document.getElementById('tituloJornada').textContent = `Jornada: Semana del ${this.formatearFecha(fechaMostrar)}`;
         
         // Actualizar títulos de días con fechas específicas
         this.actualizarTitulosDias();
@@ -4510,7 +4533,8 @@
         const bannerTexto = banner.querySelector('.banner-texto');
         
         if (jornadaPendiente) {
-            bannerTexto.textContent = `Tienes una jornada pendiente: Semana del ${this.formatearFecha(jornadaPendiente.fechaLunes)}`;
+            const fechaMostrar = jornadaPendiente.fechaSeleccionada || jornadaPendiente.fechaLunes;
+            bannerTexto.textContent = `Tienes una jornada pendiente: Semana del ${this.formatearFecha(fechaMostrar)}`;
             banner.style.display = 'block';
             document.body.classList.add('banner-activo');
             
