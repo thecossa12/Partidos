@@ -3891,7 +3891,7 @@
             // Set 1
             if (set1Data && set1Data.length > 0) {
                 html += '<div class="set-historial">';
-                html += '<strong>Set 1:</strong><br>';
+                html += '<strong>Set 1:</strong>';
                 html += '<div class="asistentes-lista">';
                 html += set1Data.filter(j => j !== null && j !== undefined).map(j => {
                     // Si j es solo ID, buscar jugadora
@@ -3907,7 +3907,7 @@
             // Set 2
             if (set2Data && set2Data.length > 0) {
                 html += '<div class="set-historial">';
-                html += '<strong>Set 2:</strong><br>';
+                html += '<strong>Set 2:</strong>';
                 html += '<div class="asistentes-lista">';
                 html += set2Data.filter(j => j !== null && j !== undefined).map(j => {
                     // Si j es solo ID, buscar jugadora
@@ -3923,7 +3923,7 @@
             // Set 3
             if (set3Data && set3Data.length > 0) {
                 html += '<div class="set-historial">';
-                html += '<strong>Set 3:</strong><br>';
+                html += '<strong>Set 3:</strong>';
                 html += '<div class="asistentes-lista">';
                 html += set3Data.filter(j => j !== null && j !== undefined).map(j => {
                     // Si j es solo ID, buscar jugadora

@@ -1912,16 +1912,17 @@ button:hover {
 
 .set-historial strong {
     color: #2e7d32;
-    display: block;
-    margin-bottom: 2px;
+    display: inline-block;
+    margin-bottom: 0px;
+    margin-right: 6px;
     font-size: 0.95rem;
 }
 
 .set-historial .asistentes-lista {
-    display: flex;
+    display: inline-flex;
     flex-wrap: wrap;
     gap: 2px;
-    margin-top: 5px;
+    margin-top: 0px;
 }
 
 .sustitucion-form select option.option-verde {
@@ -2717,8 +2718,9 @@ button:hover {
     }
     
     .set-historial strong {
-        display: block;
-        margin-bottom: 2px;
+        display: inline-block;
+        margin-bottom: 0px;
+        margin-right: 6px;
         font-size: 1rem;
     }
     
@@ -2985,38 +2987,42 @@ button:hover {
         font-size: 0.72rem !important;
     }
     
+    .sets-container {
+        gap: 15px;
+    }
+    
     .set-container-campo {
         min-height: 95px;
-        padding: 4px;
+        padding: 3px;
     }
     
     .posicion-campo {
-        min-height: 34px;
-        max-height: 40px;
-        padding: 4px 5px;
+        min-height: 40px;
+        max-height: 46px;
+        padding: 3px 3px;
         font-size: 0.55rem;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 2px;
+        gap: 1px;
     }
     
     .dorsal-campo {
-        font-size: 0.58rem;
+        font-size: 0.5rem;
         line-height: 1;
         display: inline;
         font-weight: bold;
     }
     
     .rol-campo {
-        font-size: 0.85rem;
-        margin: 0 3px;
+        font-size: 0.7rem;
+        margin: 0 2px;
         display: inline;
     }
     
     .nombre-campo {
-        font-size: 0.55rem;
+        font-size: 0.62rem;
         max-width: 100%;
         line-height: 1.1;
         display: block;
@@ -3024,6 +3030,7 @@ button:hover {
         text-overflow: ellipsis;
         white-space: nowrap;
         text-align: center;
+        font-weight: 600;
     }
     
     .numero-posicion {
@@ -3039,8 +3046,8 @@ button:hover {
     }
     
     .fila-campo {
-        gap: 2px;
-        margin-bottom: 2px;
+        gap: 1px;
+        margin-bottom: 1px;
     }
     
     .suplentes-container {
