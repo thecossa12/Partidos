@@ -185,6 +185,68 @@ app.post('/api/jornadas/delete-multiple', async (req, res) => {
     }
 });
 
+// ==================== ENDPOINTS DE USUARIOS ====================
+
+// Obtener todos los usuarios
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await db.collection('users').find({}).toArray();
+        res.json(users);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Crear usuario
+app.post('/api/users', async (req, res) => {
+    try {
+        const user = req.body;
+        
+        // Verificar si el usuario ya existe
+        const existingUser = await db.collection('users').findOne({ username: user.username });
+        if (existingUser) {
+            return res.status(400).json({ error: 'El usuario ya existe' });
+        }
+        
+        const newUser = {
+            ...user,
+            createdAt: new Date().toISOString(),
+            lastLogin: null
+        };
+        
+        const result = await db.collection('users').insertOne(newUser);
+        res.json({ success: true, user: { ...newUser, _id: result.insertedId } });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Login (verificar credenciales)
+app.post('/api/users/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        
+        const user = await db.collection('users').findOne({ username });
+        if (!user) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+        
+        if (user.password !== password) {
+            return res.status(401).json({ error: 'Contraseña incorrecta' });
+        }
+        
+        // Actualizar último login
+        await db.collection('users').updateOne(
+            { username },
+            { $set: { lastLogin: new Date().toISOString() } }
+        );
+        
+        res.json({ success: true, user: { username: user.username, name: user.name, isAdmin: user.isAdmin } });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ==================== ENDPOINT DE SINCRONIZACIÓN ====================
 
 // Sincronización completa (reemplaza todos los datos del usuario)

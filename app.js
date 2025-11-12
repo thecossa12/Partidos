@@ -4255,57 +4255,6 @@
         
         document.getElementById('resetearEstadisticas')?.addEventListener('click', () => this.resetearEstadisticas());
         
-        // Botón para migrar a MongoDB
-        document.getElementById('migrateToMongoDB')?.addEventListener('click', async () => {
-            if (!confirm('⚠️ ¿Estás seguro de que quieres migrar todos los datos a MongoDB?\n\nEsto enviará todos los jugadores y jornadas de localStorage a la base de datos.\n\nAsegúrate de que el servidor está corriendo en http://localhost:3000')) {
-                return;
-            }
-            
-            try {
-                // Obtener el usuario actual del localStorage
-                const authData = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
-                const userId = authData.username || 'admin'; // Usar username como userId
-                
-                const jugadores = this.jugadoras || [];
-                const jornadas = this.jornadas || [];
-                
-                if (jugadores.length === 0 && jornadas.length === 0) {
-                    alert('❌ No hay datos para migrar');
-                    return;
-                }
-                
-                console.log('🔄 Iniciando migración...', { 
-                    userId, 
-                    jugadores: jugadores.length, 
-                    jornadas: jornadas.length 
-                });
-                
-                const response = await fetch(`${this.API_URL}/migrate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ jugadores, jornadas, userId })
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Error en la respuesta del servidor');
-                }
-                
-                const result = await response.json();
-                
-                alert(`✅ ¡Migración completada con éxito!\n\n` +
-                      `👤 Usuario: ${result.userId}\n` +
-                      `👥 Jugadores migrados: ${result.jugadoresCount}\n` +
-                      `📅 Jornadas migradas: ${result.jornadasCount}\n\n` +
-                      `Verifica los datos en MongoDB Atlas`);
-                
-                console.log('✅ Migración exitosa:', result);
-                
-            } catch (error) {
-                console.error('❌ Error en la migración:', error);
-                alert('❌ Error durante la migración:\n\n' + error.message + '\n\nAsegúrate de que el servidor está corriendo en http://localhost:3000');
-            }
-        });
-        
         // Historial
         document.getElementById('filtrarHistorial')?.addEventListener('click', () => this.filtrarHistorial());
         document.getElementById('limpiarFiltro')?.addEventListener('click', () => this.limpiarFiltros());
@@ -5918,8 +5867,6 @@ function initSystemUsersEditor() {
     document.getElementById('add-system-user-btn').addEventListener('click', addSystemUserRow);
     document.getElementById('save-system-users-btn').addEventListener('click', saveSystemUsersLocally);
     document.getElementById('load-current-users-btn').addEventListener('click', loadCurrentSystemUsers);
-    document.getElementById('generate-code-btn').addEventListener('click', generateGitHubCode);
-    // NO configurar copy-github-code-btn aquí porque el elemento no existe hasta que se genera el código
     
     // Cargar usuarios actuales por defecto
     loadCurrentSystemUsers();
@@ -5995,76 +5942,6 @@ function saveSystemUsersLocally() {
     
     console.log('✅ Usuarios guardados:', Object.keys(usersObject));
     showNotification('✅ Usuarios guardados correctamente', 'success');
-}
-
-function generateGitHubCode() {
-    console.log('📝 Generando código para GitHub');
-    
-    // Validar campos
-    const invalid = systemUsersConfig.find(u => !u.username || !u.password || !u.name);
-    if (invalid) {
-        showNotification('❌ Todos los campos son obligatorios', 'error');
-        return;
-    }
-    
-    // Validar duplicados
-    const usernames = systemUsersConfig.map(u => u.username);
-    const duplicates = usernames.filter((item, index) => usernames.indexOf(item) !== index);
-    if (duplicates.length > 0) {
-        showNotification(`❌ Usuarios duplicados: ${duplicates.join(', ')}`, 'error');
-        return;
-    }
-    
-    // Generar código
-    let code = 'const systemUsers = {\n';
-    
-    systemUsersConfig.forEach((user, index) => {
-        code += `    ${user.username}: {\n`;
-        code += `        username: '${user.username}',\n`;
-        code += `        password: '${user.password}',\n`;
-        code += `        name: '${user.name}',\n`;
-        code += `        isAdmin: ${user.isAdmin},\n`;
-        code += `        createdAt: '${new Date().toISOString()}',\n`;
-        code += `        lastLogin: null\n`;
-        code += `    }${index < systemUsersConfig.length - 1 ? ',' : ''}\n`;
-    });
-    
-    code += '};';
-    
-    // Mostrar código
-    document.getElementById('github-code').textContent = code;
-    document.getElementById('github-code-section').style.display = 'block';
-    
-    // Configurar botón de copiar AHORA que el elemento existe
-    const copyBtn = document.getElementById('copy-github-code-btn');
-    if (copyBtn && !copyBtn.hasAttribute('data-listener-set')) {
-        copyBtn.addEventListener('click', copyGitHubCode);
-        copyBtn.setAttribute('data-listener-set', 'true');
-    }
-    
-    // Scroll al código
-    document.getElementById('github-code-section').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
-    showNotification('✅ Código generado. Copia y pega en auth.js línea ~202', 'success');
-}
-
-function copyGitHubCode() {
-    const code = document.getElementById('github-code').textContent;
-    
-    navigator.clipboard.writeText(code).then(() => {
-        showNotification('✅ Código copiado al portapapeles', 'success');
-        
-        const btn = document.getElementById('copy-github-code-btn');
-        const originalText = btn.textContent;
-        btn.textContent = '✅ Copiado';
-        
-        setTimeout(() => {
-            btn.textContent = originalText;
-        }, 2000);
-    }).catch(err => {
-        showNotification('❌ Error al copiar. Selecciona y copia manualmente', 'error');
-        console.error('Error:', err);
-    });
 }
 
 function renderSystemUsersEditor() {

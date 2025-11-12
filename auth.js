@@ -39,7 +39,7 @@ window.Auth = {
     },
     
     // Funciones para gestión de usuarios
-    createUser: function(username, password, name, isAdmin = false) {
+    createUser: async function(username, password, name, isAdmin = false) {
         console.log('🆕 Creando usuario:', username);
         console.log('📋 Datos:', {username, password, name, isAdmin});
         
@@ -50,7 +50,7 @@ window.Auth = {
             return { success: false, message: 'El usuario ya existe' };
         }
         
-        users[username] = {
+        const newUser = {
             username: username,
             password: password, // En producción debería estar hasheado
             name: name,
@@ -59,10 +59,33 @@ window.Auth = {
             lastLogin: null
         };
         
+        users[username] = newUser;
+        
         console.log('👥 Usuarios después de agregar:', Object.keys(users));
         console.log('💾 Guardando usuarios...');
         
         this.saveUsers(users);
+        
+        // Sincronizar con MongoDB
+        try {
+            const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:3000/api'
+                : window.location.origin + '/api';
+            
+            const response = await fetch(`${API_URL}/users`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newUser)
+            });
+            
+            if (response.ok) {
+                console.log('☁️ Usuario sincronizado con MongoDB');
+            } else {
+                console.warn('⚠️ No se pudo sincronizar con MongoDB, guardado solo en localStorage');
+            }
+        } catch (error) {
+            console.warn('⚠️ Error sincronizando usuario con MongoDB:', error.message);
+        }
         
         // Verificar que se guardó correctamente
         const savedUsers = this.getUsers();
