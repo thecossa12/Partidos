@@ -2479,9 +2479,13 @@ button:hover {
         padding: 4px;
     }
     
+    .sets-container {
+        gap: 15px;
+    }
+    
     .set-container-campo {
         min-height: 100px;
-        padding: 4px;
+        padding: 3px;
         max-width: 100%;
     }
     
