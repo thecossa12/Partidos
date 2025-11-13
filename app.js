@@ -967,8 +967,8 @@
                         <div class="jugadora-card ${isSelected ? 'selected' : ''} ${lesionadaClass}" 
                              onclick="app.toggleAsistencia('${grid.asistencia}', ${jugadora.id})">
                             <div class="jugadora-header">
-                                <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
                                 <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
+                                <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
                                 <span class="jugadora-nombre">${lesionadaIcon}${jugadora.nombre}</span>
                             </div>
                             ${jugadora.lesionada ? '<div class="warning-lesion">⚠️ LESIONADA</div>' : ''}
