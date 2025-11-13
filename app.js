@@ -3561,7 +3561,8 @@
                                 Partidos Jugados: ${jugadora.partidosJugados || 0} | 
                                 Sustituciones: ${totalSustituciones} | 
                                 Puntos Totales: ${jugadora.puntosJugados || 0} | 
-                                Entrenamientos: ${jugadora.entrenamientosAsistidos || 0}
+                                Entrenamientos: ${jugadora.entrenamientosAsistidos || 0} |
+                                Lesiones: ${jugadora.lesionada ? '1 (Activa)' : '0'}
                             </div>
                         </div>
                         <div>
@@ -3717,12 +3718,18 @@
     }
 
     gestionarLesion(jugadoraId) {
+        console.log('🩹 Abriendo modal de lesión para jugadora ID:', jugadoraId);
         const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
-        if (!jugadora) return;
+        if (!jugadora) {
+            console.error('❌ Jugadora no encontrada:', jugadoraId);
+            return;
+        }
+
+        console.log('✅ Jugadora encontrada:', jugadora.nombre);
 
         // Crear modal dinámicamente
         const modalHTML = `
-            <div id="modalLesion" class="modal" style="display: block;">
+            <div id="modalLesion" class="modal" style="display: flex;">
                 <div class="modal-content modal-lesion">
                     <span class="close" onclick="document.getElementById('modalLesion').remove()">&times;</span>
                     <h2>🩹 Gestionar Lesión - ${jugadora.nombre}</h2>
@@ -5242,6 +5249,8 @@ function verInfoJugadoraGlobal(jugadoraId) {
                 <p><strong>Sustituciones:</strong> ${totalSustituciones}</p>
                 <p><strong>Puntos Totales:</strong> ${jugadora.puntosJugados || 0}</p>
                 <p><strong>Entrenamientos:</strong> ${jugadora.entrenamientosAsistidos || 0}</p>
+                <p><strong>Lesiones:</strong> ${jugadora.lesionada ? '1 (🩹 Activa)' : '0'}</p>
+                ${jugadora.lesionada && jugadora.notasLesion ? `<p style="background: #fff3e0; padding: 10px; border-radius: 5px; border-left: 4px solid #ff9800;"><strong>📝 Nota:</strong> ${jugadora.notasLesion}</p>` : ''}
             </div>
             
             <div style="text-align: center;">

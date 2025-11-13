@@ -1900,12 +1900,12 @@ button:hover {
 }
 
 .jornada-historial {
-    background: white;
+    background: transparent;
     border-radius: 10px;
     padding: 0;
     margin-bottom: 15px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    border-left: 4px solid #667eea;
+    box-shadow: none;
+    border-left: none;
     width: 100%;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -1913,7 +1913,14 @@ button:hover {
 }
 
 .jornada-historial.colapsada {
-    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+    box-shadow: none;
+    background: transparent;
+}
+
+.jornada-historial:not(.colapsada) {
+    background: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border-left: 4px solid #667eea;
 }
 
 /* Cuando está colapsada, el detalle debe estar completamente oculto SIN ocupar espacio */
@@ -1933,6 +1940,13 @@ button:hover {
     cursor: pointer;
     background: #f8f9fa;
     transition: background 0.3s ease;
+    border-radius: 10px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+}
+
+.jornada-historial:not(.colapsada) .jornada-header {
+    border-radius: 10px 10px 0 0;
+    box-shadow: none;
 }
 
 .jornada-header:hover {
@@ -2782,6 +2796,52 @@ button:hover {
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
         gap: 12px;
         justify-content: center;
+    }
+    
+    /* Botones de acción en jugadora-item */
+    .jugadora-item > div:last-child {
+        flex-wrap: wrap;
+        gap: 5px;
+    }
+    
+    .lesion-btn, .info-btn, .edit-btn, .delete-btn {
+        font-size: 0.75rem;
+        padding: 6px 10px;
+        flex: 1 1 45%;
+        min-width: 70px;
+    }
+    
+    /* Modal de lesiones responsive */
+    .modal-lesion {
+        width: 95%;
+        max-width: 95%;
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .modal-lesion h2 {
+        font-size: 1.2rem;
+        margin-bottom: 15px;
+    }
+    
+    .estado-label {
+        font-size: 1.1rem;
+        padding: 8px 15px;
+    }
+    
+    .notas-container textarea {
+        font-size: 0.9rem;
+        min-height: 80px;
+    }
+    
+    .modal-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .btn-guardar, .btn-cancelar {
+        width: 100%;
+        padding: 10px 20px;
     }
     
     .jugadora-card {
