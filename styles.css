@@ -6098,6 +6098,38 @@ input:checked + .slider:before {
     font-style: italic;
 }
 
+/* Campo de polideportivo de casa */
+.campo-polideportivo-casa {
+    padding: 15px;
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+
+.campo-polideportivo-casa label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2e7d32;
+}
+
+.btn-guardar-casa {
+    background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+}
+
+.btn-guardar-casa:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(67, 160, 71, 0.4);
+}
+
 @media (max-width: 768px) {
     .btn-gestionar-datos {
         font-size: 0.8rem;
@@ -6117,7 +6149,24 @@ input:checked + .slider:before {
     .btn-eliminar-item {
         width: 100%;
     }
+    
+    .campo-polideportivo-casa {
+        padding: 12px;
+    }
+    
+    .campo-polideportivo-casa > div {
+        flex-direction: column !important;
+    }
+    
+    .btn-guardar-casa {
+        width: 100%;
+        margin-top: 5px;
+    }
 }
+    
+    
+    
+    
     
     
     

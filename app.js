@@ -428,6 +428,24 @@
     async cargarListasGestionDatos() {
         const config = await this.cargarConfiguracion();
         
+        // Cargar polideportivo de casa
+        const seccionCasa = document.getElementById('seccion-polideportivo-casa');
+        if (seccionCasa) {
+            const polideportivoCasa = config.polideportivoCasa || '';
+            seccionCasa.innerHTML = `
+                <div class="campo-polideportivo-casa">
+                    <label>📍 Polideportivo de Casa:</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="inputPolideportivoCasa" value="${polideportivoCasa}" 
+                               placeholder="Ej: Mariano Benlliure" 
+                               style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                        <button class="btn-guardar-casa" onclick="app.guardarPolideportivoCasa()">💾 Guardar</button>
+                    </div>
+                    ${polideportivoCasa ? `<small style="color: #666; margin-top: 5px; display: block;">Actual: ${polideportivoCasa}</small>` : ''}
+                </div>
+            `;
+        }
+        
         // Cargar lista de ubicaciones
         const listaUbicaciones = document.getElementById('lista-ubicaciones');
         if (listaUbicaciones) {
@@ -461,34 +479,58 @@
         }
     }
 
-    async eliminarUbicacion(ubicacion) {
-        const confirmado = await this.mostrarConfirmacion(
-            'Eliminar Ubicación',
-            `¿Estás seguro de eliminar "${ubicacion}"?`
-        );
+    async guardarPolideportivoCasa() {
+        const input = document.getElementById('inputPolideportivoCasa');
+        if (!input) return;
         
-        if (confirmado) {
-            const config = await this.cargarConfiguracion();
-            config.ubicacionesGuardadas = config.ubicacionesGuardadas.filter(u => u !== ubicacion);
-            await this.guardarConfiguracion(config);
-            await this.populateAutocompleteDataLists();
-            await this.cargarListasGestionDatos();
+        const nuevoPolideportivo = input.value.trim();
+        if (nuevoPolideportivo === '') {
+            alert('⚠️ Por favor, introduce un nombre para el polideportivo de casa');
+            return;
         }
+        
+        const config = await this.cargarConfiguracion();
+        config.polideportivoCasa = nuevoPolideportivo;
+        await this.guardarConfiguracion(config);
+        await this.populateAutocompleteDataLists();
+        await this.cargarListasGestionDatos();
+        
+        // Mostrar notificación
+        showNotification('✅ Polideportivo de casa guardado correctamente', 'success');
+    }
+
+    async eliminarUbicacion(ubicacion) {
+        return new Promise((resolve) => {
+            showConfirmModal(
+                'Eliminar Ubicación',
+                `¿Estás seguro de eliminar "${ubicacion}"?`,
+                async () => {
+                    const config = await this.cargarConfiguracion();
+                    config.ubicacionesGuardadas = config.ubicacionesGuardadas.filter(u => u !== ubicacion);
+                    await this.guardarConfiguracion(config);
+                    await this.populateAutocompleteDataLists();
+                    await this.cargarListasGestionDatos();
+                    resolve(true);
+                }
+            );
+        });
     }
 
     async eliminarRival(rival) {
-        const confirmado = await this.mostrarConfirmacion(
-            'Eliminar Rival',
-            `¿Estás seguro de eliminar "${rival}"?`
-        );
-        
-        if (confirmado) {
-            const config = await this.cargarConfiguracion();
-            config.rivalesGuardados = config.rivalesGuardados.filter(r => r !== rival);
-            await this.guardarConfiguracion(config);
-            await this.populateAutocompleteDataLists();
-            await this.cargarListasGestionDatos();
-        }
+        return new Promise((resolve) => {
+            showConfirmModal(
+                'Eliminar Rival',
+                `¿Estás seguro de eliminar "${rival}"?`,
+                async () => {
+                    const config = await this.cargarConfiguracion();
+                    config.rivalesGuardados = config.rivalesGuardados.filter(r => r !== rival);
+                    await this.guardarConfiguracion(config);
+                    await this.populateAutocompleteDataLists();
+                    await this.cargarListasGestionDatos();
+                    resolve(true);
+                }
+            );
+        });
     }
 
     // ==================== INICIALIZACIÓN ====================
