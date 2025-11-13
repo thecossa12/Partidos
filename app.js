@@ -295,8 +295,15 @@
     guardarJornadas() {
         const userId = this.getUserId();
         localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
-        // Sincronización automática con MongoDB
+        // Sincronización automática con MongoDB (no esperar, es asíncrona)
         this.syncToMongoDB('jornadas', 'save');
+    }
+    
+    async guardarJornadasSync() {
+        const userId = this.getUserId();
+        localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
+        // Sincronización SÍNCRONA con MongoDB (esperar a que termine)
+        await this.syncToMongoDB('jornadas', 'save');
     }
 
     // ==================== INICIALIZACIÓN ====================
@@ -4158,7 +4165,10 @@
         const detalle = jornadaElement.querySelector('.jornada-detalle');
         const icono = jornadaElement.querySelector('.icono-expandir');
         
-        if (detalle.style.display === 'none') {
+        // Verificar si está oculto (puede ser 'none' o '')
+        const estaOculto = detalle.style.display === 'none' || detalle.style.display === '';
+        
+        if (estaOculto) {
             detalle.style.display = 'grid';
             icono.textContent = '▼';
             jornadaElement.classList.remove('colapsada');
@@ -4707,7 +4717,7 @@
         this.actualizarListaHistorial();
     }
 
-    eliminarJornada(jornadaId, mostrarConfirmacion = true) {
+    async eliminarJornada(jornadaId, mostrarConfirmacion = true) {
         if (mostrarConfirmacion) {
             const jornada = this.jornadas.find(j => j.id === jornadaId);
             if (!jornada) return;
@@ -4757,7 +4767,9 @@
         
         // Eliminar la jornada
         this.jornadas = this.jornadas.filter(j => j.id !== jornadaId);
-        this.guardarJornadas();
+        
+        // Guardar de forma SÍNCRONA para asegurar que MongoDB se actualice
+        await this.guardarJornadasSync();
         
         if (mostrarConfirmacion) {
             this.recalcularEstadisticasCompletas();
