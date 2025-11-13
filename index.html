@@ -73,7 +73,10 @@
         <!-- Contenido de Jornadas -->
         <div id="jornadas" class="tab-content active">
             <div id="jornada-nueva">
-                <h3>Nueva Jornada</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <h3 style="margin: 0;">Nueva Jornada</h3>
+                    <button id="btnGestionarDatos" class="btn-gestionar-datos" onclick="app.abrirModalGestionDatos()">⚙️ Gestionar Ubicaciones/Rivales</button>
+                </div>
                 <div class="jornada-config">
                     <input type="date" id="fechaJornada">
                     
@@ -429,8 +432,32 @@
         </div>
     </div>
 
+    <!-- Modal para gestionar ubicaciones y rivales -->
+    <div id="modal-gestion-datos" class="modal" style="display: none;">
+        <div class="modal-content modal-gestion-datos-content">
+            <div class="modal-header">
+                <h4>⚙️ Gestionar Ubicaciones y Rivales</h4>
+                <button class="btn-cerrar-modal" onclick="app.cerrarModalGestionDatos()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="gestion-seccion">
+                    <h5>📍 Ubicaciones Guardadas</h5>
+                    <div id="lista-ubicaciones" class="lista-gestion-datos">
+                        <!-- Se genera dinámicamente -->
+                    </div>
+                </div>
+                <div class="gestion-seccion">
+                    <h5>🏐 Rivales Guardados</h5>
+                    <div id="lista-rivales" class="lista-gestion-datos">
+                        <!-- Se genera dinámicamente -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="auth.js"></script>
     <script src="api-utils.js"></script>
-    <script src="app.js?v=2025102036"></script>
+    <script src="app.js?v=2025102036">
 </body>
 </html>

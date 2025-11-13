@@ -409,6 +409,88 @@
         }
     }
 
+    // ==================== GESTIÓN DE UBICACIONES Y RIVALES ====================
+    async abrirModalGestionDatos() {
+        const modal = document.getElementById('modal-gestion-datos');
+        if (modal) {
+            modal.style.display = 'flex';
+            await this.cargarListasGestionDatos();
+        }
+    }
+
+    cerrarModalGestionDatos() {
+        const modal = document.getElementById('modal-gestion-datos');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    async cargarListasGestionDatos() {
+        const config = await this.cargarConfiguracion();
+        
+        // Cargar lista de ubicaciones
+        const listaUbicaciones = document.getElementById('lista-ubicaciones');
+        if (listaUbicaciones) {
+            if (config.ubicacionesGuardadas.length === 0) {
+                listaUbicaciones.innerHTML = '<div class="lista-vacia">No hay ubicaciones guardadas</div>';
+            } else {
+                listaUbicaciones.innerHTML = config.ubicacionesGuardadas
+                    .map(ubicacion => `
+                        <div class="item-gestion">
+                            <span class="item-gestion-texto">${ubicacion}</span>
+                            <button class="btn-eliminar-item" onclick="app.eliminarUbicacion('${ubicacion.replace(/'/g, "\\'")}')">❌ Eliminar</button>
+                        </div>
+                    `).join('');
+            }
+        }
+        
+        // Cargar lista de rivales
+        const listaRivales = document.getElementById('lista-rivales');
+        if (listaRivales) {
+            if (config.rivalesGuardados.length === 0) {
+                listaRivales.innerHTML = '<div class="lista-vacia">No hay rivales guardados</div>';
+            } else {
+                listaRivales.innerHTML = config.rivalesGuardados
+                    .map(rival => `
+                        <div class="item-gestion">
+                            <span class="item-gestion-texto">${rival}</span>
+                            <button class="btn-eliminar-item" onclick="app.eliminarRival('${rival.replace(/'/g, "\\'")}')">❌ Eliminar</button>
+                        </div>
+                    `).join('');
+            }
+        }
+    }
+
+    async eliminarUbicacion(ubicacion) {
+        const confirmado = await this.mostrarConfirmacion(
+            'Eliminar Ubicación',
+            `¿Estás seguro de eliminar "${ubicacion}"?`
+        );
+        
+        if (confirmado) {
+            const config = await this.cargarConfiguracion();
+            config.ubicacionesGuardadas = config.ubicacionesGuardadas.filter(u => u !== ubicacion);
+            await this.guardarConfiguracion(config);
+            await this.populateAutocompleteDataLists();
+            await this.cargarListasGestionDatos();
+        }
+    }
+
+    async eliminarRival(rival) {
+        const confirmado = await this.mostrarConfirmacion(
+            'Eliminar Rival',
+            `¿Estás seguro de eliminar "${rival}"?`
+        );
+        
+        if (confirmado) {
+            const config = await this.cargarConfiguracion();
+            config.rivalesGuardados = config.rivalesGuardados.filter(r => r !== rival);
+            await this.guardarConfiguracion(config);
+            await this.populateAutocompleteDataLists();
+            await this.cargarListasGestionDatos();
+        }
+    }
+
     // ==================== INICIALIZACIÓN ====================
     inicializarApp() {
         // Sincronizar todas las jornadas existentes al iniciar
