@@ -781,9 +781,9 @@
         console.log('🔄 Generando grids de asistencia... Jugadoras disponibles:', this.jugadoras.length);
         
         const grids = [
-            { id: 'asistenciaLunesGrid', asistencia: 'asistenciaLunes' },
-            { id: 'asistenciaMiercolesGrid', asistencia: 'asistenciaMiercoles' }, 
-            { id: 'asistenciaSabadoGrid', asistencia: 'asistenciaSabado' }
+            { id: 'asistenciaLunesGrid', asistencia: 'asistenciaLunes', dia: 'Lunes' },
+            { id: 'asistenciaMiercolesGrid', asistencia: 'asistenciaMiercoles', dia: 'Miércoles' }, 
+            { id: 'asistenciaSabadoGrid', asistencia: 'asistenciaSabado', dia: 'Sábado' }
         ];
         
         grids.forEach(grid => {
@@ -796,7 +796,14 @@
                     return;
                 }
                 
-                const htmlContent = this.jugadoras.map(jugadora => {
+                // Ordenar jugadoras por dorsal
+                const jugadorasOrdenadas = [...this.jugadoras].sort((a, b) => a.dorsal - b.dorsal);
+                
+                // Calcular seleccionadas para este día
+                const seleccionadas = this.jornadaActual ? this.jornadaActual[grid.asistencia].length : 0;
+                const total = this.jugadoras.length;
+                
+                const htmlContent = jugadorasOrdenadas.map(jugadora => {
                     const isSelected = this.jornadaActual && this.jornadaActual[grid.asistencia].includes(jugadora.id);
                     return `
                         <div class="jugadora-card ${isSelected ? 'selected' : ''}" 
@@ -810,8 +817,15 @@
                     `;
                 }).join('');
                 
-                gridElement.innerHTML = htmlContent;
-                console.log(`✅ Grid ${grid.id} actualizado con ${this.jugadoras.length} jugadoras`);
+                // Añadir contador antes de las jugadoras
+                gridElement.innerHTML = `
+                    <div class="contador-asistencia">
+                        <strong>Seleccionados/as: ${seleccionadas}/${total}</strong>
+                    </div>
+                    ${htmlContent}
+                `;
+                
+                console.log(`✅ Grid ${grid.id} actualizado con ${this.jugadoras.length} jugadoras (ordenadas por dorsal)`);
             } else {
                 console.log(`❌ No se encontró el elemento ${grid.id}`);
             }
@@ -1666,6 +1680,24 @@
                 }
             });
             modal.setAttribute('data-esc-listener', 'true');
+        }
+        
+        // Listener para cerrar al hacer clic fuera del modal
+        if (!modal.hasAttribute('data-click-listener')) {
+            // Prevenir que clicks en el contenido cierren el modal
+            const modalContent = modal.querySelector('.modal-seleccion-content');
+            if (modalContent) {
+                modalContent.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                });
+            }
+            
+            // Cerrar al hacer clic en el overlay (fondo)
+            modal.addEventListener('click', () => {
+                this.cerrarModalSeleccion();
+            });
+            
+            modal.setAttribute('data-click-listener', 'true');
         }
     }
 
@@ -3778,7 +3810,14 @@
             return;
         }
         
-        container.innerHTML = jornadas.map(jornada => {
+        // Ordenar jornadas de más reciente a más antigua
+        const jornadasOrdenadas = [...jornadas].sort((a, b) => {
+            const fechaA = a.fechaSeleccionada || a.fechaSabado || a.fechaLunes;
+            const fechaB = b.fechaSeleccionada || b.fechaSabado || b.fechaLunes;
+            return fechaB.localeCompare(fechaA); // Descendente (más reciente primero)
+        });
+        
+        container.innerHTML = jornadasOrdenadas.map(jornada => {
             const jugadorasLunes = jornada.asistenciaLunes?.map(id => 
                 this.jugadoras.find(j => j.id === id)?.nombre
             ).filter(n => n) || [];
@@ -3811,16 +3850,17 @@
             }
 
             return `
-                <div class="jornada-historial" data-jornada-id="${jornada.id}">
-                    <div class="jornada-fecha">
-                        <div class="jornada-info">
-                            <input type="checkbox" class="checkbox-jornada" value="${jornada.id}">
-                            Semana del ${this.formatearFecha(fechaMostrar)}
+                <div class="jornada-historial colapsada" data-jornada-id="${jornada.id}">
+                    <div class="jornada-header" onclick="app.toggleJornadaDetalle(${jornada.id})">
+                        <div class="jornada-header-izquierda">
+                            <input type="checkbox" class="checkbox-jornada" value="${jornada.id}" onclick="event.stopPropagation()">
+                            <span class="icono-expandir">▶</span>
+                            <span class="jornada-titulo">Semana del ${this.formatearFecha(fechaMostrar)}</span>
                             <span class="estado ${jornada.completada ? 'completada' : 'pendiente'}">
                                 ${jornada.completada ? '✅ Completada' : '⏳ Pendiente'}
                             </span>
                         </div>
-                        <div class="jornada-acciones">
+                        <div class="jornada-acciones" onclick="event.stopPropagation()">
                             ${!jornada.completada ? `
                                 <button onclick="app.continuarEditandoJornada(${jornada.id})" class="btn-editar-jornada">✏️ Editar</button>
                                 <button onclick="app.eliminarJornada(${jornada.id})" class="btn-eliminar-jornada">🗑️</button>
@@ -3828,7 +3868,7 @@
                         </div>
                     </div>
                     
-                    <div class="jornada-detalle">
+                    <div class="jornada-detalle" style="display: none;">
                         <div class="dia-detalle">
                             <h5>📅 Lunes</h5>
                             <div class="asistentes-lista">
@@ -4107,6 +4147,25 @@
             this.guardarJornadas();
             this.actualizarHistorial();
             alert('Jornada eliminada');
+        }
+    }
+
+    // Toggle para expandir/colapsar detalles de una jornada en el historial
+    toggleJornadaDetalle(jornadaId) {
+        const jornadaElement = document.querySelector(`[data-jornada-id="${jornadaId}"]`);
+        if (!jornadaElement) return;
+        
+        const detalle = jornadaElement.querySelector('.jornada-detalle');
+        const icono = jornadaElement.querySelector('.icono-expandir');
+        
+        if (detalle.style.display === 'none') {
+            detalle.style.display = 'grid';
+            icono.textContent = '▼';
+            jornadaElement.classList.remove('colapsada');
+        } else {
+            detalle.style.display = 'none';
+            icono.textContent = '▶';
+            jornadaElement.classList.add('colapsada');
         }
     }
 
@@ -4659,6 +4718,41 @@
             );
             
             if (!confirmacion) return;
+        }
+        
+        // Si es la jornada actual en edición, limpiar completamente
+        if (this.jornadaActual && this.jornadaActual.id === jornadaId) {
+            this.jornadaActual = null;
+            this.planificacionSets = {
+                set1: [],
+                set2: [],
+                set3: []
+            };
+            
+            // Ocultar el planificador
+            const planificadorContainer = document.getElementById('planificadorSets');
+            if (planificadorContainer) {
+                planificadorContainer.style.display = 'none';
+                planificadorContainer.innerHTML = '';
+            }
+            
+            // Ocultar la vista de jornada actual
+            const jornadaActualDiv = document.getElementById('jornadaActual');
+            if (jornadaActualDiv) {
+                jornadaActualDiv.style.display = 'none';
+            }
+            
+            // Resetear el paso actual
+            this.pasoActual = null;
+        }
+        
+        // Si es la jornada pendiente del banner, limpiar el banner
+        if (this.jornadaPendienteId === jornadaId) {
+            this.jornadaPendienteId = null;
+            const banner = document.getElementById('bannerJornadaPendiente');
+            if (banner) {
+                banner.style.display = 'none';
+            }
         }
         
         // Eliminar la jornada

@@ -1087,6 +1087,22 @@ button:hover {
     justify-content: center;
 }
 
+/* Contador de asistencia */
+.contador-asistencia {
+    grid-column: 1 / -1;
+    background: #e3f2fd;
+    border: 2px solid #2196f3;
+    border-radius: 8px;
+    padding: 10px 15px;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.contador-asistencia strong {
+    color: #1565c0;
+    font-size: 1rem;
+}
+
 /* Leyenda de colores para entrenamientos */
 .leyenda-entrenamientos {
     background: #f8f9fa;
@@ -1799,13 +1815,52 @@ button:hover {
 .jornada-historial {
     background: white;
     border-radius: 10px;
-    padding: clamp(15px, 4vw, 25px);
+    padding: 0;
     margin-bottom: 15px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     border-left: 4px solid #667eea;
     width: 100%;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    overflow: hidden;
+}
+
+.jornada-historial.colapsada {
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+}
+
+.jornada-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: clamp(12px, 3vw, 18px) clamp(15px, 4vw, 25px);
+    cursor: pointer;
+    background: #f8f9fa;
+    transition: background 0.3s ease;
+}
+
+.jornada-header:hover {
+    background: #e9ecef;
+}
+
+.jornada-header-izquierda {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.icono-expandir {
+    color: #667eea;
+    font-size: 0.9rem;
+    font-weight: bold;
+    transition: transform 0.3s ease;
+}
+
+.jornada-titulo {
+    font-weight: 600;
+    color: #333;
+    font-size: 1.1rem;
 }
 
 .jornada-fecha {
@@ -1816,6 +1871,11 @@ button:hover {
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+
+.jornada-detalle {
+    padding: clamp(15px, 4vw, 25px);
+    background: white;
 }
 
 .btn-eliminar-jornada {
