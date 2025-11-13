@@ -438,7 +438,7 @@
                     .map(ubicacion => `
                         <div class="item-gestion">
                             <span class="item-gestion-texto">${ubicacion}</span>
-                            <button class="btn-eliminar-item" onclick="app.eliminarUbicacion('${ubicacion.replace(/'/g, "\\'")}')">❌ Eliminar</button>
+                            <button class="btn-eliminar-item" data-tipo="ubicacion" data-valor="${ubicacion}">❌ Eliminar</button>
                         </div>
                     `).join('');
             }
@@ -454,7 +454,7 @@
                     .map(rival => `
                         <div class="item-gestion">
                             <span class="item-gestion-texto">${rival}</span>
-                            <button class="btn-eliminar-item" onclick="app.eliminarRival('${rival.replace(/'/g, "\\'")}')">❌ Eliminar</button>
+                            <button class="btn-eliminar-item" data-tipo="rival" data-valor="${rival}">❌ Eliminar</button>
                         </div>
                     `).join('');
             }
@@ -5900,6 +5900,34 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // CERRAR MODALES NUEVAMENTE DESPUÉS DE CARGAR
         setTimeout(() => closeAllModals(), 500);
+        
+        // Configurar event listeners para gestión de datos
+        const btnGestionarDatos = document.getElementById('btnGestionarDatos');
+        if (btnGestionarDatos) {
+            btnGestionarDatos.addEventListener('click', () => app.abrirModalGestionDatos());
+        }
+        
+        const btnCerrarModalGestion = document.getElementById('btnCerrarModalGestion');
+        if (btnCerrarModalGestion) {
+            btnCerrarModalGestion.addEventListener('click', () => app.cerrarModalGestionDatos());
+        }
+        
+        // Event delegation para botones de eliminar (ubicaciones y rivales)
+        const modalGestionDatos = document.getElementById('modal-gestion-datos');
+        if (modalGestionDatos) {
+            modalGestionDatos.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('btn-eliminar-item')) {
+                    const tipo = e.target.dataset.tipo;
+                    const valor = e.target.dataset.valor;
+                    
+                    if (tipo === 'ubicacion') {
+                        await app.eliminarUbicacion(valor);
+                    } else if (tipo === 'rival') {
+                        await app.eliminarRival(valor);
+                    }
+                }
+            });
+        }
         
         // Test directo del botón después de la inicialización
         setTimeout(() => {

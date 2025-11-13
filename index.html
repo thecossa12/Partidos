@@ -75,7 +75,7 @@
             <div id="jornada-nueva">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
                     <h3 style="margin: 0;">Nueva Jornada</h3>
-                    <button id="btnGestionarDatos" class="btn-gestionar-datos" onclick="app.abrirModalGestionDatos()">⚙️ Gestionar Ubicaciones/Rivales</button>
+                    <button id="btnGestionarDatos" class="btn-gestionar-datos">⚙️ Gestionar Ubicaciones/Rivales</button>
                 </div>
                 <div class="jornada-config">
                     <input type="date" id="fechaJornada">
@@ -437,7 +437,7 @@
         <div class="modal-content modal-gestion-datos-content">
             <div class="modal-header">
                 <h4>⚙️ Gestionar Ubicaciones y Rivales</h4>
-                <button class="btn-cerrar-modal" onclick="app.cerrarModalGestionDatos()">✕</button>
+                <button class="btn-cerrar-modal" id="btnCerrarModalGestion">✕</button>
             </div>
             <div class="modal-body">
                 <div class="gestion-seccion">
@@ -458,6 +458,6 @@
 
     <script src="auth.js"></script>
     <script src="api-utils.js"></script>
-    <script src="app.js?v=2025102036">
+    <script src="app.js?v=2025102036"></script>
 </body>
 </html>
