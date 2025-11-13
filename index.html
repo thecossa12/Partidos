@@ -76,6 +76,33 @@
                 <h3>Nueva Jornada</h3>
                 <div class="jornada-config">
                     <input type="date" id="fechaJornada">
+                    
+                    <div class="campo-grupo">
+                        <label for="ubicacionPartido">Ubicación del partido:</label>
+                        <div class="input-autocomplete">
+                            <input type="text" id="ubicacionPartido" list="ubicacionesList" placeholder="Ej: Mariano Benlliure, Collado Villalba">
+                            <datalist id="ubicacionesList">
+                                <!-- Se llenará dinámicamente -->
+                            </datalist>
+                        </div>
+                        <div class="tipo-ubicacion">
+                            <label>
+                                <input type="radio" name="tipoUbicacion" value="casa" checked> Casa
+                            </label>
+                            <label>
+                                <input type="radio" name="tipoUbicacion" value="fuera"> Fuera
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="campo-grupo">
+                        <label for="equipoRival">Equipo rival:</label>
+                        <input type="text" id="equipoRival" list="rivalesList" placeholder="Ej: Colmenarejo A">
+                        <datalist id="rivalesList">
+                            <!-- Se llenará dinámicamente -->
+                        </datalist>
+                    </div>
+                    
                     <button id="crearJornada" class="btn-crear">+ Crear Jornada</button>
                 </div>
             </div>

@@ -228,7 +228,9 @@
             posicion,
             puntosJugados: 0,
             partidosJugados: 0,
-            entrenamientosAsistidos: 0
+            entrenamientosAsistidos: 0,
+            lesionada: false,
+            notasLesion: ''
         };
         
         console.log('➕ Nueva jugadora creada:', nuevaJugadora);
@@ -304,6 +306,103 @@
         localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
         // Sincronización SÍNCRONA con MongoDB (esperar a que termine)
         await this.syncToMongoDB('jornadas', 'save');
+    }
+
+    // ==================== CONFIGURACIÓN DE USUARIO ====================
+    async cargarConfiguracion() {
+        const userId = this.getUserId();
+        
+        try {
+            // Intentar cargar desde MongoDB primero
+            const configMongo = await fetch(`http://localhost:3000/api/config?userId=${userId}`);
+            if (configMongo.ok) {
+                const config = await configMongo.json();
+                // Guardar en localStorage como caché
+                localStorage.setItem(`volleyball_config_${userId}`, JSON.stringify(config));
+                return config;
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar config desde MongoDB, usando localStorage:', error);
+        }
+        
+        // Fallback a localStorage si MongoDB falla
+        const data = localStorage.getItem(`volleyball_config_${userId}`);
+        return data ? JSON.parse(data) : {
+            polideportivoCasa: '',
+            ubicacionesGuardadas: [],
+            rivalesGuardados: []
+        };
+    }
+
+    async guardarConfiguracion(config) {
+        const userId = this.getUserId();
+        
+        // Guardar en localStorage inmediatamente
+        localStorage.setItem(`volleyball_config_${userId}`, JSON.stringify(config));
+        
+        // Sincronizar con MongoDB en segundo plano
+        try {
+            await fetch('http://localhost:3000/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, ...config })
+            });
+            console.log('✅ Configuración sincronizada con MongoDB');
+        } catch (error) {
+            console.error('❌ Error sincronizando config con MongoDB:', error);
+        }
+    }
+
+    async agregarUbicacion(ubicacion) {
+        if (!ubicacion || ubicacion.trim() === '') return;
+        const config = await this.cargarConfiguracion();
+        if (!config.ubicacionesGuardadas.includes(ubicacion)) {
+            config.ubicacionesGuardadas.push(ubicacion);
+            await this.guardarConfiguracion(config);
+        }
+    }
+
+    async agregarRival(rival) {
+        if (!rival || rival.trim() === '') return;
+        const config = await this.cargarConfiguracion();
+        if (!config.rivalesGuardados.includes(rival)) {
+            config.rivalesGuardados.push(rival);
+            await this.guardarConfiguracion(config);
+        }
+    }
+
+    async populateAutocompleteDataLists() {
+        const config = await this.cargarConfiguracion();
+        
+        // Populate ubicaciones datalist
+        const ubicacionesList = document.getElementById('ubicacionesList');
+        if (ubicacionesList) {
+            ubicacionesList.innerHTML = '';
+            config.ubicacionesGuardadas.forEach(ubicacion => {
+                const option = document.createElement('option');
+                option.value = ubicacion;
+                ubicacionesList.appendChild(option);
+            });
+        }
+        
+        // Populate rivales datalist
+        const rivalesList = document.getElementById('rivalesList');
+        if (rivalesList) {
+            rivalesList.innerHTML = '';
+            config.rivalesGuardados.forEach(rival => {
+                const option = document.createElement('option');
+                option.value = rival;
+                rivalesList.appendChild(option);
+            });
+        }
+        
+        // Pre-select "Casa" and fill ubicacion if polideportivoCasa exists
+        const ubicacionInput = document.getElementById('ubicacionPartido');
+        const radioCasa = document.getElementById('radioCasa');
+        if (config.polideportivoCasa && ubicacionInput && radioCasa) {
+            radioCasa.checked = true;
+            ubicacionInput.value = config.polideportivoCasa;
+        }
     }
 
     // ==================== INICIALIZACIÓN ====================
@@ -572,7 +671,11 @@
     }
 
     actualizarInterfaz() {
-        if (this.currentTab === 'jornadas') this.actualizarJornadas();
+        if (this.currentTab === 'jornadas') {
+            this.actualizarJornadas();
+            // Populate autocomplete datalists when switching to jornadas tab
+            this.populateAutocompleteDataLists();
+        }
         if (this.currentTab === 'jugadoras') {
             console.log('🔄 Forzando actualización de equipo');
             this.actualizarEquipo();
@@ -677,7 +780,7 @@
         return lunes;
     }
 
-    crearNuevaJornada() {
+    async crearNuevaJornada() {
         const fechaInput = document.getElementById('fechaJornada');
         const fechaSeleccionada = fechaInput.value;
         
@@ -685,6 +788,38 @@
             alert('Selecciona una fecha para la jornada');
             return;
         }
+        
+        // Obtener ubicación y rival
+        const ubicacionInput = document.getElementById('ubicacionPartido').value.trim();
+        const rivalInput = document.getElementById('equipoRival').value.trim();
+        const tipoUbicacion = document.querySelector('input[name="tipoUbicacion"]:checked').value;
+        
+        if (!ubicacionInput) {
+            alert('Ingresa la ubicación del partido');
+            return;
+        }
+        
+        if (!rivalInput) {
+            alert('Ingresa el equipo rival');
+            return;
+        }
+        
+        // Verificar si es la primera jornada y pedir polideportivo casa
+        const config = await this.cargarConfiguracion();
+        if (!config.polideportivoCasa && tipoUbicacion === 'casa') {
+            const confirmar = confirm(
+                `¿"${ubicacionInput}" es tu polideportivo casa?\n\n` +
+                `Se guardará para futuras jornadas y podrás seleccionarlo rápidamente.`
+            );
+            if (confirmar) {
+                config.polideportivoCasa = ubicacionInput;
+                await this.guardarConfiguracion(config);
+            }
+        }
+        
+        // Guardar ubicación y rival en listas
+        await this.agregarUbicacion(ubicacionInput);
+        await this.agregarRival(rivalInput);
         
         // Convertir la fecha seleccionada a Date object (YYYY-MM-DD)
         const [year, month, day] = fechaSeleccionada.split('-').map(Number);
@@ -742,7 +877,10 @@
             planificacionManual: null,
             rotacion: null,
             completada: false,
-            fechaCreacion: new Date().toISOString()
+            fechaCreacion: new Date().toISOString(),
+            ubicacion: ubicacionInput,
+            tipoUbicacion: tipoUbicacion, // 'casa' o 'fuera'
+            rival: rivalInput
         };
         
         this.jornadas.unshift(nuevaJornada);
@@ -1156,6 +1294,19 @@
         const planificadorContainer = document.getElementById('planificadorSets');
         const estabaPlanificando = planificadorContainer && planificadorContainer.style.display === 'block';
         
+        // Generar info del partido
+        let partidoInfoHTML = '';
+        if (this.jornadaActual.ubicacion || this.jornadaActual.rival) {
+            const ubicacion = this.jornadaActual.ubicacion || 'Sin ubicación';
+            const tipoUbic = this.jornadaActual.tipoUbicacion === 'fuera' ? '🏠 Fuera' : '🏡 Casa';
+            const rival = this.jornadaActual.rival || 'Sin rival';
+            partidoInfoHTML = `
+                <div class="partido-info-banner">
+                    <strong>${tipoUbic}:</strong> ${ubicacion} <strong>VS</strong> ${rival}
+                </div>
+            `;
+        }
+        
         // Analizar entrenamientos de la semana actual
         const jugadorasConEntrenamientos = jugadorasPartido.map(j => {
             const asistioLunes = this.jornadaActual.asistenciaLunes.includes(j.id);
@@ -1185,6 +1336,7 @@
         const planificadorDisplay = estabaPlanificando ? 'block' : 'none';
         
         container.innerHTML = `
+            ${partidoInfoHTML}
             <div class="indicador-minimo">
                 <strong>Seleccionados/as: ${totalJugadoras}/${minimo} mínimo</strong>
                 ${totalJugadoras < minimo ? 
@@ -3856,13 +4008,22 @@
                 fechaMostrar = jornada.fechaSeleccionada;
             }
 
+            // Generar texto de partido info
+            let partidoInfo = '';
+            if (jornada.ubicacion || jornada.rival) {
+                const ubicacion = jornada.ubicacion || 'Sin ubicación';
+                const tipoUbic = jornada.tipoUbicacion === 'fuera' ? 'Fuera' : 'Casa';
+                const rival = jornada.rival || 'Sin rival';
+                partidoInfo = ` - ${tipoUbic}: ${ubicacion} VS ${rival}`;
+            }
+
             return `
                 <div class="jornada-historial colapsada" data-jornada-id="${jornada.id}">
                     <div class="jornada-header" onclick="app.toggleJornadaDetalle(${jornada.id})">
                         <div class="jornada-header-izquierda">
                             <input type="checkbox" class="checkbox-jornada" value="${jornada.id}" onclick="event.stopPropagation()">
                             <span class="icono-expandir">▶</span>
-                            <span class="jornada-titulo">Semana del ${this.formatearFecha(fechaMostrar)}</span>
+                            <span class="jornada-titulo">Semana del ${this.formatearFecha(fechaMostrar)}${partidoInfo}</span>
                             <span class="estado ${jornada.completada ? 'completada' : 'pendiente'}">
                                 ${jornada.completada ? '✅ Completada' : '⏳ Pendiente'}
                             </span>
@@ -4132,28 +4293,6 @@
                     }).join('')}
                 </div>
             `;
-        }
-    }
-
-    eliminarJornada(jornadaId) {
-        if (confirm('¿Estás seguro de eliminar esta jornada?')) {
-            // Si se elimina la jornada actual, resetear planificación
-            if (this.jornadaActual && this.jornadaActual.id === jornadaId) {
-                this.planificacionSets = {
-                    set1: [],
-                    set2: []
-                };
-                
-                const planificadorContainer = document.getElementById('planificadorSets');
-                if (planificadorContainer) {
-                    planificadorContainer.style.display = 'none';
-                }
-            }
-            
-            this.jornadas = this.jornadas.filter(j => j.id !== jornadaId);
-            this.guardarJornadas();
-            this.actualizarHistorial();
-            alert('Jornada eliminada');
         }
     }
 
@@ -4495,6 +4634,30 @@
         document.getElementById('volverInicio')?.addEventListener('click', () => this.volverAInicioJornada());
         document.getElementById('completarJornada')?.addEventListener('click', () => this.completarJornada());
         document.getElementById('guardarBorrador')?.addEventListener('click', () => this.guardarBorrador());
+        
+        // Radio buttons para ubicación del partido
+        const radioCasa = document.getElementById('radioCasa');
+        const radioFuera = document.getElementById('radioFuera');
+        const ubicacionInput = document.getElementById('ubicacionPartido');
+        
+        if (radioCasa && ubicacionInput) {
+            radioCasa.addEventListener('change', async () => {
+                if (radioCasa.checked) {
+                    const config = await this.cargarConfiguracion();
+                    if (config.polideportivoCasa) {
+                        ubicacionInput.value = config.polideportivoCasa;
+                    }
+                }
+            });
+        }
+        
+        if (radioFuera && ubicacionInput) {
+            radioFuera.addEventListener('change', () => {
+                if (radioFuera.checked) {
+                    ubicacionInput.value = '';
+                }
+            });
+        }
         
         // Botones de equipo - CON VERIFICACIÓN EXTRA
         const btnAdd = document.getElementById('addJugadora');

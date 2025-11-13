@@ -135,6 +135,42 @@ const api = {
             console.error('Error en migración:', error);
             throw error;
         }
+    },
+
+    // ==================== CONFIGURACIÓN ====================
+    
+    async getConfig(userId) {
+        try {
+            const response = await fetch(`${API_URL}/config?userId=${userId}`);
+            if (!response.ok) {
+                throw new Error('Error obteniendo configuración');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error obteniendo config:', error);
+            return {
+                polideportivoCasa: '',
+                ubicacionesGuardadas: [],
+                rivalesGuardados: []
+            };
+        }
+    },
+
+    async saveConfig(userId, config) {
+        try {
+            const response = await fetch(`${API_URL}/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, ...config })
+            });
+            if (!response.ok) {
+                throw new Error('Error guardando configuración');
+            }
+            return await response.json();
+        } catch (error) {
+            console.error('Error guardando config:', error);
+            throw error;
+        }
     }
 };
 

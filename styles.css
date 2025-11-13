@@ -1103,6 +1103,23 @@ button:hover {
     font-size: 1rem;
 }
 
+/* Banner de información del partido */
+.partido-info-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 15px 20px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 1.1rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.partido-info-banner strong {
+    font-weight: 600;
+    margin: 0 8px;
+}
+
 /* Leyenda de colores para entrenamientos */
 .leyenda-entrenamientos {
     background: #f8f9fa;
@@ -1912,8 +1929,8 @@ button:hover {
 }
 
 .jornada-detalle {
-    display: grid !important;
-    grid-template-columns: 1fr 1fr 2fr !important;
+    display: grid;
+    grid-template-columns: 1fr 1fr 2fr;
     gap: 20px;
     margin-top: 15px;
     width: 100%;
@@ -2205,10 +2222,9 @@ button:hover {
     }
     
     .jornada-detalle {
-        grid-template-columns: 1fr !important;
-        gap: 15px !important;
-        display: flex !important;
-        flex-direction: column !important;
+        grid-template-columns: 1fr;
+        gap: 15px;
+        flex-direction: column;
     }
     
     .dia-detalle {
@@ -2697,15 +2713,14 @@ button:hover {
     }
     
     .jornada-detalle {
-        grid-template-columns: 1fr !important;
-        gap: 15px !important;
-        display: flex !important;
-        flex-direction: column !important;
+        grid-template-columns: 1fr;
+        gap: 15px;
+        flex-direction: column;
     }
     
     .jornada-historial {
         min-width: unset;
-        padding: 15px;
+        padding: 0;
         margin-bottom: 15px;
         overflow-x: visible;
         overflow: visible;

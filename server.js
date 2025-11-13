@@ -316,6 +316,68 @@ app.post('/api/sync', async (req, res) => {
     }
 });
 
+// ==================== ENDPOINTS DE CONFIGURACIÓN ====================
+
+// Obtener configuración del usuario
+app.get('/api/config', async (req, res) => {
+    try {
+        const userId = req.query.userId;
+        if (!userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        const config = await db.collection('config').findOne({ userId });
+        
+        // Si no existe, devolver configuración por defecto
+        if (!config) {
+            return res.json({
+                polideportivoCasa: '',
+                ubicacionesGuardadas: [],
+                rivalesGuardados: []
+            });
+        }
+        
+        res.json({
+            polideportivoCasa: config.polideportivoCasa || '',
+            ubicacionesGuardadas: config.ubicacionesGuardadas || [],
+            rivalesGuardados: config.rivalesGuardados || []
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Guardar/actualizar configuración del usuario
+app.post('/api/config', async (req, res) => {
+    try {
+        const { userId, polideportivoCasa, ubicacionesGuardadas, rivalesGuardados } = req.body;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        const configData = {
+            userId,
+            polideportivoCasa: polideportivoCasa || '',
+            ubicacionesGuardadas: ubicacionesGuardadas || [],
+            rivalesGuardados: rivalesGuardados || [],
+            updatedAt: new Date().toISOString()
+        };
+        
+        // Usar upsert para actualizar o insertar
+        await db.collection('config').updateOne(
+            { userId },
+            { $set: configData },
+            { upsert: true }
+        );
+        
+        res.json({ success: true, config: configData });
+    } catch (error) {
+        console.error('Error guardando config:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // ==================== ENDPOINT DE MIGRACIÓN ====================
 
 // Migrar datos de localStorage a MongoDB
