@@ -2097,65 +2097,76 @@ button:hover {
 
 /* Compact badge layout for sets in history */
 .set-historial-compact {
-    margin-bottom: 12px;
-    padding: 12px;
+    margin-bottom: 10px;
+    padding: 8px 10px;
     background: #f8f9fa;
-    border-radius: 8px;
-    border-left: 4px solid #4caf50;
+    border-radius: 6px;
+    border-left: 3px solid #4caf50;
 }
 
 .set-historial-compact strong {
     color: #2e7d32;
     display: block;
-    margin-bottom: 8px;
-    font-size: 1rem;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
 }
 
-.set-badges-grid {
+.set-badges-volleyball {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-    margin-top: 8px;
+    gap: 4px;
+    max-width: 400px;
 }
 
 .player-badge-compact {
     background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
     color: white;
-    padding: 8px 10px;
-    border-radius: 8px;
+    padding: 4px 6px;
+    border-radius: 6px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
+    gap: 2px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+    transition: transform 0.15s, box-shadow 0.15s;
+    min-height: 42px;
+    justify-content: center;
 }
 
 .player-badge-compact:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.player-badge-compact.empty {
+    background: linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%);
+    opacity: 0.5;
 }
 
 .player-badge-compact.resaltado {
     background: linear-gradient(135deg, #ff9800 0%, #ffa726 100%);
-    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.3);
-    transform: scale(1.05);
+    box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
+    transform: scale(1.03);
 }
 
 .player-badge-compact .pos-num {
-    font-size: 0.75rem;
-    font-weight: 600;
-    opacity: 0.9;
-    background: rgba(255, 255, 255, 0.2);
-    padding: 2px 6px;
-    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    opacity: 0.85;
+    background: rgba(255, 255, 255, 0.25);
+    padding: 1px 5px;
+    border-radius: 3px;
+    line-height: 1;
 }
 
 .player-badge-compact .player-name {
-    font-size: 0.85rem;
+    font-size: 0.75rem;
     font-weight: 500;
     text-align: center;
-    line-height: 1.2;
+    line-height: 1.1;
+    word-break: break-word;
+    max-width: 100%;
 }
 
 
@@ -2972,22 +2983,34 @@ button:hover {
     }
     
     /* Compact badge mobile responsive */
-    .set-badges-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 6px;
+    .set-badges-volleyball {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 3px;
+        max-width: 100%;
     }
     
     .player-badge-compact {
-        padding: 6px 8px;
+        padding: 3px 4px;
+        min-height: 38px;
     }
     
     .player-badge-compact .pos-num {
-        font-size: 0.7rem;
-        padding: 1px 5px;
+        font-size: 0.6rem;
+        padding: 1px 4px;
     }
     
     .player-badge-compact .player-name {
+        font-size: 0.7rem;
+    }
+    
+    .set-historial-compact {
+        padding: 6px 8px;
+        margin-bottom: 8px;
+    }
+    
+    .set-historial-compact strong {
         font-size: 0.8rem;
+        margin-bottom: 4px;
     }
     
     .dia-detalle h5 {

@@ -189,7 +189,10 @@
             puntosJugados: j.puntosJugados || 0,
             partidosJugados: j.partidosJugados || 0,
             entrenamientosAsistidos: j.entrenamientosAsistidos || 0,
-            posicion: j.posicion || 'jugadora'
+            posicion: j.posicion || 'jugadora',
+            lesionada: j.lesionada || false,
+            notasLesion: j.notasLesion || '',
+            totalLesiones: j.totalLesiones || 0
         }));
     }
 
@@ -230,7 +233,8 @@
             partidosJugados: 0,
             entrenamientosAsistidos: 0,
             lesionada: false,
-            notasLesion: ''
+            notasLesion: '',
+            totalLesiones: 0
         };
         
         console.log('➕ Nueva jugadora creada:', nuevaJugadora);
@@ -3562,7 +3566,7 @@
                                 Sustituciones: ${totalSustituciones} | 
                                 Puntos Totales: ${jugadora.puntosJugados || 0} | 
                                 Entrenamientos: ${jugadora.entrenamientosAsistidos || 0} |
-                                Lesiones: ${jugadora.lesionada ? '1 (Activa)' : '0'}
+                                Lesiones: ${jugadora.totalLesiones || 0}${jugadora.lesionada ? ' (Activa)' : ''}
                             </div>
                         </div>
                         <div>
@@ -3797,8 +3801,17 @@
         const toggle = document.getElementById('toggleLesion');
         const notas = document.getElementById('notasLesion').value.trim();
 
-        jugadora.lesionada = toggle.checked;
-        jugadora.notasLesion = toggle.checked ? notas : '';
+        const estadoAnterior = jugadora.lesionada;
+        const estadoNuevo = toggle.checked;
+
+        // Si pasa de SANA a LESIONADA, incrementar contador
+        if (!estadoAnterior && estadoNuevo) {
+            jugadora.totalLesiones = (jugadora.totalLesiones || 0) + 1;
+            console.log(`📊 Nueva lesión registrada. Total: ${jugadora.totalLesiones}`);
+        }
+
+        jugadora.lesionada = estadoNuevo;
+        jugadora.notasLesion = estadoNuevo ? notas : '';
 
         this.guardarJugadoras();
         this.actualizarEquipo();
@@ -4218,20 +4231,26 @@
             if (set1Data && set1Data.length > 0) {
                 html += '<div class="set-historial-compact">';
                 html += '<strong>Set 1</strong>';
-                html += '<div class="set-badges-grid">';
-                html += set1Data.filter(j => j !== null && j !== undefined).map((j, index) => {
-                    // Si j es solo ID, buscar jugadora
+                html += '<div class="set-badges-volleyball">';
+                
+                // Orden correcto del voleibol: 4,3,2 (arriba) / 5,6,1 (abajo)
+                const ordenVoleibol = [4, 3, 2, 5, 6, 1];
+                
+                html += ordenVoleibol.map(posIndex => {
+                    const j = set1Data[posIndex - 1]; // Array es 0-based
+                    if (!j) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
-                    if (!jugadora || !jugadora.nombre) return '';
+                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                    const posicion = index + 1; // Posiciones 1-6
                     return `
                         <div class="player-badge-compact ${claseResaltado}">
-                            <span class="pos-num">${posicion}</span>
+                            <span class="pos-num">${posIndex}</span>
                             <span class="player-name">${jugadora.nombre}</span>
                         </div>
                     `;
-                }).filter(html => html !== '').join('');
+                }).join('');
                 html += '</div>';
                 html += '</div>';
             }
@@ -4240,20 +4259,25 @@
             if (set2Data && set2Data.length > 0) {
                 html += '<div class="set-historial-compact">';
                 html += '<strong>Set 2</strong>';
-                html += '<div class="set-badges-grid">';
-                html += set2Data.filter(j => j !== null && j !== undefined).map((j, index) => {
-                    // Si j es solo ID, buscar jugadora
+                html += '<div class="set-badges-volleyball">';
+                
+                const ordenVoleibol = [4, 3, 2, 5, 6, 1];
+                
+                html += ordenVoleibol.map(posIndex => {
+                    const j = set2Data[posIndex - 1];
+                    if (!j) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
-                    if (!jugadora || !jugadora.nombre) return '';
+                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                    const posicion = index + 1; // Posiciones 1-6
                     return `
                         <div class="player-badge-compact ${claseResaltado}">
-                            <span class="pos-num">${posicion}</span>
+                            <span class="pos-num">${posIndex}</span>
                             <span class="player-name">${jugadora.nombre}</span>
                         </div>
                     `;
-                }).filter(html => html !== '').join('');
+                }).join('');
                 html += '</div>';
                 html += '</div>';
             }
@@ -4262,20 +4286,25 @@
             if (set3Data && set3Data.length > 0) {
                 html += '<div class="set-historial-compact">';
                 html += '<strong>Set 3</strong>';
-                html += '<div class="set-badges-grid">';
-                html += set3Data.filter(j => j !== null && j !== undefined).map((j, index) => {
-                    // Si j es solo ID, buscar jugadora
+                html += '<div class="set-badges-volleyball">';
+                
+                const ordenVoleibol = [4, 3, 2, 5, 6, 1];
+                
+                html += ordenVoleibol.map(posIndex => {
+                    const j = set3Data[posIndex - 1];
+                    if (!j) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
-                    if (!jugadora || !jugadora.nombre) return '';
+                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                    const posicion = index + 1; // Posiciones 1-6
                     return `
                         <div class="player-badge-compact ${claseResaltado}">
-                            <span class="pos-num">${posicion}</span>
+                            <span class="pos-num">${posIndex}</span>
                             <span class="player-name">${jugadora.nombre}</span>
                         </div>
                     `;
-                }).filter(html => html !== '').join('');
+                }).join('');
                 html += '</div>';
                 html += '</div>';
             }
@@ -5282,7 +5311,7 @@ function verInfoJugadoraGlobal(jugadoraId) {
                 <p><strong>Sustituciones:</strong> ${totalSustituciones}</p>
                 <p><strong>Puntos Totales:</strong> ${jugadora.puntosJugados || 0}</p>
                 <p><strong>Entrenamientos:</strong> ${jugadora.entrenamientosAsistidos || 0}</p>
-                <p><strong>Lesiones:</strong> ${jugadora.lesionada ? '1 (🩹 Activa)' : '0'}</p>
+                <p><strong>Lesiones:</strong> ${jugadora.totalLesiones || 0}${jugadora.lesionada ? ' (🩹 Activa)' : ''}</p>
                 ${jugadora.lesionada && jugadora.notasLesion ? `<p style="background: #fff3e0; padding: 10px; border-radius: 5px; border-left: 4px solid #ff9800;"><strong>📝 Nota:</strong> ${jugadora.notasLesion}</p>` : ''}
             </div>
             
