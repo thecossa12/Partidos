@@ -651,6 +651,32 @@ button:hover {
     transition: transform 0.2s ease;
 }
 
+/* Estilos para jugadoras lesionadas en la lista del equipo */
+.jugadora-item.lesionada {
+    background: #fff3e0;
+    border-left: 4px solid #ff9800;
+}
+
+.badge-lesion {
+    background: #ff5722;
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.notas-lesion {
+    color: #f57c00;
+    font-size: 0.9rem;
+    font-style: italic;
+    margin: 8px 0;
+    padding: 8px;
+    background: #ffe0b2;
+    border-radius: 6px;
+}
+
 .jugadora-item:hover, .partido-item:hover {
     transform: translateY(-2px);
 }
@@ -694,6 +720,21 @@ button:hover {
 .edit-btn {
     background: #007bff;
     color: white;
+}
+
+.lesion-btn {
+    background: #ff9800;
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: background 0.3s ease;
+}
+
+.lesion-btn:hover {
+    background: #f57c00;
 }
 
 .entrenamientos-container {
@@ -1277,6 +1318,35 @@ button:hover {
     color: #721c24;
 }
 
+/* Estilos para jugadoras lesionadas en tarjetas de selección */
+.jugadora-card.lesionada {
+    background: linear-gradient(135deg, #ffebee 0%, #ffcdd2 100%);
+    border: 2px solid #ff5722;
+    opacity: 0.85;
+    position: relative;
+}
+
+.jugadora-card.lesionada:hover {
+    opacity: 1;
+    box-shadow: 0 4px 15px rgba(255, 87, 34, 0.4);
+}
+
+.jugadora-card.lesionada.selected {
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border-color: #ff9800;
+}
+
+.warning-lesion {
+    background: #ff5722;
+    color: white;
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 3px 6px;
+    border-radius: 4px;
+    text-align: center;
+    margin-top: 4px;
+}
+
 .jugadora-nombre {
     font-weight: 600;
     font-size: 1rem;
@@ -1844,6 +1914,15 @@ button:hover {
 
 .jornada-historial.colapsada {
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
+}
+
+/* Cuando está colapsada, el detalle debe estar completamente oculto SIN ocupar espacio */
+.jornada-historial.colapsada .jornada-detalle {
+    display: none !important;
+    height: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: hidden !important;
 }
 
 .jornada-header {
@@ -4899,6 +4978,191 @@ table, .grid-container {
         opacity: 1;
         transform: translateY(0) scale(1);
     }
+}
+
+/* Modal de Lesiones */
+.modal-lesion {
+    max-width: 500px;
+    width: 90%;
+    background: white;
+    border-radius: 15px;
+    padding: 30px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: modalSlideIn 0.3s ease;
+}
+
+.modal-lesion h2 {
+    margin: 0 0 25px 0;
+    color: #333;
+    text-align: center;
+    font-size: 1.5rem;
+}
+
+.modal-lesion .close {
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    font-size: 28px;
+    color: #666;
+    cursor: pointer;
+    transition: color 0.3s ease;
+}
+
+.modal-lesion .close:hover {
+    color: #ff5722;
+}
+
+.form-lesion {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.estado-lesion {
+    text-align: center;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.switch-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.estado-label {
+    font-size: 1.3rem;
+    font-weight: bold;
+    padding: 10px 20px;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.estado-label.sana {
+    background: #4caf50;
+    color: white;
+}
+
+.estado-label.lesionada {
+    background: #ff5722;
+    color: white;
+}
+
+/* Toggle Switch */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 60px;
+    height: 34px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #4caf50;
+    transition: .4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #ff5722;
+}
+
+input:checked + .slider:before {
+    transform: translateX(26px);
+}
+
+.notas-container {
+    padding: 15px;
+    background: #fff3e0;
+    border-radius: 10px;
+    border: 2px solid #ff9800;
+}
+
+.notas-container label {
+    display: block;
+    font-weight: bold;
+    color: #f57c00;
+    margin-bottom: 10px;
+}
+
+.notas-container textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #ffe0b2;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    min-height: 100px;
+}
+
+.notas-container textarea:focus {
+    outline: none;
+    border-color: #ff9800;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.btn-guardar {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.btn-guardar:hover {
+    background: #45a049;
+}
+
+.btn-cancelar {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s ease;
+}
+
+.btn-cancelar:hover {
+    background: #5a6268;
 }
 
 #edit-user-modal .modal-header {

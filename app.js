@@ -314,7 +314,7 @@
         
         try {
             // Intentar cargar desde MongoDB primero
-            const configMongo = await fetch(`http://localhost:3000/api/config?userId=${userId}`);
+            const configMongo = await fetch(`${this.API_URL}/config?userId=${userId}`);
             if (configMongo.ok) {
                 const config = await configMongo.json();
                 // Guardar en localStorage como caché
@@ -342,7 +342,7 @@
         
         // Sincronizar con MongoDB en segundo plano
         try {
-            await fetch('http://localhost:3000/api/config', {
+            await fetch(`${this.API_URL}/config`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, ...config })
@@ -941,8 +941,15 @@
                     return;
                 }
                 
-                // Ordenar jugadoras por dorsal
-                const jugadorasOrdenadas = [...this.jugadoras].sort((a, b) => a.dorsal - b.dorsal);
+                // Ordenar jugadoras: primero las sanas por dorsal, luego las lesionadas por dorsal
+                const jugadorasOrdenadas = [...this.jugadoras].sort((a, b) => {
+                    // Primero ordenar por estado de lesión (sanas primero)
+                    if (a.lesionada !== b.lesionada) {
+                        return a.lesionada ? 1 : -1;
+                    }
+                    // Luego por dorsal
+                    return a.dorsal - b.dorsal;
+                });
                 
                 // Calcular seleccionadas para este día
                 const seleccionadas = this.jornadaActual ? this.jornadaActual[grid.asistencia].length : 0;
@@ -950,14 +957,17 @@
                 
                 const htmlContent = jugadorasOrdenadas.map(jugadora => {
                     const isSelected = this.jornadaActual && this.jornadaActual[grid.asistencia].includes(jugadora.id);
+                    const lesionadaClass = jugadora.lesionada ? 'lesionada' : '';
+                    const lesionadaIcon = jugadora.lesionada ? '🩹 ' : '';
                     return `
-                        <div class="jugadora-card ${isSelected ? 'selected' : ''}" 
+                        <div class="jugadora-card ${isSelected ? 'selected' : ''} ${lesionadaClass}" 
                              onclick="app.toggleAsistencia('${grid.asistencia}', ${jugadora.id})">
                             <div class="jugadora-header">
                                 <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
                                 <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
-                                <span class="jugadora-nombre">${jugadora.nombre}</span>
+                                <span class="jugadora-nombre">${lesionadaIcon}${jugadora.nombre}</span>
                             </div>
+                            ${jugadora.lesionada ? '<div class="warning-lesion">⚠️ LESIONADA</div>' : ''}
                         </div>
                     `;
                 }).join('');
@@ -980,13 +990,23 @@
     toggleAsistencia(tipoAsistencia, jugadoraId) {
         if (!this.jornadaActual) return;
         
+        const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
         const asistencia = this.jornadaActual[tipoAsistencia];
         const index = asistencia.indexOf(jugadoraId);
+        
+        // Si está intentando seleccionar (no deseleccionar) a una jugadora lesionada
+        if (index === -1 && jugadora && jugadora.lesionada) {
+            const confirmar = confirm(
+                `⚠️ ${jugadora.nombre} está LESIONADA\n\n` +
+                `${jugadora.notasLesion ? '📝 ' + jugadora.notasLesion + '\n\n' : ''}` +
+                `¿Estás seguro/a de que quieres seleccionarla?`
+            );
+            if (!confirmar) return;
+        }
         
         // Si estamos deseleccionando del sábado, verificar si está en sets
         if (index > -1 && tipoAsistencia === 'asistenciaSabado') {
             if (this.verificarJugadoraEnSets(jugadoraId)) {
-                const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
                 const mensaje = `⚠️ ${jugadora.nombre} está actualmente en los sets planificados.\n\n` +
                                `Al quitarla del sábado se eliminará de:\n` +
                                `• Los sets donde esté asignada\n` +
@@ -3529,9 +3549,13 @@
                 });
                 
                 return `
-                    <div class="jugadora-item">
+                    <div class="jugadora-item ${jugadora.lesionada ? 'lesionada' : ''}">
                         <div>
-                            <div class="jugadora-nombre">${emoji} #${jugadora.dorsal} ${jugadora.nombre}</div>
+                            <div class="jugadora-nombre">
+                                ${jugadora.lesionada ? '🩹 ' : ''}${emoji} #${jugadora.dorsal} ${jugadora.nombre}
+                                ${jugadora.lesionada ? '<span class="badge-lesion">LESIONADA</span>' : ''}
+                            </div>
+                            ${jugadora.lesionada && jugadora.notasLesion ? `<div class="notas-lesion">📝 ${jugadora.notasLesion}</div>` : ''}
                             <div class="jugadora-stats">
                                 Posición: ${emoji} ${posicion} | 
                                 Partidos Jugados: ${jugadora.partidosJugados || 0} | 
@@ -3541,6 +3565,7 @@
                             </div>
                         </div>
                         <div>
+                            <button class="lesion-btn" onclick="app.gestionarLesion(${jugadora.id})">${jugadora.lesionada ? '🩹' : '💊'} Lesión</button>
                             <button class="info-btn" onclick="verInfoJugadoraGlobal(${jugadora.id})">Ver Info</button>
                             <button class="edit-btn" onclick="app.editarJugadora(${jugadora.id})">EDITAR</button>
                             <button class="delete-btn" onclick="app.eliminarJugadora(${jugadora.id})">ELIMINAR</button>
@@ -3689,6 +3714,92 @@
             this.guardarJugadoras();
             this.actualizarEquipo();
         }
+    }
+
+    gestionarLesion(jugadoraId) {
+        const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
+        if (!jugadora) return;
+
+        // Crear modal dinámicamente
+        const modalHTML = `
+            <div id="modalLesion" class="modal" style="display: block;">
+                <div class="modal-content modal-lesion">
+                    <span class="close" onclick="document.getElementById('modalLesion').remove()">&times;</span>
+                    <h2>🩹 Gestionar Lesión - ${jugadora.nombre}</h2>
+                    
+                    <div class="form-lesion">
+                        <div class="estado-lesion">
+                            <label class="switch-container">
+                                <span class="estado-label ${jugadora.lesionada ? 'lesionada' : 'sana'}">
+                                    ${jugadora.lesionada ? '🩹 LESIONADA' : '✅ SANA'}
+                                </span>
+                                <label class="switch">
+                                    <input type="checkbox" id="toggleLesion" ${jugadora.lesionada ? 'checked' : ''}>
+                                    <span class="slider"></span>
+                                </label>
+                            </label>
+                        </div>
+                        
+                        <div class="notas-container" style="display: ${jugadora.lesionada ? 'block' : 'none'}">
+                            <label for="notasLesion">📝 Notas sobre la lesión:</label>
+                            <textarea id="notasLesion" rows="4" placeholder="Ej: Esguince de tobillo, reposo 2 semanas...">${jugadora.notasLesion || ''}</textarea>
+                        </div>
+                        
+                        <div class="modal-actions">
+                            <button class="btn-guardar" onclick="app.guardarLesion(${jugadoraId})">💾 Guardar</button>
+                            <button class="btn-cancelar" onclick="document.getElementById('modalLesion').remove()">❌ Cancelar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Agregar al body
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+        // Event listener para mostrar/ocultar notas
+        const toggle = document.getElementById('toggleLesion');
+        const notasContainer = document.querySelector('.notas-container');
+        const estadoLabel = document.querySelector('.estado-label');
+
+        toggle.addEventListener('change', () => {
+            if (toggle.checked) {
+                notasContainer.style.display = 'block';
+                estadoLabel.textContent = '🩹 LESIONADA';
+                estadoLabel.className = 'estado-label lesionada';
+            } else {
+                notasContainer.style.display = 'none';
+                estadoLabel.textContent = '✅ SANA';
+                estadoLabel.className = 'estado-label sana';
+            }
+        });
+
+        // Cerrar con click fuera del modal
+        const modal = document.getElementById('modalLesion');
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.remove();
+            }
+        });
+    }
+
+    guardarLesion(jugadoraId) {
+        const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
+        if (!jugadora) return;
+
+        const toggle = document.getElementById('toggleLesion');
+        const notas = document.getElementById('notasLesion').value.trim();
+
+        jugadora.lesionada = toggle.checked;
+        jugadora.notasLesion = toggle.checked ? notas : '';
+
+        this.guardarJugadoras();
+        this.actualizarEquipo();
+
+        // Cerrar modal
+        document.getElementById('modalLesion').remove();
+
+        console.log(`✅ Lesión actualizada para ${jugadora.nombre}: ${jugadora.lesionada ? 'LESIONADA' : 'SANA'}`);
     }
 
     resetearEquipo() {
@@ -4928,11 +5039,27 @@
             }
         }
         
-        // Eliminar la jornada
+        // Eliminar la jornada del array local
         this.jornadas = this.jornadas.filter(j => j.id !== jornadaId);
         
-        // Guardar de forma SÍNCRONA para asegurar que MongoDB se actualice
-        await this.guardarJornadasSync();
+        // Eliminar de localStorage inmediatamente
+        const userId = this.getUserId();
+        localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
+        
+        // Eliminar de MongoDB de forma explícita
+        try {
+            const deleteResponse = await fetch(`${this.API_URL}/jornadas/${jornadaId}?userId=${userId}`, {
+                method: 'DELETE'
+            });
+            
+            if (deleteResponse.ok) {
+                console.log('✅ Jornada eliminada de MongoDB');
+            } else {
+                console.warn('⚠️ No se pudo eliminar de MongoDB, pero se eliminó de localStorage');
+            }
+        } catch (error) {
+            console.error('❌ Error eliminando de MongoDB:', error);
+        }
         
         if (mostrarConfirmacion) {
             this.recalcularEstadisticasCompletas();

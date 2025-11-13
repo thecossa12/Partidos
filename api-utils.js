@@ -1,6 +1,11 @@
 // API Utilities - Funciones para conectar con el backend MongoDB
 
-const API_URL = 'http://localhost:3000/api';
+// Detectar automáticamente si estamos en producción o desarrollo
+const API_URL = window.location.hostname === 'localhost' 
+    ? 'http://localhost:3000/api'
+    : `${window.location.origin}/api`;
+
+console.log('🌐 API_URL configurada:', API_URL);
 
 const api = {
     // ==================== JUGADORES ====================
