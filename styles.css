@@ -5130,6 +5130,12 @@ table, .grid-container {
     backdrop-filter: blur(3px);
 }
 
+/* Modal de confirmación debe estar por encima de otros modales */
+#confirm-modal {
+    z-index: 9999999 !important;
+    background: rgba(0, 0, 0, 0.8) !important;
+}
+
 .modal[style*="flex"] {
     display: flex !important; /* Solo mostrar cuando se establezca flex explícitamente */
 }
@@ -6030,13 +6036,22 @@ input:checked + .slider:before {
 
 /* Modal de gestión de datos */
 .modal-gestion-datos-content {
+    width: 95%;
     max-width: 600px;
-    max-height: 80vh;
+    max-height: 85vh;
     overflow-y: auto;
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
 .gestion-seccion {
     margin-bottom: 25px;
+}
+
+.gestion-seccion:last-child {
+    margin-bottom: 0;
 }
 
 .gestion-seccion h5 {
@@ -6057,10 +6072,11 @@ input:checked + .slider:before {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 15px;
+    padding: 12px 15px;
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     border-radius: 8px;
     transition: all 0.3s ease;
+    gap: 10px;
 }
 
 .item-gestion:hover {
@@ -6072,6 +6088,8 @@ input:checked + .slider:before {
     flex: 1;
     font-size: 1rem;
     color: #2c3e50;
+    word-break: break-word;
+    min-width: 0;
 }
 
 .btn-eliminar-item {
@@ -6113,6 +6131,21 @@ input:checked + .slider:before {
     color: #2e7d32;
 }
 
+.campo-polideportivo-casa > div {
+    display: flex;
+    gap: 10px;
+    align-items: stretch;
+}
+
+.campo-polideportivo-casa input {
+    flex: 1;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    min-width: 0; /* Permite que el input se encoja correctamente */
+}
+
 .btn-guardar-casa {
     background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
     color: white;
@@ -6123,6 +6156,7 @@ input:checked + .slider:before {
     cursor: pointer;
     transition: all 0.3s ease;
     white-space: nowrap;
+    flex-shrink: 0; /* Evita que el botón se encoja */
 }
 
 .btn-guardar-casa:hover {
@@ -6138,12 +6172,13 @@ input:checked + .slider:before {
     
     .modal-gestion-datos-content {
         max-width: 95%;
+        margin: 10px;
     }
     
     .item-gestion {
         flex-direction: column;
         gap: 8px;
-        align-items: flex-start;
+        align-items: stretch;
     }
     
     .btn-eliminar-item {
@@ -6156,11 +6191,20 @@ input:checked + .slider:before {
     
     .campo-polideportivo-casa > div {
         flex-direction: column !important;
+        gap: 8px;
+    }
+    
+    .campo-polideportivo-casa input {
+        width: 100%;
     }
     
     .btn-guardar-casa {
         width: 100%;
-        margin-top: 5px;
+        padding: 12px;
+    }
+    
+    .gestion-seccion h5 {
+        font-size: 1rem;
     }
 }
     
