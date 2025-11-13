@@ -2095,6 +2095,70 @@ button:hover {
     margin-top: 0px;
 }
 
+/* Compact badge layout for sets in history */
+.set-historial-compact {
+    margin-bottom: 12px;
+    padding: 12px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #4caf50;
+}
+
+.set-historial-compact strong {
+    color: #2e7d32;
+    display: block;
+    margin-bottom: 8px;
+    font-size: 1rem;
+}
+
+.set-badges-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.player-badge-compact {
+    background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
+    color: white;
+    padding: 8px 10px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.player-badge-compact:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.player-badge-compact.resaltado {
+    background: linear-gradient(135deg, #ff9800 0%, #ffa726 100%);
+    box-shadow: 0 0 0 3px rgba(255, 152, 0, 0.3);
+    transform: scale(1.05);
+}
+
+.player-badge-compact .pos-num {
+    font-size: 0.75rem;
+    font-weight: 600;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.player-badge-compact .player-name {
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.2;
+}
+
+
 .sustitucion-form select option.option-verde {
     background-color: #e8f5e8;
     color: #2e7d32;
@@ -2905,6 +2969,25 @@ button:hover {
         padding: 15px;
         margin-bottom: 10px;
         box-sizing: border-box;
+    }
+    
+    /* Compact badge mobile responsive */
+    .set-badges-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 6px;
+    }
+    
+    .player-badge-compact {
+        padding: 6px 8px;
+    }
+    
+    .player-badge-compact .pos-num {
+        font-size: 0.7rem;
+        padding: 1px 5px;
+    }
+    
+    .player-badge-compact .player-name {
+        font-size: 0.8rem;
     }
     
     .dia-detalle h5 {

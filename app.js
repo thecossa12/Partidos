@@ -4216,15 +4216,21 @@
             
             // Set 1
             if (set1Data && set1Data.length > 0) {
-                html += '<div class="set-historial">';
-                html += '<strong>Set 1:</strong>';
-                html += '<div class="asistentes-lista">';
-                html += set1Data.filter(j => j !== null && j !== undefined).map(j => {
+                html += '<div class="set-historial-compact">';
+                html += '<strong>Set 1</strong>';
+                html += '<div class="set-badges-grid">';
+                html += set1Data.filter(j => j !== null && j !== undefined).map((j, index) => {
                     // Si j es solo ID, buscar jugadora
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
                     if (!jugadora || !jugadora.nombre) return '';
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                    return `<span class="jugadora-asistente ${claseResaltado}">${jugadora.nombre}</span>`;
+                    const posicion = index + 1; // Posiciones 1-6
+                    return `
+                        <div class="player-badge-compact ${claseResaltado}">
+                            <span class="pos-num">${posicion}</span>
+                            <span class="player-name">${jugadora.nombre}</span>
+                        </div>
+                    `;
                 }).filter(html => html !== '').join('');
                 html += '</div>';
                 html += '</div>';
@@ -4232,15 +4238,21 @@
             
             // Set 2
             if (set2Data && set2Data.length > 0) {
-                html += '<div class="set-historial">';
-                html += '<strong>Set 2:</strong>';
-                html += '<div class="asistentes-lista">';
-                html += set2Data.filter(j => j !== null && j !== undefined).map(j => {
+                html += '<div class="set-historial-compact">';
+                html += '<strong>Set 2</strong>';
+                html += '<div class="set-badges-grid">';
+                html += set2Data.filter(j => j !== null && j !== undefined).map((j, index) => {
                     // Si j es solo ID, buscar jugadora
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
                     if (!jugadora || !jugadora.nombre) return '';
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                    return `<span class="jugadora-asistente ${claseResaltado}">${jugadora.nombre}</span>`;
+                    const posicion = index + 1; // Posiciones 1-6
+                    return `
+                        <div class="player-badge-compact ${claseResaltado}">
+                            <span class="pos-num">${posicion}</span>
+                            <span class="player-name">${jugadora.nombre}</span>
+                        </div>
+                    `;
                 }).filter(html => html !== '').join('');
                 html += '</div>';
                 html += '</div>';
@@ -4248,15 +4260,21 @@
             
             // Set 3
             if (set3Data && set3Data.length > 0) {
-                html += '<div class="set-historial">';
-                html += '<strong>Set 3:</strong>';
-                html += '<div class="asistentes-lista">';
-                html += set3Data.filter(j => j !== null && j !== undefined).map(j => {
+                html += '<div class="set-historial-compact">';
+                html += '<strong>Set 3</strong>';
+                html += '<div class="set-badges-grid">';
+                html += set3Data.filter(j => j !== null && j !== undefined).map((j, index) => {
                     // Si j es solo ID, buscar jugadora
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
                     if (!jugadora || !jugadora.nombre) return '';
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                    return `<span class="jugadora-asistente ${claseResaltado}">${jugadora.nombre}</span>`;
+                    const posicion = index + 1; // Posiciones 1-6
+                    return `
+                        <div class="player-badge-compact ${claseResaltado}">
+                            <span class="pos-num">${posicion}</span>
+                            <span class="player-name">${jugadora.nombre}</span>
+                        </div>
+                    `;
                 }).filter(html => html !== '').join('');
                 html += '</div>';
                 html += '</div>';
@@ -4699,7 +4717,17 @@
             container.appendChild(leyenda);
         }
         
-        this.jugadoras.forEach(jugadora => {
+        // ORDENAR jugadoras antes de generar las tarjetas: sanas primero por dorsal, luego lesionadas por dorsal
+        const jugadorasOrdenadas = [...this.jugadoras].sort((a, b) => {
+            // Primero ordenar por estado de lesión (sanas primero)
+            if (a.lesionada !== b.lesionada) {
+                return a.lesionada ? 1 : -1;
+            }
+            // Luego por dorsal
+            return a.dorsal - b.dorsal;
+        });
+        
+        jugadorasOrdenadas.forEach(jugadora => {
             const isSelected = asistenciasIds.includes(jugadora.id);
             const card = document.createElement('div');
             
@@ -4718,15 +4746,20 @@
                 }
             }
             
-            card.className = `jugadora-card ${colorClass} ${isSelected ? 'selected' : ''}`;
+            // Agregar clase de lesionada si aplica
+            const lesionadaClass = jugadora.lesionada ? 'lesionada' : '';
+            const lesionadaIcon = jugadora.lesionada ? '🩹 ' : '';
+            
+            card.className = `jugadora-card ${colorClass} ${isSelected ? 'selected' : ''} ${lesionadaClass}`;
             card.onclick = () => this.toggleAsistencia(`asistencia${dia.charAt(0).toUpperCase() + dia.slice(1)}`, jugadora.id);
             
             card.innerHTML = `
                 <div class="jugadora-header">
                     <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
                     <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
-                    <span class="jugadora-nombre">${jugadora.nombre}</span>
+                    <span class="jugadora-nombre">${lesionadaIcon}${jugadora.nombre}</span>
                 </div>
+                ${jugadora.lesionada ? '<div class="warning-lesion">⚠️ LESIONADA</div>' : ''}
             `;
             
             container.appendChild(card);
