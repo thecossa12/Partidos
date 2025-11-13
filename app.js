@@ -1737,9 +1737,7 @@
             return `
                 <div class="posicion-campo ocupada" onclick="app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
                     <span class="numero-posicion">${posicion}</span>
-                    <span class="dorsal-campo">#${jugadora.dorsal}</span>
-                    <span class="rol-campo">${emojiRol}</span>
-                    <span class="nombre-campo">${jugadora.nombre}</span>
+                    <span class="jugadora-info">${emojiRol} ${jugadora.nombre}</span>
                 </div>
             `;
         } else {
@@ -1841,9 +1839,7 @@
             return `
                 <div class="jugadora-modal-item" style="${colorFondo}" onclick="app.seleccionarJugadoraParaPosicion(${j.id}, ${posicion}, '${setKey}')">
                     <div class="jugadora-modal-info">
-                        <span class="jugadora-modal-dorsal">#${j.dorsal}</span>
-                        <span class="jugadora-modal-rol">${emojiRol}</span>
-                        <span class="jugadora-modal-nombre">${j.nombre}</span>
+                        <span class="jugadora-modal-nombre">${emojiRol} ${j.nombre}</span>
                     </div>
                     ${estadoTexto ? `<span class="jugadora-modal-estado">${estadoTexto}</span>` : ''}
                 </div>
@@ -4109,16 +4105,16 @@
         
         container.innerHTML = jornadasOrdenadas.map(jornada => {
             const jugadorasLunes = jornada.asistenciaLunes?.map(id => 
-                this.jugadoras.find(j => j.id === id)?.nombre
-            ).filter(n => n) || [];
+                this.jugadoras.find(j => j.id === id)
+            ).filter(j => j) || [];
             
             const jugadorasMiercoles = jornada.asistenciaMiercoles?.map(id => 
-                this.jugadoras.find(j => j.id === id)?.nombre
-            ).filter(n => n) || [];
+                this.jugadoras.find(j => j.id === id)
+            ).filter(j => j) || [];
             
             const jugadorasSabado = jornada.asistenciaSabado?.map(id => 
-                this.jugadoras.find(j => j.id === id)?.nombre
-            ).filter(n => n) || [];
+                this.jugadoras.find(j => j.id === id)
+            ).filter(j => j) || [];
             
             // Determinar qué fecha mostrar: si existe fechaSabado, usarla; si no, calcular desde fechaLunes
             let fechaMostrar;
@@ -4172,9 +4168,12 @@
                             <h5>📅 Lunes</h5>
                             <div class="asistentes-lista">
                                 ${jugadorasLunes.length > 0 ? 
-                                    jugadorasLunes.map(n => {
-                                        const claseResaltado = jugadoraFiltrada && n === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                                        return `<span class="jugadora-asistente ${claseResaltado}">${n}</span>`;
+                                    jugadorasLunes.map(j => {
+                                        let emojiRol = '🏐';
+                                        if (j.posicion === 'colocadora') emojiRol = '🎯';
+                                        else if (j.posicion === 'central') emojiRol = '🛡️';
+                                        const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
+                                        return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                                     }).join('') :
                                     '<span class="no-asistentes">Sin asistentes</span>'
                                 }
@@ -4185,9 +4184,12 @@
                             <h5>📅 Miércoles</h5>
                             <div class="asistentes-lista">
                                 ${jugadorasMiercoles.length > 0 ? 
-                                    jugadorasMiercoles.map(n => {
-                                        const claseResaltado = jugadoraFiltrada && n === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                                        return `<span class="jugadora-asistente ${claseResaltado}">${n}</span>`;
+                                    jugadorasMiercoles.map(j => {
+                                        let emojiRol = '🏐';
+                                        if (j.posicion === 'colocadora') emojiRol = '🎯';
+                                        else if (j.posicion === 'central') emojiRol = '🛡️';
+                                        const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
+                                        return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                                     }).join('') :
                                     '<span class="no-asistentes">Sin asistentes</span>'
                                 }
@@ -4238,16 +4240,20 @@
                 
                 html += ordenVoleibol.map(posIndex => {
                     const j = set1Data[posIndex - 1]; // Array es 0-based
-                    if (!j) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    if (!j) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
-                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
+                    
+                    // Obtener emoji del rol
+                    let emojiRol = '🏐';
+                    if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
+                    else if (jugadora.posicion === 'central') emojiRol = '🛡️';
                     
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `
                         <div class="player-badge-compact ${claseResaltado}">
-                            <span class="pos-num">${posIndex}</span>
-                            <span class="player-name">${jugadora.nombre}</span>
+                            <span class="player-name">${emojiRol} ${jugadora.nombre}</span>
                         </div>
                     `;
                 }).join('');
@@ -4265,16 +4271,19 @@
                 
                 html += ordenVoleibol.map(posIndex => {
                     const j = set2Data[posIndex - 1];
-                    if (!j) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    if (!j) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
-                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
+                    
+                    let emojiRol = '🏐';
+                    if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
+                    else if (jugadora.posicion === 'central') emojiRol = '🛡️';
                     
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `
                         <div class="player-badge-compact ${claseResaltado}">
-                            <span class="pos-num">${posIndex}</span>
-                            <span class="player-name">${jugadora.nombre}</span>
+                            <span class="player-name">${emojiRol} ${jugadora.nombre}</span>
                         </div>
                     `;
                 }).join('');
@@ -4292,16 +4301,19 @@
                 
                 html += ordenVoleibol.map(posIndex => {
                     const j = set3Data[posIndex - 1];
-                    if (!j) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    if (!j) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
                     const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
-                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="pos-num">' + posIndex + '</span><span class="player-name">-</span></div>';
+                    if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
+                    
+                    let emojiRol = '🏐';
+                    if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
+                    else if (jugadora.posicion === 'central') emojiRol = '🛡️';
                     
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `
                         <div class="player-badge-compact ${claseResaltado}">
-                            <span class="pos-num">${posIndex}</span>
-                            <span class="player-name">${jugadora.nombre}</span>
+                            <span class="player-name">${emojiRol} ${jugadora.nombre}</span>
                         </div>
                     `;
                 }).join('');
@@ -4425,8 +4437,11 @@
                 html += `
                     <div class="asistentes-lista">
                         ${jugadorasSabado.map(j => {
+                            let emojiRol = '🏐';
+                            if (j.posicion === 'colocadora') emojiRol = '🎯';
+                            else if (j.posicion === 'central') emojiRol = '🛡️';
                             const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                            return `<span class="jugadora-asistente ${claseResaltado}">${j.nombre}</span>`;
+                            return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                         }).join('')}
                     </div>
                 `;
@@ -4435,12 +4450,15 @@
             // Si la jornada NO está completada, mostrar jugadoras que asistirán
             if (!jornada.completada && jugadorasSabado.length > 0) {
                 html += `
-                    <div class="jugadoras-asistiran" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #007bff;">
+                    <div class="jugadoras-asistiran" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #28a745;">
                         <strong>Jugadoras que asistirán:</strong>
                         <div style="margin-top: 5px;">
                             ${jugadorasSabado.map(j => {
+                                let emojiRol = '🏐';
+                                if (j.posicion === 'colocadora') emojiRol = '🎯';
+                                else if (j.posicion === 'central') emojiRol = '🛡️';
                                 const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                                return `<span class="jugadora-asistente ${claseResaltado}">${j.nombre}</span>`;
+                                return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                             }).join('')}
                         </div>
                     </div>
@@ -4453,8 +4471,11 @@
             return `
                 <div class="asistentes-lista">
                     ${jugadorasSabado.map(j => {
+                        let emojiRol = '🏐';
+                        if (j.posicion === 'colocadora') emojiRol = '🎯';
+                        else if (j.posicion === 'central') emojiRol = '🛡️';
                         const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
-                        return `<span class="jugadora-asistente ${claseResaltado}">${j.nombre}</span>`;
+                        return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                     }).join('')}
                 </div>
             `;

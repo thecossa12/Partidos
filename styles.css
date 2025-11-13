@@ -2053,19 +2053,20 @@ button:hover {
 
 .jugadora-asistente {
     display: inline-block;
-    background: #e3f2fd;
-    color: #1976d2;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    color: #333;
     padding: 4px 8px;
     border-radius: 12px;
     margin: 1px;
     font-size: 0.8rem;
-    border: 1px solid #bbdefb;
+    border: 1px solid #ddd;
 }
 
 .jugadora-asistente.resaltado {
-    background: #ff9800;
-    color: white;
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    color: #e65100;
     font-weight: bold;
+    border-color: #ff9800;
     box-shadow: 0 2px 4px rgba(255, 152, 0, 0.4);
     transform: scale(1.05);
 }
@@ -2120,18 +2121,17 @@ button:hover {
 }
 
 .player-badge-compact {
-    background: linear-gradient(135deg, #1976d2 0%, #42a5f5 100%);
-    color: white;
-    padding: 4px 6px;
+    background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
+    color: #333;
+    padding: 6px 8px;
     border-radius: 6px;
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 2px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-    transition: transform 0.15s, box-shadow 0.15s;
-    min-height: 42px;
     justify-content: center;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: transform 0.15s, box-shadow 0.15s;
+    min-height: 36px;
+    border: 1px solid #ddd;
 }
 
 .player-badge-compact:hover {
@@ -2140,31 +2140,25 @@ button:hover {
 }
 
 .player-badge-compact.empty {
-    background: linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%);
+    background: linear-gradient(135deg, #fafafa 0%, #f0f0f0 100%);
     opacity: 0.5;
+    color: #999;
 }
 
 .player-badge-compact.resaltado {
-    background: linear-gradient(135deg, #ff9800 0%, #ffa726 100%);
+    background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+    border-color: #ff9800;
     box-shadow: 0 0 0 2px rgba(255, 152, 0, 0.3);
     transform: scale(1.03);
-}
-
-.player-badge-compact .pos-num {
-    font-size: 0.65rem;
-    font-weight: 700;
-    opacity: 0.85;
-    background: rgba(255, 255, 255, 0.25);
-    padding: 1px 5px;
-    border-radius: 3px;
-    line-height: 1;
+    color: #e65100;
+    font-weight: 600;
 }
 
 .player-badge-compact .player-name {
     font-size: 0.75rem;
     font-weight: 500;
     text-align: center;
-    line-height: 1.1;
+    line-height: 1.2;
     word-break: break-word;
     max-width: 100%;
 }
@@ -2990,13 +2984,9 @@ button:hover {
     }
     
     .player-badge-compact {
-        padding: 3px 4px;
-        min-height: 38px;
-    }
-    
-    .player-badge-compact .pos-num {
-        font-size: 0.6rem;
-        padding: 1px 4px;
+        padding: 4px 6px;
+        min-height: 34px;
+        font-size: 0.7rem;
     }
     
     .player-badge-compact .player-name {
@@ -4703,20 +4693,13 @@ button:hover {
     cursor: default;
 }
 
-.dorsal-campo {
-    font-weight: bold;
+.jugadora-info {
     font-size: 13px;
-    margin-right: 4px;
-}
-
-.rol-campo {
-    font-size: 16px;
-    margin-right: 5px;
-}
-
-.nombre-campo {
-    font-size: 13px;
+    font-weight: 500;
     white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 /* Estilos para las etiquetas de estado en jugadoras disponibles */
