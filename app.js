@@ -1866,16 +1866,17 @@
     generarPosicion(jugadora, posicion, setKey) {
         // Verificar que jugadora existe y no es null ni undefined
         if (jugadora !== null && jugadora !== undefined && jugadora.nombre) {
-            // Obtener emoji según el rol
+            // Obtener emoji según el rol ORIGINAL (rolOriginal si existe, sino posicion)
+            const rolReal = jugadora.rolOriginal || jugadora.posicion;
             let emojiRol = '🏐'; // Jugadora normal
-            if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
-            else if (jugadora.posicion === 'central') emojiRol = '🛡️';
-            else if (jugadora.posicion === 'opuesta') emojiRol = '🔥';
+            if (rolReal === 'colocadora') emojiRol = '🎯';
+            else if (rolReal === 'central') emojiRol = '🛡️';
+            else if (rolReal === 'opuesta') emojiRol = '🔥';
             
             return `
                 <div class="posicion-campo ocupada" onclick="app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
                     <span class="numero-posicion">${posicion}</span>
-                    <span class="jugadora-info">${emojiRol} ${jugadora.nombre}</span>
+                    <span class="jugadora-info">${emojiRol} #${jugadora.dorsal} ${jugadora.nombre}</span>
                 </div>
             `;
         } else {
@@ -3449,30 +3450,79 @@
         // Calcular prioridades basadas en entrenamientos y puntos de últimas 3 jornadas
         const jugadorasConPrioridad = jugadorasPartido.map(j => {
             const prioridad = this.calcularPrioridadAutoBalance(j, config);
-            return { ...j, prioridad };
+            // AÑADIR FACTOR ALEATORIO GRANDE para variar cada vez
+            const factorAleatorio = Math.random() * 20; // Más peso al azar
+            return { ...j, prioridad: prioridad + factorAleatorio };
         });
 
-        // Ordenar por prioridad (menor = más necesita jugar)
+        // Ordenar por prioridad (menor = más necesita jugar) + aleatorio
         jugadorasConPrioridad.sort((a, b) => a.prioridad - b.prioridad);
 
-        console.log('📊 Jugadoras con prioridad:', jugadorasConPrioridad.map(j => `${j.nombre} (${j.posicion}): ${j.prioridad.toFixed(2)}`));
+        console.log('📊 Jugadoras con prioridad (con aleatorio):', jugadorasConPrioridad.map(j => `${j.nombre} (${j.posicion}): ${j.prioridad.toFixed(2)}`));
 
-        // Separar por roles SIEMPRE (es obligatorio en voleibol)
-        const colocadoras = jugadorasConPrioridad.filter(j => j.posicion === 'colocadora');
-        const centrales = jugadorasConPrioridad.filter(j => j.posicion === 'central');
-        const opuestas = jugadorasConPrioridad.filter(j => j.posicion === 'opuesta');
-        const cuatros = jugadorasConPrioridad.filter(j => !['colocadora', 'central', 'opuesta'].includes(j.posicion));
+        // Separar por roles y MEZCLAR ALEATORIAMENTE cada grupo
+        let colocadoras = jugadorasConPrioridad.filter(j => j.posicion === 'colocadora');
+        let centrales = jugadorasConPrioridad.filter(j => j.posicion === 'central');
+        let opuestas = jugadorasConPrioridad.filter(j => j.posicion === 'opuesta');
+        let cuatros = jugadorasConPrioridad.filter(j => !['colocadora', 'central', 'opuesta'].includes(j.posicion));
 
-        console.log(`👥 Distribución: Colocadoras: ${colocadoras.length}, Centrales: ${centrales.length}, Opuestas: ${opuestas.length}, Cuatros: ${cuatros.length}`);
+        // Mezclar aleatoriamente cada grupo para variar selección
+        colocadoras = this.shuffleArray([...colocadoras]);
+        centrales = this.shuffleArray([...centrales]);
+        opuestas = this.shuffleArray([...opuestas]);
+        cuatros = this.shuffleArray([...cuatros]);
 
-        // Generar 3 sets
+        console.log(`👥 Distribución (mezclada): Colocadoras: ${colocadoras.length}, Centrales: ${centrales.length}, Opuestas: ${opuestas.length}, Cuatros: ${cuatros.length}`);
+
+        // Generar 3 sets con selección aleatoria
         const rotacion = {
             set1: this.generarSetAutoBalance(jugadorasConPrioridad, config, 1, colocadoras, centrales, opuestas, cuatros),
             set2: this.generarSetAutoBalance(jugadorasConPrioridad, config, 2, colocadoras, centrales, opuestas, cuatros),
             set3: this.generarSetAutoBalance(jugadorasConPrioridad, config, 3, colocadoras, centrales, opuestas, cuatros)
         };
 
+        // Ajustar puntos para distribución justa
+        // Como el Set 3 es opcional, distribuir para que todos jueguen mínimo 12.5 puntos
+        this.distribuirPuntosEquitativamente(rotacion, jugadorasPartido.length);
+
         return rotacion;
+    }
+
+    distribuirPuntosEquitativamente(rotacion, totalJugadoras) {
+        console.log('⚖️ Distribuyendo puntos equitativamente...');
+        
+        // Total de puntos disponibles: Set 1 (25) + Set 2 (25) = 50 puntos seguros
+        // Set 3 es opcional, así que calculamos con 2 sets
+        const puntosTotalesDisponibles = 50; // 2 sets garantizados
+        const puntosMinimoPorJugadora = 12.5;
+        
+        // Contar cuántas jugadoras únicas juegan
+        const jugadorasQueJuegan = new Set();
+        ['set1', 'set2', 'set3'].forEach(setKey => {
+            rotacion[setKey].titulares.forEach(t => jugadorasQueJuegan.add(t.id));
+        });
+        
+        const numJugadorasReales = jugadorasQueJuegan.size;
+        console.log(`👥 ${numJugadorasReales} jugadoras participan en los sets`);
+        
+        // Calcular puntos ideales por jugadora (basado en 2 sets)
+        const puntosIdealPorJugadora = puntosTotalesDisponibles / numJugadorasReales;
+        
+        // Distribuir puntos en Set 1 y Set 2 para garantizar mínimo
+        rotacion.set1.titulares.forEach(t => {
+            t.puntosJugados = Math.max(12.5, 25 / 6); // ~4.17 por jugadora, mínimo 12.5
+        });
+        
+        rotacion.set2.titulares.forEach(t => {
+            t.puntosJugados = Math.max(12.5, 25 / 6);
+        });
+        
+        // Set 3: Menos puntos ya que es opcional
+        rotacion.set3.titulares.forEach(t => {
+            t.puntosJugados = 10; // Menos puntos para set opcional
+        });
+        
+        console.log(`✅ Puntos distribuidos: Set1=${rotacion.set1.titulares[0].puntosJugados}, Set2=${rotacion.set2.titulares[0].puntosJugados}, Set3=${rotacion.set3.titulares[0].puntosJugados}`);
     }
 
     calcularPrioridadAutoBalance(jugadora, config) {
@@ -3524,6 +3574,16 @@
         return totalPuntos;
     }
 
+    // Fisher-Yates shuffle para aleatorizar arrays
+    shuffleArray(array) {
+        const shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }
+
     generarSetAutoBalance(jugadoras, config, numSet, colocadoras, centrales, opuestas, cuatros) {
         const set = {
             titulares: [],
@@ -3546,9 +3606,11 @@
             // Asignar colocadora
             titulares.push({
                 ...colocadora,
-                posicion: posiciones.colocadora,
+                rolOriginal: colocadora.posicion, // Guardar rol original
+                posicion: posiciones.colocadora, // Posición en campo
+                posicionCampo: posiciones.colocadora,
                 esColocadora: true,
-                puntosJugados: 15
+                puntosJugados: 0 // Se calculará después
             });
 
             // Asignar opuesta - si no hay opuestas, usar otra colocadora o jugador normal
@@ -3564,8 +3626,10 @@
             if (opuesta) {
                 titulares.push({
                     ...opuesta,
+                    rolOriginal: opuesta.posicion,
                     posicion: posiciones.opuesta,
-                    puntosJugados: 15
+                    posicionCampo: posiciones.opuesta,
+                    puntosJugados: 0
                 });
             }
 
@@ -3590,8 +3654,10 @@
                 if (posiciones.centrales[idx]) {
                     titulares.push({
                         ...jugador,
+                        rolOriginal: jugador.posicion,
                         posicion: posiciones.centrales[idx],
-                        puntosJugados: 15
+                        posicionCampo: posiciones.centrales[idx],
+                        puntosJugados: 0
                     });
                 }
             });
@@ -3606,8 +3672,10 @@
                 if (cuatrosDisponibles[idx]) {
                     titulares.push({
                         ...cuatrosDisponibles[idx],
+                        rolOriginal: cuatrosDisponibles[idx].posicion,
                         posicion: pos,
-                        puntosJugados: 15
+                        posicionCampo: pos,
+                        puntosJugados: 0
                     });
                 }
             });
@@ -3621,8 +3689,10 @@
                 todasDisponibles.slice(0, faltantes).forEach((j, idx) => {
                     titulares.push({
                         ...j,
+                        rolOriginal: j.posicion,
                         posicion: posRestantes[idx] || (idx + 1),
-                        puntosJugados: 15
+                        posicionCampo: posRestantes[idx] || (idx + 1),
+                        puntosJugados: 0
                     });
                 });
             }
