@@ -4194,7 +4194,7 @@
             </div>
             <div class="stat-card">
                 <div class="stat-number">${jornadasCompletadas}</div>
-                <div class="stat-label">Completadas</div>
+                <div class="stat-label">Finalizadas</div>
             </div>
             <div class="stat-card">
                 <div class="stat-number">${this.jugadoras.length}</div>
@@ -4276,7 +4276,7 @@
                             <span class="icono-expandir">▶</span>
                             <span class="jornada-titulo">Semana del ${this.formatearFecha(fechaMostrar)}${partidoInfo}</span>
                             <span class="estado ${jornada.completada ? 'completada' : 'pendiente'}">
-                                ${jornada.completada ? '✅ Completada' : '⏳ Pendiente'}
+                                ${jornada.completada ? '✅ Finalizado/a' : '⏳ Pendiente'}
                             </span>
                         </div>
                         <div class="jornada-acciones" onclick="event.stopPropagation()">

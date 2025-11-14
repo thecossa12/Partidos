@@ -3013,8 +3013,17 @@ button:hover {
     
     .player-badge-compact {
         padding: 4px 6px;
-        min-height: 34px;
+        min-height: 32px;
         font-size: 0.7rem;
+        gap: 3px;
+    }
+    
+    .player-badge-compact .player-dorsal {
+        font-size: 0.65rem;
+    }
+    
+    .player-badge-compact .emoji-posicion {
+        font-size: 0.85rem;
     }
     
     .player-badge-compact .player-name {
@@ -5812,6 +5821,41 @@ input:checked + .slider:before {
     overflow-y: auto;
     background: white;
     box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+/* Mobile: Optimizado para ahorrar espacio */
+@media (max-width: 767px) {
+    .modal-seleccion-content {
+        width: 95%;
+        max-width: 95%;
+        max-height: 90vh;
+        margin: 5px;
+    }
+    
+    .modal-seleccion-content .modal-header {
+        padding: 12px 15px;
+    }
+    
+    .modal-seleccion-content .modal-header h4 {
+        font-size: 0.95rem;
+    }
+    
+    .modal-seleccion-content .modal-body {
+        padding: 10px;
+    }
+    
+    .jugadora-modal-item {
+        padding: 10px 12px;
+    }
+    
+    .jugadora-modal-info {
+        gap: 8px;
+    }
+    
+    .lista-jugadoras-modal {
+        gap: 8px;
+        margin-top: 0;
+    }
 }
 
 /* Desktop: Dos columnas */
