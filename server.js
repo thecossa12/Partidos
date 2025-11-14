@@ -20,20 +20,33 @@ app.get('/', (req, res) => {
 app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz
 
 let db;
+let isDBConnected = false;
+
+// Middleware para verificar conexión a DB
+const checkDBConnection = (req, res, next) => {
+    if (!isDBConnected || !db) {
+        return res.status(503).json({ 
+            error: 'Database connection not ready. Please try again in a few seconds.' 
+        });
+    }
+    next();
+};
 
 // Conectar a MongoDB al iniciar el servidor
 connectDB().then(database => {
     db = database;
+    isDBConnected = true;
     console.log('✅ Base de datos conectada');
 }).catch(err => {
     console.error('❌ Error conectando a la base de datos:', err);
-    process.exit(1);
+    console.log('⚠️ El servidor continuará ejecutándose pero las operaciones de BD fallarán');
+    // No exit - permitir que el servidor arranque
 });
 
 // ==================== ENDPOINTS DE JUGADORES ====================
 
 // Obtener todos los jugadores (filtrados por usuario)
-app.get('/api/jugadores', async (req, res) => {
+app.get('/api/jugadores', checkDBConnection, async (req, res) => {
     try {
         const userId = req.query.userId;
         if (!userId) {
