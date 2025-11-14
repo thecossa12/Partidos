@@ -3422,6 +3422,13 @@
     ejecutarAutoBalance() {
         console.log('🎯 Ejecutando Auto-Balance...');
         
+        // VALIDAR que hay jugadoras seleccionadas para el sábado
+        if (!this.jornadaActual || !this.jornadaActual.asistenciaSabado || this.jornadaActual.asistenciaSabado.length === 0) {
+            alert('❌ Debes seleccionar primero las jugadoras que van al partido (Paso 3: Sábado)');
+            this.cerrarModalAutoBalance();
+            return;
+        }
+        
         // Obtener configuración - ahora desde .posicion-volei
         const posicionSeleccionada = document.querySelector('.posicion-volei.selected');
         const posicionColocadora = posicionSeleccionada?.dataset.pos;
@@ -3435,12 +3442,7 @@
 
         const priorizarEntrenamientos = document.getElementById('priorizarEntrenamientos')?.checked || true;
         const balancearPuntos = document.getElementById('balancearPuntos')?.checked || true;
-
-        // Obtener jugadoras que van al partido
-        if (!this.jornadaActual || !this.jornadaActual.asistenciaSabado) {
-            alert('❌ No hay jugadoras seleccionadas para el partido');
-            return;
-        }
+        const autocompletarSet3 = document.getElementById('autocompletarSet3')?.checked || false;
 
         const jugadorasPartido = this.jugadoras.filter(j => 
             this.jornadaActual.asistenciaSabado.includes(j.id)
@@ -3457,7 +3459,8 @@
         const config = {
             posicionColocadora: parseInt(posicionColocadora),
             priorizarEntrenamientos,
-            balancearPuntos
+            balancearPuntos,
+            autocompletarSet3
         };
 
         console.log('⚙️ Configuración:', config);
@@ -3518,39 +3521,182 @@
             const asistioLunes = this.jornadaActual.asistenciaLunes?.includes(j.id);
             const asistioMiercoles = this.jornadaActual.asistenciaMiercoles?.includes(j.id);
             const entrenamientos = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
-            return `${j.nombre} - ${entrenamientos} entrenos`;
+            return `${j.nombre} (${j.posicion}) - ${entrenamientos} entrenos`;
         }));
 
-        // LÓGICA SIMPLE:
-        // - Set 1: Primeras 6 (más entrenamientos)
-        // - Set 2: Siguientes 6 (si hay)
-        // - Set 3: Las 2 restantes (si hay 14)
-        // - 1 cambio por set en punto 12.5
+        // Separar por roles
+        const colocadoras = jugadorasConPrioridad.filter(j => j.posicion === 'colocadora');
+        const centrales = jugadorasConPrioridad.filter(j => j.posicion === 'central');
+        const opuestas = jugadorasConPrioridad.filter(j => j.posicion === 'opuesta');
+        const jugadoras = jugadorasConPrioridad.filter(j => j.posicion === 'jugadora');
 
-        const totalJugadoras = jugadorasConPrioridad.length;
-        
-        // Set 1: Primeras 6
-        const set1 = this.generarSetSimple(
-            jugadorasConPrioridad.slice(0, 6),
-            jugadorasConPrioridad.slice(6, 7), // 1 suplente para cambio en 12.5
+        // Set 1: Mejores 6 jugadoras respetando roles
+        const set1 = this.generarSetPorRoles(
+            colocadoras.slice(0, 1),  // 1 colocadora
+            opuestas.slice(0, 1),     // 1 opuesta
+            centrales.slice(0, 2),    // 2 centrales
+            jugadoras.slice(0, 2),    // 2 jugadoras
+            jugadorasConPrioridad.slice(6, 7), // 1 suplente
             config,
             1
         );
 
-        // Set 2: Siguientes 6 (o las que queden)
-        const jugadorasSet2 = jugadorasConPrioridad.slice(6, 12);
-        const suplenteSet2 = jugadorasConPrioridad.slice(12, 13); // 1 suplente
-        const set2 = jugadorasSet2.length >= 6 
-            ? this.generarSetSimple(jugadorasSet2, suplenteSet2, config, 2)
-            : { titulares: [], suplentes: [], rotaciones: [] };
+        // Set 2: Siguientes 6 respetando roles
+        const set2 = this.generarSetPorRoles(
+            colocadoras.slice(1, 2) || colocadoras.slice(0, 1),  // 2da colocadora o repetir 1ra
+            opuestas.slice(1, 2) || opuestas.slice(0, 1),        // 2da opuesta o repetir 1ra
+            centrales.slice(2, 4) || centrales.slice(0, 2),      // Siguientes centrales o repetir
+            jugadoras.slice(2, 4) || jugadoras.slice(0, 2),      // Siguientes jugadoras o repetir
+            jugadorasConPrioridad.slice(12, 13), // 1 suplente
+            config,
+            2
+        );
 
-        // Set 3: Las 2 restantes (si hay 14 jugadoras)
-        const jugadorasSet3 = jugadorasConPrioridad.slice(12, 14);
-        const set3 = jugadorasSet3.length >= 2
-            ? this.generarSetSimple(jugadorasSet3, [], config, 3)
-            : { titulares: [], suplentes: [], rotaciones: [] };
+        // Set 3 OPCIONAL: Las que MÁS han entrenado (si autocompletarSet3 está activado)
+        let set3 = { titulares: [], suplentes: [], rotaciones: [] };
+        if (config.autocompletarSet3 && jugadorasConPrioridad.length >= 8) {
+            // En Set 3 juegan las MEJORES (más entrenamientos) que no estén muy cansadas
+            set3 = this.generarSetPorRoles(
+                colocadoras.slice(0, 1),  // Mejor colocadora
+                opuestas.slice(0, 1),     // Mejor opuesta
+                centrales.slice(0, 2),    // Mejores centrales
+                jugadoras.slice(0, 2),    // Mejores jugadoras
+                [],
+                config,
+                3
+            );
+        }
 
         return { set1, set2, set3 };
+    }
+
+    generarSetPorRoles(colocadoras, opuestas, centrales, jugadoras, suplentes, config, numSet) {
+        const set = {
+            titulares: [],
+            suplentes: [],
+            rotaciones: []
+        };
+
+        // Calcular posiciones según donde está la colocadora
+        const posColocadora = config.posicionColocadora; // 1-6
+        
+        // POSICIONES FIJAS según reglas de voleibol:
+        // Si colocadora en 1 → opuesta en 4
+        // Si colocadora en 2 → opuesta en 5
+        // Si colocadora en 3 → opuesta en 6
+        // Si colocadora en 4 → opuesta en 1
+        // Si colocadora en 5 → opuesta en 2
+        // Si colocadora en 6 → opuesta en 3
+        const posOpuesta = ((posColocadora + 2) % 6) + 1;
+        
+        // Centrales en posiciones 3 y 6 (delanteras)
+        const posCentral1 = 3;
+        const posCentral2 = 6;
+        
+        // Jugadoras en las 2 posiciones restantes
+        const posicionesOcupadas = [posColocadora, posOpuesta, posCentral1, posCentral2];
+        const posicionesLibres = [1, 2, 3, 4, 5, 6].filter(p => !posicionesOcupadas.includes(p));
+        const posJugadora1 = posicionesLibres[0];
+        const posJugadora2 = posicionesLibres[1];
+
+        console.log(`🏐 Set ${numSet} - Posiciones: Col=${posColocadora}, Opu=${posOpuesta}, Cen=${posCentral1},${posCentral2}, Jug=${posJugadora1},${posJugadora2}`);
+
+        // Asignar colocadora
+        if (colocadoras && colocadoras.length > 0) {
+            set.titulares.push({
+                ...colocadoras[0],
+                rolOriginal: 'colocadora',
+                posicion: posColocadora,
+                posicionCampo: posColocadora,
+                puntosJugados: 25
+            });
+        }
+
+        // Asignar opuesta
+        if (opuestas && opuestas.length > 0) {
+            set.titulares.push({
+                ...opuestas[0],
+                rolOriginal: 'opuesta',
+                posicion: posOpuesta,
+                posicionCampo: posOpuesta,
+                puntosJugados: 25
+            });
+        }
+
+        // Asignar centrales
+        if (centrales && centrales.length > 0) {
+            set.titulares.push({
+                ...centrales[0],
+                rolOriginal: 'central',
+                posicion: posCentral1,
+                posicionCampo: posCentral1,
+                puntosJugados: 25
+            });
+        }
+        if (centrales && centrales.length > 1) {
+            set.titulares.push({
+                ...centrales[1],
+                rolOriginal: 'central',
+                posicion: posCentral2,
+                posicionCampo: posCentral2,
+                puntosJugados: 25
+            });
+        }
+
+        // Asignar jugadoras normales
+        if (jugadoras && jugadoras.length > 0) {
+            set.titulares.push({
+                ...jugadoras[0],
+                rolOriginal: 'jugadora',
+                posicion: posJugadora1,
+                posicionCampo: posJugadora1,
+                puntosJugados: 25
+            });
+        }
+        if (jugadoras && jugadoras.length > 1) {
+            set.titulares.push({
+                ...jugadoras[1],
+                rolOriginal: 'jugadora',
+                posicion: posJugadora2,
+                posicionCampo: posJugadora2,
+                puntosJugados: 25
+            });
+        }
+
+        // Asignar primer saque aleatorio
+        if (set.titulares.length > 0) {
+            const indexSaque = Math.floor(Math.random() * set.titulares.length);
+            set.titulares[indexSaque].primerSaque = true;
+        }
+
+        // Suplentes
+        set.suplentes = (suplentes || []).map(j => ({
+            ...j,
+            rolOriginal: j.posicion,
+            puntosJugados: 0
+        }));
+
+        // SOLO 1 CAMBIO en punto 12.5 (si hay suplente y no es Set 3)
+        if (numSet < 3 && suplentes && suplentes.length > 0 && set.titulares.length > 0) {
+            const suplenteAEntrar = suplentes[0];
+            const titularASalir = set.titulares[set.titulares.length - 1]; // Última (menos prioridad)
+
+            set.rotaciones.push({
+                entraId: suplenteAEntrar.id,
+                saleId: titularASalir.id,
+                puntoRotacion: 12.5,
+                posicion: titularASalir.posicion
+            });
+
+            titularASalir.puntosJugados = 12.5;
+            suplenteAEntrar.puntosJugados = 12.5;
+
+            console.log(`🔄 Set ${numSet}: ${suplenteAEntrar.nombre} entra por ${titularASalir.nombre} en 12.5`);
+        }
+
+        console.log(`✅ Set ${numSet}: ${set.titulares.length} titulares, ${set.suplentes.length} suplentes`);
+
+        return set;
     }
 
     generarSetSimple(titulares, suplentes, config, numSet) {
