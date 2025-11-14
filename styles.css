@@ -6535,6 +6535,152 @@ input:checked + .slider:before {
         font-size: 1rem;
     }
 }
+
+/* Auto-Balance Styles */
+.btn-autobalance {
+    background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(243, 156, 18, 0.4);
+    transition: all 0.3s ease;
+}
+
+.btn-autobalance:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(243, 156, 18, 0.6);
+}
+
+.btn-autobalance:active {
+    transform: translateY(-1px);
+}
+
+.autobalance-hint {
+    font-size: 14px;
+    color: #95a5a6;
+    margin-top: 10px;
+}
+
+/* Modal Auto-Balance */
+.modal-autobalance-content {
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    max-width: 600px;
+    width: 90%;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal-autobalance-content h4 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+    font-size: 24px;
+}
+
+.autobalance-config {
+    margin: 20px 0;
+}
+
+.config-section h5 {
+    color: #667eea;
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+.config-hint {
+    color: #7f8c8d;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
+
+.posiciones-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-top: 15px;
+}
+
+.btn-posicion {
+    background: white;
+    border: 2px solid #e0e0e0;
+    padding: 15px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #2c3e50;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-posicion:hover {
+    border-color: #667eea;
+    background: #f8f9ff;
+    transform: translateY(-2px);
+}
+
+.btn-posicion.selected {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-color: #667eea;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    margin: 8px 0;
+    background: #f8f9fa;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.checkbox-option:hover {
+    background: #ecf0f1;
+}
+
+.checkbox-option input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+    cursor: pointer;
+}
+
+.checkbox-option span {
+    font-size: 15px;
+    color: #2c3e50;
+}
+
+@media (max-width: 768px) {
+    .modal-autobalance-content {
+        padding: 20px;
+        width: 95%;
+    }
+    
+    .posiciones-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .btn-autobalance {
+        padding: 12px 30px;
+        font-size: 16px;
+    }
+}
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     

@@ -1156,6 +1156,19 @@
         this.guardarJornadas();
         this.generarGridsAsistencia();
         
+        // Mostrar/ocultar botón de auto-balance
+        if (tipoAsistencia === 'asistenciaSabado') {
+            const btnAutoBalance = document.getElementById('btnAutoBalance');
+            if (btnAutoBalance) {
+                const jugadorasSeleccionadas = this.jornadaActual.asistenciaSabado.length;
+                if (jugadorasSeleccionadas >= 6) {
+                    btnAutoBalance.style.display = 'inline-block';
+                } else {
+                    btnAutoBalance.style.display = 'none';
+                }
+            }
+        }
+        
         // Si estamos en el paso sábado, actualizar todo automáticamente
         if (tipoAsistencia === 'asistenciaSabado' && this.pasoActual === 'sabado') {
             // Si la jugadora fue deseleccionada, limpiarla completamente
@@ -3318,6 +3331,299 @@
         if (btnGuardar) {
             btnGuardar.textContent = '💾 Guardar';
             btnGuardar.onclick = () => this.guardarEstadisticas();
+        }
+    }
+
+    // ==================== AUTO-BALANCE FUNCTIONS ====================
+    
+    abrirModalAutoBalance() {
+        const modal = document.getElementById('modal-autobalance');
+        if (modal) {
+            modal.style.display = 'flex';
+            
+            // Resetear selección de posiciones
+            document.querySelectorAll('.btn-posicion').forEach(btn => {
+                btn.classList.remove('selected');
+            });
+        }
+    }
+
+    cerrarModalAutoBalance() {
+        const modal = document.getElementById('modal-autobalance');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    ejecutarAutoBalance() {
+        // Obtener configuración
+        const posicionColocadora = document.querySelector('.btn-posicion.selected')?.dataset.pos;
+        
+        if (!posicionColocadora) {
+            alert('❌ Por favor selecciona una posición para el/la colocador/a');
+            return;
+        }
+
+        const priorizarEntrenamientos = document.getElementById('priorizarEntrenamientos').checked;
+        const balancearPuntos = document.getElementById('balancearPuntos').checked;
+        const respetarRoles = document.getElementById('respetarRoles').checked;
+
+        // Obtener jugadoras que van al partido
+        if (!this.jornadaActual || !this.jornadaActual.asistenciaSabado) {
+            alert('❌ No hay jugadoras seleccionadas para el partido');
+            return;
+        }
+
+        const jugadorasPartido = this.jugadoras.filter(j => 
+            this.jornadaActual.asistenciaSabado.includes(j.id)
+        );
+
+        if (jugadorasPartido.length < 6) {
+            alert('❌ Se necesitan al menos 6 jugadoras para el auto-balance');
+            return;
+        }
+
+        // Generar rotación automática
+        const config = {
+            posicionColocadora: parseInt(posicionColocadora),
+            priorizarEntrenamientos,
+            balancearPuntos,
+            respetarRoles
+        };
+
+        const rotacionGenerada = this.generarAutoBalance(jugadorasPartido, config);
+        
+        // Aplicar rotación a la jornada actual
+        this.aplicarRotacionAutoBalance(rotacionGenerada);
+        
+        // Cerrar modal
+        this.cerrarModalAutoBalance();
+        
+        // Notificar
+        showNotification('✅ Auto-Balance completado correctamente', 'success');
+        
+        // Regenerar vista del partido
+        this.generarConfiguracionPartido();
+    }
+
+    generarAutoBalance(jugadorasPartido, config) {
+        // Calcular prioridades basadas en entrenamientos y puntos de últimas 3 jornadas
+        const jugadorasConPrioridad = jugadorasPartido.map(j => {
+            const prioridad = this.calcularPrioridadAutoBalance(j, config);
+            return { ...j, prioridad };
+        });
+
+        // Ordenar por prioridad (menor = más necesita jugar)
+        jugadorasConPrioridad.sort((a, b) => a.prioridad - b.prioridad);
+
+        // Separar por roles si está activado
+        let colocadoras = [];
+        let centrales = [];
+        let opuestas = [];
+        let cuatros = [];
+
+        if (config.respetarRoles) {
+            colocadoras = jugadorasConPrioridad.filter(j => j.posicion === 'colocadora');
+            centrales = jugadorasConPrioridad.filter(j => j.posicion === 'central');
+            opuestas = jugadorasConPrioridad.filter(j => j.posicion === 'opuesta');
+            cuatros = jugadorasConPrioridad.filter(j => !['colocadora', 'central', 'opuesta'].includes(j.posicion));
+        }
+
+        // Generar 3 sets
+        const rotacion = {
+            set1: this.generarSetAutoBalance(jugadorasConPrioridad, config, 1, colocadoras, centrales, opuestas, cuatros),
+            set2: this.generarSetAutoBalance(jugadorasConPrioridad, config, 2, colocadoras, centrales, opuestas, cuatros),
+            set3: this.generarSetAutoBalance(jugadorasConPrioridad, config, 3, colocadoras, centrales, opuestas, cuatros)
+        };
+
+        return rotacion;
+    }
+
+    calcularPrioridadAutoBalance(jugadora, config) {
+        let prioridad = 0;
+
+        // Entrenamientos de esta jornada
+        if (config.priorizarEntrenamientos && this.jornadaActual) {
+            const asistioLunes = this.jornadaActual.asistenciaLunes?.includes(jugadora.id);
+            const asistioMiercoles = this.jornadaActual.asistenciaMiercoles?.includes(jugadora.id);
+            
+            const entrenamientosEstaJornada = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
+            
+            // Más entrenamientos = menos prioridad (score más bajo)
+            prioridad -= entrenamientosEstaJornada * 15;
+        }
+
+        // Puntos jugados en últimas 3 jornadas
+        if (config.balancearPuntos) {
+            const puntosUltimas3 = this.calcularPuntosUltimas3Jornadas(jugadora.id);
+            prioridad += puntosUltimas3 * 0.5;
+        }
+
+        // Factor aleatorio pequeño para evitar empates
+        prioridad += Math.random() * 0.01;
+
+        return prioridad;
+    }
+
+    calcularPuntosUltimas3Jornadas(jugadoraId) {
+        const jornadasCompletadas = this.jornadas
+            .filter(j => j.completada)
+            .sort((a, b) => new Date(b.fecha) - new Date(a.fecha))
+            .slice(0, 3);
+
+        let totalPuntos = 0;
+
+        jornadasCompletadas.forEach(jornada => {
+            ['set1', 'set2', 'set3'].forEach(setKey => {
+                const set = jornada[setKey];
+                if (set && set.titulares) {
+                    const titular = set.titulares.find(t => t.id === jugadoraId);
+                    if (titular) {
+                        totalPuntos += titular.puntosJugados || 0;
+                    }
+                }
+            });
+        });
+
+        return totalPuntos;
+    }
+
+    generarSetAutoBalance(jugadoras, config, numSet, colocadoras, centrales, opuestas, cuatros) {
+        const set = {
+            titulares: [],
+            suplentes: [],
+            rotaciones: []
+        };
+
+        let titulares = [];
+
+        if (config.respetarRoles && colocadoras.length > 0) {
+            // Seleccionar colocadora con mayor prioridad (menos puntos jugados)
+            const colocadora = colocadoras[numSet % colocadoras.length] || colocadoras[0];
+            
+            // Calcular posiciones según la posición de la colocadora
+            const posiciones = this.calcularPosicionesVoleibol(config.posicionColocadora, numSet);
+            
+            // Asignar colocadora
+            titulares.push({
+                ...colocadora,
+                posicion: posiciones.colocadora,
+                esColocadora: true
+            });
+
+            // Asignar opuesta/colocadora
+            const opuesta = (opuestas.length > 0 ? opuestas : colocadoras.filter(c => c.id !== colocadora.id))[0];
+            if (opuesta) {
+                titulares.push({
+                    ...opuesta,
+                    posicion: posiciones.opuesta
+                });
+            }
+
+            // Asignar centrales (2)
+            const centralesSeleccionados = centrales.slice(0, 2);
+            centralesSeleccionados.forEach((central, idx) => {
+                titulares.push({
+                    ...central,
+                    posicion: posiciones.centrales[idx]
+                });
+            });
+
+            // Completar con cuatros (2)
+            const cuatrosSeleccionados = cuatros.slice(0, 6 - titulares.length);
+            cuatrosSeleccionados.forEach((cuatro, idx) => {
+                titulares.push({
+                    ...cuatro,
+                    posicion: posiciones.cuatros[idx]
+                });
+            });
+
+        } else {
+            // Sin respetar roles, seleccionar las 6 con mayor prioridad
+            titulares = jugadoras.slice(0, 6).map((j, idx) => ({
+                ...j,
+                posicion: idx + 1,
+                puntosJugados: 15 // Puntos predeterminados
+            }));
+        }
+
+        // Asignar primer saque aleatorio
+        if (titulares.length > 0) {
+            const indexSaque = Math.floor(Math.random() * titulares.length);
+            titulares[indexSaque].primerSaque = true;
+        }
+
+        // Asignar puntos predeterminados
+        titulares.forEach(t => {
+            if (!t.puntosJugados) t.puntosJugados = 15;
+        });
+
+        // Suplentes: el resto de jugadoras ordenadas por rol
+        const idsEnCampo = titulares.map(t => t.id);
+        set.suplentes = jugadoras
+            .filter(j => !idsEnCampo.includes(j.id))
+            .map(j => ({ ...j, posicion: j.posicion }));
+
+        set.titulares = titulares;
+
+        return set;
+    }
+
+    calcularPosicionesVoleibol(posColocadora, numSet) {
+        // Ajustar posición según el set para variar
+        let pos = ((posColocadora - 1 + (numSet - 1) * 2) % 6) + 1;
+
+        // Colocadora en la posición elegida
+        const colocadora = pos;
+        
+        // Opuesta en posición opuesta (+3 o -3 módulo 6)
+        const opuesta = ((colocadora + 2) % 6) + 1;
+        
+        // Centrales: derecha del colocador/opuesta
+        let central1, central2;
+        if ([1, 2, 3].includes(colocadora)) {
+            // Colocadora arriba
+            central1 = ((colocadora) % 6) + 1; // Derecha
+            central2 = ((central1 + 2) % 6) + 1;
+        } else {
+            // Colocadora abajo
+            central1 = ((colocadora - 2 + 6) % 6) + 1; // Izquierda
+            central2 = ((central1 + 2) % 6) + 1;
+        }
+
+        // Cuatros: las 2 posiciones restantes
+        const ocupadas = [colocadora, opuesta, central1, central2];
+        const cuatros = [1, 2, 3, 4, 5, 6].filter(p => !ocupadas.includes(p));
+
+        return {
+            colocadora,
+            opuesta,
+            centrales: [central1, central2],
+            cuatros
+        };
+    }
+
+    aplicarRotacionAutoBalance(rotacion) {
+        if (!this.jornadaActual) return;
+
+        // Aplicar set 1
+        this.jornadaActual.set1 = rotacion.set1;
+        
+        // Aplicar set 2
+        this.jornadaActual.set2 = rotacion.set2;
+        
+        // Aplicar set 3
+        this.jornadaActual.set3 = rotacion.set3;
+
+        // Guardar
+        this.guardarJornadas();
+    }
+
+    generarConfiguracionPartido() {
+        // Regenerar la vista de planificación de sets
+        if (this.pasoActual === 'sabado' && this.jornadaActual) {
+            this.actualizarVistasSets();
+            this.actualizarJugadorasDisponibles();
         }
     }
 
@@ -6171,6 +6477,46 @@ document.addEventListener('DOMContentLoaded', () => {
             modalEstadisticas.addEventListener('click', (e) => {
                 if (e.target === modalEstadisticas) {
                     app.cerrarModalEstadisticas();
+                }
+            });
+        }
+
+        // ==================== AUTO-BALANCE EVENT LISTENERS ====================
+        
+        // Botón Auto-Balance
+        const btnAutoBalance = document.getElementById('btnAutoBalance');
+        if (btnAutoBalance) {
+            btnAutoBalance.addEventListener('click', () => app.abrirModalAutoBalance());
+        }
+
+        // Botones de posición en modal Auto-Balance
+        document.querySelectorAll('.btn-posicion').forEach(btn => {
+            btn.addEventListener('click', function() {
+                // Quitar selección de todos
+                document.querySelectorAll('.btn-posicion').forEach(b => b.classList.remove('selected'));
+                // Añadir selección al clickeado
+                this.classList.add('selected');
+            });
+        });
+
+        // Confirmar Auto-Balance
+        const btnConfirmarAutoBalance = document.getElementById('btnConfirmarAutoBalance');
+        if (btnConfirmarAutoBalance) {
+            btnConfirmarAutoBalance.addEventListener('click', () => app.ejecutarAutoBalance());
+        }
+
+        // Cancelar Auto-Balance
+        const btnCancelarAutoBalance = document.getElementById('btnCancelarAutoBalance');
+        if (btnCancelarAutoBalance) {
+            btnCancelarAutoBalance.addEventListener('click', () => app.cerrarModalAutoBalance());
+        }
+
+        // Cerrar modal Auto-Balance al hacer clic fuera
+        const modalAutoBalance = document.getElementById('modal-autobalance');
+        if (modalAutoBalance) {
+            modalAutoBalance.addEventListener('click', (e) => {
+                if (e.target === modalAutoBalance) {
+                    app.cerrarModalAutoBalance();
                 }
             });
         }

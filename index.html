@@ -160,6 +160,16 @@
 
                     <div class="jugadoras-grid" id="asistenciaSabadoGrid"></div>
                     
+                    <!-- Botón Auto-Balance -->
+                    <div class="autobalance-container" style="margin: 20px 0; text-align: center;">
+                        <button id="btnAutoBalance" class="btn-autobalance" style="display: none;">
+                            ⚖️ Auto-Completar Sets
+                        </button>
+                        <p class="autobalance-hint" style="color: #95a5a6; font-size: 14px; margin-top: 10px;">
+                            El sistema calculará automáticamente la mejor rotación basada en entrenamientos y puntos jugados
+                        </p>
+                    </div>
+                    
                     <!-- Contenedor principal para la planificación inteligente -->
                     <div id="configuracionPartido" class="configuracion-partido">
                         <!-- La planificación se genera automáticamente aquí -->
@@ -541,6 +551,52 @@
                     <button id="guardarEstadisticas" class="btn-confirmar">💾 Guardar</button>
                     <button id="cancelarEstadisticas" class="btn-cancelar">❌ Cancelar</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Auto-Balance Configuración -->
+    <div id="modal-autobalance" class="modal-sustitucion" style="display: none;">
+        <div class="modal-autobalance-content">
+            <h4>⚖️ Configuración Auto-Balance</h4>
+            <p style="color: #7f8c8d; margin-bottom: 20px;">
+                El sistema completará automáticamente los 3 sets siguiendo las reglas de voleibol
+            </p>
+
+            <div class="autobalance-config">
+                <div class="config-section">
+                    <h5>🎯 Posición de Colocador/a en Set 1</h5>
+                    <p class="config-hint">Selecciona en qué posición quieres que inicie el/la colocador/a</p>
+                    <div class="posiciones-grid">
+                        <button class="btn-posicion" data-pos="1">Pos 1 (Saque)</button>
+                        <button class="btn-posicion" data-pos="2">Pos 2 (Delantero Derecha)</button>
+                        <button class="btn-posicion" data-pos="3">Pos 3 (Delantero Centro)</button>
+                        <button class="btn-posicion" data-pos="4">Pos 4 (Delantero Izquierda)</button>
+                        <button class="btn-posicion" data-pos="5">Pos 5 (Zaguero Izquierda)</button>
+                        <button class="btn-posicion" data-pos="6">Pos 6 (Zaguero Centro)</button>
+                    </div>
+                </div>
+
+                <div class="config-section" style="margin-top: 25px;">
+                    <h5>🔄 Opciones Adicionales</h5>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="priorizarEntrenamientos" checked>
+                        <span>Priorizar jugadores/as con más entrenamientos</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="balancearPuntos" checked>
+                        <span>Balancear puntos de las últimas 3 jornadas</span>
+                    </label>
+                    <label class="checkbox-option">
+                        <input type="checkbox" id="respetarRoles" checked>
+                        <span>Respetar posiciones (colocador/a, central, opuesto/a)</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="modal-actions" style="margin-top: 25px;">
+                <button id="btnConfirmarAutoBalance" class="btn-confirmar">✅ Generar Auto-Balance</button>
+                <button id="btnCancelarAutoBalance" class="btn-cancelar">❌ Cancelar</button>
             </div>
         </div>
     </div>
