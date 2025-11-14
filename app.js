@@ -1924,7 +1924,8 @@
             this.jugadoras.find(j => j.id === id)
         ).filter(j => j);
         
-        const jugadorasEnSet = this.planificacionSets[setKey] || [];
+        // Obtener jugadoras ya en el set desde jornadaActual
+        const jugadorasEnSet = this.jornadaActual[setKey]?.titulares || [];
         const jugadorasDisponibles = jugadorasDelSabado.filter(j =>
             !jugadorasEnSet.find(js => js && js.id === j.id)
         );
@@ -1974,11 +1975,11 @@
         
         // Generar lista de jugadoras
         lista.innerHTML = jugadorasConDatos.map(({jugadora: j, entrenamientos}) => {
-            // Verificar si está en otros sets
+            // Verificar si está en otros sets usando jornadaActual
             const setsActuales = [];
-            if (setKey !== 'set1' && this.planificacionSets.set1.find(js => js && js.id === j.id)) setsActuales.push('1');
-            if (setKey !== 'set2' && this.planificacionSets.set2.find(js => js && js.id === j.id)) setsActuales.push('2');
-            if (setKey !== 'set3' && this.planificacionSets.set3.find(js => js && js.id === j.id)) setsActuales.push('3');
+            if (setKey !== 'set1' && this.jornadaActual.set1?.titulares?.find(js => js && js.id === j.id)) setsActuales.push('1');
+            if (setKey !== 'set2' && this.jornadaActual.set2?.titulares?.find(js => js && js.id === j.id)) setsActuales.push('2');
+            if (setKey !== 'set3' && this.jornadaActual.set3?.titulares?.find(js => js && js.id === j.id)) setsActuales.push('3');
             
             // Emoji según la posición/rol
             let emojiRol = '🏐'; // Jugadora normal
@@ -2051,21 +2052,29 @@
         const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
         
         if (jugadora) {
-            // Asegurar que el array tenga 6 posiciones
-            while (this.planificacionSets[setKey].length < 6) {
-                this.planificacionSets[setKey].push(null);
+            // Asegurar que el set existe en jornadaActual
+            if (!this.jornadaActual[setKey]) {
+                this.jornadaActual[setKey] = {
+                    titulares: [],
+                    suplentes: [],
+                    rotaciones: []
+                };
             }
             
-            // Añadir en la posición específica (posición 1-6, array 0-5)
-            this.planificacionSets[setKey][posicion - 1] = jugadora;
+            // Añadir jugadora a titulares con la posición indicada
+            this.jornadaActual[setKey].titulares.push({
+                ...jugadora,
+                posicion: posicion,
+                rolOriginal: jugadora.posicion,
+                posicionCampo: posicion,
+                puntosJugados: 15
+            });
             
             this.actualizarVistasSets();
             this.actualizarJugadorasDisponibles();
             
-            // Auto-guardar
-            if (this.jornadaActual && this.jornadaActual.id) {
-                this.autoGuardarCambiosSets();
-            }
+            // Guardar
+            this.guardarJornadas();
             
             // Cerrar modal
             this.cerrarModalSeleccion();
@@ -2078,23 +2087,35 @@
     }
 
     removerJugadoraDePosicion(posicion, setKey) {
-        // Remover la jugadora de la posición específica (dejar null)
-        if (this.planificacionSets[setKey] && this.planificacionSets[setKey][posicion - 1]) {
-            const jugadora = this.planificacionSets[setKey][posicion - 1];
+        // Remover la jugadora de la posición específica del set en jornadaActual
+        if (!this.jornadaActual || !this.jornadaActual[setKey] || !this.jornadaActual[setKey].titulares) {
+            console.warn('⚠️ No hay datos del set para remover jugadora');
+            return;
+        }
+        
+        // Buscar la jugadora en esa posición
+        const jugadoraIndex = this.jornadaActual[setKey].titulares.findIndex(t => t.posicion === posicion);
+        
+        if (jugadoraIndex === -1) {
+            console.warn('⚠️ No hay jugadora en esa posición');
+            return;
+        }
+        
+        const jugadora = this.jornadaActual[setKey].titulares[jugadoraIndex];
+        
+        if (confirm(`¿Quitar a ${jugadora.nombre} de la posición ${posicion}?`)) {
+            // Eliminar la jugadora del array de titulares
+            this.jornadaActual[setKey].titulares.splice(jugadoraIndex, 1);
             
-            if (confirm(`¿Quitar a ${jugadora.nombre} de la posición ${posicion}?`)) {
-                this.planificacionSets[setKey][posicion - 1] = null;
-                
-                // Eliminar sustituciones relacionadas
-                this.eliminarSustitucionesDeJugadora(jugadora.id, setKey);
-                
-                this.actualizarVistasSets();
-                this.actualizarJugadorasDisponibles();
-                
-                // Auto-guardar
-                if (this.jornadaActual && this.jornadaActual.id) {
-                    this.autoGuardarCambiosSets();
-                }
+            // Eliminar sustituciones relacionadas
+            this.eliminarSustitucionesDeJugadora(jugadora.id, setKey);
+            
+            this.actualizarVistasSets();
+            this.actualizarJugadorasDisponibles();
+            
+            // Auto-guardar
+            if (this.jornadaActual && this.jornadaActual.id) {
+                this.guardarJornadas();
             }
         }
     }
@@ -3439,9 +3460,10 @@
         // Notificar
         showNotification('✅ Auto-Balance completado correctamente', 'success');
         
-        // IMPORTANTE: Actualizar TODAS las vistas de los sets
+        // IMPORTANTE: Actualizar TODAS las vistas de los sets Y las sustituciones
         this.actualizarVistasSets();
         this.actualizarJugadorasDisponibles();
+        this.restaurarSustitucionesExistentes(); // Mostrar las rotaciones automáticas
         
         console.log('🔄 Vistas actualizadas después de auto-balance');
     }
@@ -3450,40 +3472,69 @@
         // Calcular prioridades basadas en entrenamientos y puntos de últimas 3 jornadas
         const jugadorasConPrioridad = jugadorasPartido.map(j => {
             const prioridad = this.calcularPrioridadAutoBalance(j, config);
-            // AÑADIR FACTOR ALEATORIO GRANDE para variar cada vez
-            const factorAleatorio = Math.random() * 20; // Más peso al azar
+            // Factor aleatorio pequeño solo para desempatar (no aleatorizar completamente)
+            const factorAleatorio = Math.random() * 0.1;
             return { ...j, prioridad: prioridad + factorAleatorio };
         });
 
-        // Ordenar por prioridad (menor = más necesita jugar) + aleatorio
+        // Ordenar por prioridad (menor = más entrenamientos = MÁS debe jugar)
         jugadorasConPrioridad.sort((a, b) => a.prioridad - b.prioridad);
 
-        console.log('📊 Jugadoras con prioridad (con aleatorio):', jugadorasConPrioridad.map(j => `${j.nombre} (${j.posicion}): ${j.prioridad.toFixed(2)}`));
+        console.log('📊 Jugadoras con prioridad:', jugadorasConPrioridad.map(j => {
+            const asistioLunes = this.jornadaActual.asistenciaLunes?.includes(j.id);
+            const asistioMiercoles = this.jornadaActual.asistenciaMiercoles?.includes(j.id);
+            const entrenamientos = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
+            return `${j.nombre} (${j.posicion}) - ${entrenamientos} entrenos - Prioridad: ${j.prioridad.toFixed(2)}`;
+        }));
 
-        // Separar por roles y MEZCLAR ALEATORIAMENTE cada grupo
+        // Separar por roles (ordenados por prioridad ya)
         let colocadoras = jugadorasConPrioridad.filter(j => j.posicion === 'colocadora');
         let centrales = jugadorasConPrioridad.filter(j => j.posicion === 'central');
         let opuestas = jugadorasConPrioridad.filter(j => j.posicion === 'opuesta');
         let cuatros = jugadorasConPrioridad.filter(j => !['colocadora', 'central', 'opuesta'].includes(j.posicion));
 
-        // Mezclar aleatoriamente cada grupo para variar selección
-        colocadoras = this.shuffleArray([...colocadoras]);
-        centrales = this.shuffleArray([...centrales]);
-        opuestas = this.shuffleArray([...opuestas]);
-        cuatros = this.shuffleArray([...cuatros]);
+        console.log(`👥 Distribución por roles: Colocadoras: ${colocadoras.length}, Centrales: ${centrales.length}, Opuestas: ${opuestas.length}, Cuatros: ${cuatros.length}`);
 
-        console.log(`👥 Distribución (mezclada): Colocadoras: ${colocadoras.length}, Centrales: ${centrales.length}, Opuestas: ${opuestas.length}, Cuatros: ${cuatros.length}`);
+        // Generar Set 1 (obligatorio) - Las que más han entrenado
+        const set1 = this.generarSetAutoBalance(
+            jugadorasConPrioridad, 
+            config, 
+            1, 
+            [...colocadoras], 
+            [...centrales], 
+            [...opuestas], 
+            [...cuatros],
+            'alto' // Puntos altos para las que más entrenan
+        );
 
-        // Generar 3 sets con selección aleatoria
-        const rotacion = {
-            set1: this.generarSetAutoBalance(jugadorasConPrioridad, config, 1, colocadoras, centrales, opuestas, cuatros),
-            set2: this.generarSetAutoBalance(jugadorasConPrioridad, config, 2, colocadoras, centrales, opuestas, cuatros),
-            set3: this.generarSetAutoBalance(jugadorasConPrioridad, config, 3, colocadoras, centrales, opuestas, cuatros)
-        };
+        // Generar Set 2 (obligatorio) - Puede repetir jugadoras si tienen prioridad
+        const set2 = this.generarSetAutoBalance(
+            jugadorasConPrioridad, 
+            config, 
+            2, 
+            [...colocadoras], 
+            [...centrales], 
+            [...opuestas], 
+            [...cuatros],
+            'medio' // Puntos medios, mix de titulares y suplentes
+        );
 
-        // Ajustar puntos para distribución justa
-        // Como el Set 3 es opcional, distribuir para que todos jueguen mínimo 12.5 puntos
-        this.distribuirPuntosEquitativamente(rotacion, jugadorasPartido.length);
+        // Set 3 opcional - Jugadoras con menos entrenamientos
+        const set3 = this.generarSetAutoBalance(
+            jugadorasConPrioridad, 
+            config, 
+            3, 
+            [...colocadoras], 
+            [...centrales], 
+            [...opuestas], 
+            [...cuatros],
+            'bajo' // Puntos bajos, set opcional
+        );
+
+        const rotacion = { set1, set2, set3 };
+
+        // Distribuir puntos según entrenamientos
+        this.distribuirPuntosPorEntrenamientos(rotacion, jugadorasConPrioridad);
 
         return rotacion;
     }
@@ -3525,28 +3576,91 @@
         console.log(`✅ Puntos distribuidos: Set1=${rotacion.set1.titulares[0].puntosJugados}, Set2=${rotacion.set2.titulares[0].puntosJugados}, Set3=${rotacion.set3.titulares[0].puntosJugados}`);
     }
 
+    distribuirPuntosPorEntrenamientos(rotacion, jugadorasConPrioridad) {
+        // Distribución de puntos según entrenamientos:
+        // - 2 entrenamientos: Juegan Set 1 completo (25) + parte Set 2 (15) = 40 puntos
+        // - 1 entrenamiento: Juegan Set 2 completo (25) + parte Set 1 (10) = 35 puntos  
+        // - 0 entrenamientos: Solo Set 3 opcional (25) o suplencia en Set 1/2 (10-15)
+        
+        console.log('📊 Distribuyendo puntos por entrenamientos...');
+        
+        // Obtener info de entrenamientos de cada jugadora
+        const jugadorasConEntrenamientos = jugadorasConPrioridad.map(j => {
+            const asistioLunes = this.jornadaActual?.asistenciaLunes?.includes(j.id);
+            const asistioMiercoles = this.jornadaActual?.asistenciaMiercoles?.includes(j.id);
+            const entrenamientos = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
+            return { ...j, entrenamientos };
+        });
+        
+        // Ajustar puntos en Set 1 y Set 2 según entrenamientos
+        ['set1', 'set2'].forEach(setKey => {
+            const set = rotacion[setKey];
+            if (!set || !set.titulares) return;
+            
+            set.titulares.forEach(titular => {
+                const jugadoraInfo = jugadorasConEntrenamientos.find(j => j.id === titular.id);
+                if (!jugadoraInfo) return;
+                
+                // Las que van a 2 entrenamientos juegan más
+                if (jugadoraInfo.entrenamientos === 2) {
+                    titular.puntosJugados = titular.puntosJugados || 20; // Más puntos
+                } else if (jugadoraInfo.entrenamientos === 1) {
+                    titular.puntosJugados = titular.puntosJugados || 15; // Puntos medios
+                } else {
+                    titular.puntosJugados = titular.puntosJugados || 10; // Menos puntos
+                }
+            });
+            
+            // Ajustar suplentes también
+            set.suplentes.forEach(suplente => {
+                const jugadoraInfo = jugadorasConEntrenamientos.find(j => j.id === suplente.id);
+                if (!jugadoraInfo) return;
+                
+                // Suplentes con más entrenamientos entran antes y juegan más
+                if (jugadoraInfo.entrenamientos === 2) {
+                    suplente.puntosJugados = suplente.puntosJugados || 15;
+                } else if (jugadoraInfo.entrenamientos === 1) {
+                    suplente.puntosJugados = suplente.puntosJugados || 10;
+                } else {
+                    suplente.puntosJugados = suplente.puntosJugados || 5;
+                }
+            });
+        });
+        
+        // Set 3 es opcional - puntos bajos para todos
+        if (rotacion.set3 && rotacion.set3.titulares) {
+            rotacion.set3.titulares.forEach(t => {
+                t.puntosJugados = t.puntosJugados || 10;
+            });
+        }
+        
+        console.log('✅ Puntos distribuidos por entrenamientos');
+    }
+
     calcularPrioridadAutoBalance(jugadora, config) {
         let prioridad = 0;
 
-        // Entrenamientos de esta jornada
+        // ENTRENAMIENTOS son lo MÁS IMPORTANTE
+        // Más entrenamientos = MENOR prioridad (número más bajo) = MÁS debe jugar
         if (config.priorizarEntrenamientos && this.jornadaActual) {
             const asistioLunes = this.jornadaActual.asistenciaLunes?.includes(jugadora.id);
             const asistioMiercoles = this.jornadaActual.asistenciaMiercoles?.includes(jugadora.id);
             
             const entrenamientosEstaJornada = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
             
-            // Más entrenamientos = menos prioridad (score más bajo)
-            prioridad -= entrenamientosEstaJornada * 15;
+            // PESO ENORME a entrenamientos (multiplicador grande)
+            // 2 entrenamientos = -200 (prioridad MUY baja = juega MÁS)
+            // 1 entrenamiento = -100 (prioridad media)
+            // 0 entrenamientos = 0 (prioridad alta = juega MENOS)
+            prioridad -= entrenamientosEstaJornada * 100;
         }
 
-        // Puntos jugados en últimas 3 jornadas
+        // Puntos jugados en últimas 3 jornadas (peso menor que entrenamientos)
         if (config.balancearPuntos) {
             const puntosUltimas3 = this.calcularPuntosUltimas3Jornadas(jugadora.id);
-            prioridad += puntosUltimas3 * 0.5;
+            // Más puntos = prioridad ligeramente mayor (juega un poco menos)
+            prioridad += puntosUltimas3 * 0.2; // Peso pequeño comparado con entrenamientos
         }
-
-        // Factor aleatorio pequeño para evitar empates
-        prioridad += Math.random() * 0.01;
 
         return prioridad;
     }
@@ -3584,7 +3698,7 @@
         return shuffled;
     }
 
-    generarSetAutoBalance(jugadoras, config, numSet, colocadoras, centrales, opuestas, cuatros) {
+    generarSetAutoBalance(jugadoras, config, numSet, colocadoras, centrales, opuestas, cuatros, tipoPuntos = 'alto') {
         const set = {
             titulares: [],
             suplentes: [],
@@ -3593,10 +3707,18 @@
 
         let titulares = [];
 
+        // NO filtrar jugadoras - pueden repetirse según prioridad
+        const colocadorasDisponibles = [...colocadoras];
+        const centralesDisponibles = [...centrales];
+        const opuestasDisponibles = [...opuestas];
+        const cuatrosDisponibles = [...cuatros];
+
+        console.log(`🎯 Set ${numSet} (${tipoPuntos}) - Roles: Colocadoras ${colocadorasDisponibles.length}, Centrales ${centralesDisponibles.length}, Opuestas ${opuestasDisponibles.length}, Cuatros ${cuatrosDisponibles.length}`);
+
         // SIEMPRE respetar roles en voleibol
-        if (colocadoras.length > 0) {
-            // Seleccionar colocadora con mayor prioridad (menos puntos jugados)
-            const colocadora = colocadoras[numSet % colocadoras.length] || colocadoras[0];
+        if (colocadorasDisponibles.length > 0) {
+            // Seleccionar mejor colocadora (primera = más entrenamientos)
+            const colocadora = colocadorasDisponibles[0];
             
             // Calcular posiciones según la posición de la colocadora
             const posiciones = this.calcularPosicionesVoleibol(config.posicionColocadora, numSet);
@@ -3615,12 +3737,12 @@
 
             // Asignar opuesta - si no hay opuestas, usar otra colocadora o jugador normal
             let opuesta;
-            if (opuestas.length > 0) {
-                opuesta = opuestas[numSet % opuestas.length] || opuestas[0];
-            } else if (colocadoras.length > 1) {
-                opuesta = colocadoras.filter(c => c.id !== colocadora.id)[0];
+            if (opuestasDisponibles.length > 0) {
+                opuesta = opuestasDisponibles[0];
+            } else if (colocadorasDisponibles.length > 1) {
+                opuesta = colocadorasDisponibles[1];
             } else {
-                opuesta = cuatros[0];
+                opuesta = cuatrosDisponibles[0];
             }
             
             if (opuesta) {
@@ -3633,17 +3755,16 @@
                 });
             }
 
-            // Asignar centrales (2) - si no hay suficientes, usar jugadores normales
+            // Asignar centrales (2) - mejores disponibles
             const centralesNecesarios = 2;
-            const centralesDisponibles = [...centrales];
             const jugadoresParaCentrales = [];
             
             for (let i = 0; i < centralesNecesarios; i++) {
-                if (centralesDisponibles[i]) {
+                if (centralesDisponibles[i] && !titulares.some(t => t.id === centralesDisponibles[i].id)) {
                     jugadoresParaCentrales.push(centralesDisponibles[i]);
                 } else {
                     // Usar jugador normal que no esté ya asignado
-                    const disponible = cuatros.find(c => !titulares.some(t => t.id === c.id));
+                    const disponible = cuatrosDisponibles.find(c => !titulares.some(t => t.id === c.id));
                     if (disponible) {
                         jugadoresParaCentrales.push(disponible);
                     }
@@ -3666,13 +3787,13 @@
             const posicionesOcupadas = titulares.map(t => t.posicion);
             const posicionesLibres = posiciones.cuatros.filter(p => !posicionesOcupadas.includes(p));
             
-            const cuatrosDisponibles = cuatros.filter(c => !titulares.some(t => t.id === c.id));
+            const cuatrosParaCompletar = cuatrosDisponibles.filter(c => !titulares.some(t => t.id === c.id));
             
             posicionesLibres.forEach((pos, idx) => {
-                if (cuatrosDisponibles[idx]) {
+                if (cuatrosParaCompletar[idx]) {
                     titulares.push({
-                        ...cuatrosDisponibles[idx],
-                        rolOriginal: cuatrosDisponibles[idx].posicion,
+                        ...cuatrosParaCompletar[idx],
+                        rolOriginal: cuatrosParaCompletar[idx].posicion,
                         posicion: pos,
                         posicionCampo: pos,
                         puntosJugados: 0
@@ -3719,13 +3840,56 @@
             if (!t.puntosJugados) t.puntosJugados = 15;
         });
 
-        // Suplentes: el resto de jugadoras ordenadas por rol
-        const idsEnCampo = titulares.map(t => t.id);
-        set.suplentes = jugadoras
-            .filter(j => !idsEnCampo.includes(j.id))
-            .map(j => ({ ...j, posicion: j.posicion }));
-
         set.titulares = titulares;
+
+        // Suplentes: jugadoras que NO están como titulares en ESTE set
+        const idsEnCampo = titulares.map(t => t.id);
+        const suplentesDisponibles = jugadoras.filter(j => !idsEnCampo.includes(j.id));
+        
+        set.suplentes = suplentesDisponibles.map(j => ({ 
+            ...j, 
+            posicion: j.posicion,
+            rolOriginal: j.posicion 
+        }));
+
+        // GENERAR ROTACIONES INTELIGENTES basadas en entrenamientos
+        // Las que tienen MENOS entrenamientos deben salir, las que tienen MÁS deben jugar más puntos
+        if (numSet <= 2 && set.suplentes.length > 0) {
+            set.rotaciones = [];
+            
+            // Ordenar titulares por prioridad (MAYOR prioridad = MENOS entrenamientos = deben salir antes)
+            const titularesOrdenados = [...titulares].sort((a, b) => b.prioridad - a.prioridad);
+            
+            // Ordenar suplentes por prioridad (MENOR prioridad = MÁS entrenamientos = deben entrar)
+            const suplentesOrdenados = [...set.suplentes].sort((a, b) => a.prioridad - b.prioridad);
+            
+            // Calcular cuántas rotaciones hacer (máximo 3 por set)
+            const numRotaciones = Math.min(3, Math.min(titularesOrdenados.length, suplentesOrdenados.length));
+            
+            for (let i = 0; i < numRotaciones; i++) {
+                const titularASalir = titularesOrdenados[i]; // Los de menos entrenamientos
+                const suplenteAEntrar = suplentesOrdenados[i]; // Los de más entrenamientos
+                
+                if (titularASalir && suplenteAEntrar) {
+                    const puntoRotacion = 10 + (i * 5); // Puntos 10, 15, 20
+                    
+                    set.rotaciones.push({
+                        entraId: suplenteAEntrar.id,
+                        saleId: titularASalir.id,
+                        puntoRotacion: puntoRotacion,
+                        posicion: titularASalir.posicion
+                    });
+                    
+                    // Ajustar puntos según cuando salen/entran
+                    titularASalir.puntosJugados = puntoRotacion;
+                    suplenteAEntrar.puntosJugados = 25 - puntoRotacion;
+                    
+                    console.log(`🔄 Rotación Set ${numSet}: ${suplenteAEntrar.nombre} (mejor) entra por ${titularASalir.nombre} en punto ${puntoRotacion}`);
+                }
+            }
+        }
+
+        console.log(`👥 Set ${numSet} - Titulares: ${set.titulares.length}, Suplentes: ${set.suplentes.length}, Rotaciones: ${set.rotaciones.length}`);
 
         return set;
     }
@@ -3772,12 +3936,29 @@
         console.log('📊 Set 2 titulares:', rotacion.set2.titulares.length);
         console.log('📊 Set 3 titulares:', rotacion.set3.titulares.length);
 
+        // Inicializar sustituciones si no existe
+        if (!this.jornadaActual.sustituciones) {
+            this.jornadaActual.sustituciones = {
+                set1: [],
+                set2: [],
+                set3: []
+            };
+        }
+
         // Aplicar set 1
         this.jornadaActual.set1 = {
             titulares: rotacion.set1.titulares,
             suplentes: rotacion.set1.suplentes,
             rotaciones: rotacion.set1.rotaciones || []
         };
+        // Sincronizar rotaciones con sustituciones para visualización
+        if (rotacion.set1.rotaciones && rotacion.set1.rotaciones.length > 0) {
+            this.jornadaActual.sustituciones.set1 = rotacion.set1.rotaciones.map(r => ({
+                entraId: r.entraId,
+                saleId: r.saleId,
+                punto: r.puntoRotacion || 12
+            }));
+        }
         
         // Aplicar set 2
         this.jornadaActual.set2 = {
@@ -3785,6 +3966,14 @@
             suplentes: rotacion.set2.suplentes,
             rotaciones: rotacion.set2.rotaciones || []
         };
+        // Sincronizar rotaciones con sustituciones para visualización
+        if (rotacion.set2.rotaciones && rotacion.set2.rotaciones.length > 0) {
+            this.jornadaActual.sustituciones.set2 = rotacion.set2.rotaciones.map(r => ({
+                entraId: r.entraId,
+                saleId: r.saleId,
+                punto: r.puntoRotacion || 12
+            }));
+        }
         
         // Aplicar set 3
         this.jornadaActual.set3 = {
@@ -3792,6 +3981,7 @@
             suplentes: rotacion.set3.suplentes,
             rotaciones: rotacion.set3.rotaciones || []
         };
+        // Set 3 es opcional, generalmente sin rotaciones automáticas
 
         console.log('✅ Sets aplicados a jornada');
         console.log('Set 1:', this.jornadaActual.set1);
