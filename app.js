@@ -3524,50 +3524,85 @@
             return `${j.nombre} (${j.posicion}) - ${entrenamientos} entrenos`;
         }));
 
-        // Separar por roles
-        const colocadoras = jugadorasConPrioridad.filter(j => j.posicion === 'colocadora');
-        const centrales = jugadorasConPrioridad.filter(j => j.posicion === 'central');
-        const opuestas = jugadorasConPrioridad.filter(j => j.posicion === 'opuesta');
-        const jugadoras = jugadorasConPrioridad.filter(j => j.posicion === 'jugadora');
+        const totalJugadoras = jugadorasConPrioridad.length;
 
-        // Set 1: Mejores 6 jugadoras respetando roles
-        const set1 = this.generarSetPorRoles(
-            colocadoras.slice(0, 1),  // 1 colocadora
-            opuestas.slice(0, 1),     // 1 opuesta
-            centrales.slice(0, 2),    // 2 centrales
-            jugadoras.slice(0, 2),    // 2 jugadoras
-            jugadorasConPrioridad.slice(6, 7), // 1 suplente
-            config,
-            1
-        );
+        // LÓGICA SIMPLE Y CLARA:
+        // Set 1: Primeras 6 jugadoras (mejores) + 1 suplente (la jugadora #7)
+        // Set 2: Siguientes 6 jugadoras (#7-#12 o repetir) + 1 suplente (la jugadora #13)
+        // Set 3: Las mejores si está activado (sin suplentes)
+        
+        console.log(`📦 Total jugadoras: ${totalJugadoras}`);
+        
+        // Set 1: Jugadoras 0-5 (las 6 mejores)
+        const jugadorasSet1 = jugadorasConPrioridad.slice(0, 6);
+        // Suplente Set 1: Jugadora #7 (índice 6) si existe
+        const suplenteSet1 = totalJugadoras >= 7 ? [jugadorasConPrioridad[6]] : [];
+        
+        console.log(`Set 1: ${jugadorasSet1.map(j => j.nombre).join(', ')} + Suplente: ${suplenteSet1.map(j => j.nombre).join(', ')}`);
+        
+        const set1 = this.generarSetConRoles(jugadorasSet1, suplenteSet1, config, 1);
 
-        // Set 2: Siguientes 6 respetando roles
-        const set2 = this.generarSetPorRoles(
-            colocadoras.slice(1, 2) || colocadoras.slice(0, 1),  // 2da colocadora o repetir 1ra
-            opuestas.slice(1, 2) || opuestas.slice(0, 1),        // 2da opuesta o repetir 1ra
-            centrales.slice(2, 4) || centrales.slice(0, 2),      // Siguientes centrales o repetir
-            jugadoras.slice(2, 4) || jugadoras.slice(0, 2),      // Siguientes jugadoras o repetir
-            jugadorasConPrioridad.slice(12, 13), // 1 suplente
-            config,
-            2
-        );
+        // Set 2: Determinar jugadoras según cantidad total
+        let jugadorasSet2 = [];
+        let suplenteSet2 = [];
+        
+        if (totalJugadoras >= 12) {
+            // Hay suficientes: jugadoras #7-#12 (índices 6-11)
+            jugadorasSet2 = jugadorasConPrioridad.slice(6, 12);
+            // Suplente Set 2: Jugadora #13 (índice 12) si existe
+            suplenteSet2 = totalJugadoras >= 13 ? [jugadorasConPrioridad[12]] : [];
+        } else if (totalJugadoras > 6) {
+            // Menos de 12: usar las que quedan (#7 en adelante) + rellenar con primeras
+            const restantes = jugadorasConPrioridad.slice(6);
+            const necesarias = 6 - restantes.length;
+            jugadorasSet2 = [...restantes, ...jugadorasConPrioridad.slice(0, necesarias)];
+            suplenteSet2 = []; // No hay suplente si repetimos jugadoras
+        } else {
+            // 6 o menos: repetir las mismas del set 1
+            jugadorasSet2 = [...jugadorasSet1];
+            suplenteSet2 = [];
+        }
+        
+        console.log(`Set 2: ${jugadorasSet2.map(j => j.nombre).join(', ')} + Suplente: ${suplenteSet2.map(j => j.nombre).join(', ')}`);
+        
+        const set2 = this.generarSetConRoles(jugadorasSet2, suplenteSet2, config, 2);
 
-        // Set 3 OPCIONAL: Las que MÁS han entrenado (si autocompletarSet3 está activado)
+        // Set 3 OPCIONAL: Las mejores (si autocompletarSet3 está activado)
         let set3 = { titulares: [], suplentes: [], rotaciones: [] };
-        if (config.autocompletarSet3 && jugadorasConPrioridad.length >= 8) {
-            // En Set 3 juegan las MEJORES (más entrenamientos) que no estén muy cansadas
-            set3 = this.generarSetPorRoles(
-                colocadoras.slice(0, 1),  // Mejor colocadora
-                opuestas.slice(0, 1),     // Mejor opuesta
-                centrales.slice(0, 2),    // Mejores centrales
-                jugadoras.slice(0, 2),    // Mejores jugadoras
-                [],
-                config,
-                3
-            );
+        if (config.autocompletarSet3 && totalJugadoras >= 6) {
+            // En Set 3 juegan las MEJORES (primeras 6 por prioridad) SIN SUPLENTES
+            const jugadorasSet3 = jugadorasConPrioridad.slice(0, 6);
+            console.log(`Set 3: ${jugadorasSet3.map(j => j.nombre).join(', ')}`);
+            set3 = this.generarSetConRoles(jugadorasSet3, [], config, 3);
         }
 
         return { set1, set2, set3 };
+    }
+
+    generarSetConRoles(jugadoras, suplentes, config, numSet) {
+        // Separar por roles dentro de este grupo
+        const colocadoras = jugadoras.filter(j => j.posicion === 'colocadora');
+        const centrales = jugadoras.filter(j => j.posicion === 'central');
+        const opuestas = jugadoras.filter(j => j.posicion === 'opuesta');
+        const jugadorasNormales = jugadoras.filter(j => j.posicion === 'jugadora');
+
+        // Tomar 1 de cada rol (o rellenar con lo que haya)
+        const colocadora = colocadoras[0] || jugadoras[0];
+        const opuesta = opuestas[0] || colocadoras[1] || jugadoras[1];
+        const central1 = centrales[0] || jugadoras[2];
+        const central2 = centrales[1] || jugadoras[3];
+        const jugadora1 = jugadorasNormales[0] || jugadoras[4];
+        const jugadora2 = jugadorasNormales[1] || jugadoras[5];
+
+        return this.generarSetPorRoles(
+            colocadora ? [colocadora] : [],
+            opuesta ? [opuesta] : [],
+            [central1, central2].filter(Boolean),
+            [jugadora1, jugadora2].filter(Boolean),
+            suplentes,
+            config,
+            numSet
+        );
     }
 
     generarSetPorRoles(colocadoras, opuestas, centrales, jugadoras, suplentes, config, numSet) {
