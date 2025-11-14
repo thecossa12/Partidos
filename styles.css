@@ -6658,6 +6658,62 @@ input:checked + .slider:before {
     color: #2c3e50;
 }
 
+/* Campo de voleibol visual */
+.campo-voleibol-selector {
+    background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
+    border: 3px solid #4caf50;
+    border-radius: 15px;
+    padding: 20px;
+    margin: 15px 0;
+}
+
+.fila-campo {
+    display: flex;
+    justify-content: space-around;
+    gap: 15px;
+    margin: 10px 0;
+}
+
+.fila-delantera {
+    margin-bottom: 20px;
+}
+
+.posicion-volei {
+    flex: 1;
+    background: white;
+    border: 3px dashed #bdbdbd;
+    border-radius: 12px;
+    padding: 30px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.posicion-volei:hover {
+    background: #f5f5f5;
+    border-color: #667eea;
+    transform: scale(1.05);
+}
+
+.posicion-volei.selected {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: 3px solid #667eea;
+    border-style: solid;
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.posicion-volei.selected .numero-pos {
+    color: white;
+    font-weight: 700;
+}
+
+.numero-pos {
+    font-size: 28px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
 @media (max-width: 768px) {
     .modal-autobalance-content {
         padding: 20px;
@@ -6671,6 +6727,14 @@ input:checked + .slider:before {
     .btn-autobalance {
         padding: 12px 30px;
         font-size: 16px;
+    }
+    
+    .posicion-volei {
+        padding: 20px 15px;
+    }
+    
+    .numero-pos {
+        font-size: 22px;
     }
 }
     

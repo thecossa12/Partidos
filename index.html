@@ -160,16 +160,6 @@
 
                     <div class="jugadoras-grid" id="asistenciaSabadoGrid"></div>
                     
-                    <!-- Botón Auto-Balance -->
-                    <div class="autobalance-container" style="margin: 20px 0; text-align: center;">
-                        <button id="btnAutoBalance" class="btn-autobalance" style="display: none;">
-                            ⚖️ Auto-Completar Sets
-                        </button>
-                        <p class="autobalance-hint" style="color: #95a5a6; font-size: 14px; margin-top: 10px;">
-                            El sistema calculará automáticamente la mejor rotación basada en entrenamientos y puntos jugados
-                        </p>
-                    </div>
-                    
                     <!-- Contenedor principal para la planificación inteligente -->
                     <div id="configuracionPartido" class="configuracion-partido">
                         <!-- La planificación se genera automáticamente aquí -->
@@ -566,14 +556,32 @@
             <div class="autobalance-config">
                 <div class="config-section">
                     <h5>🎯 Posición de Colocador/a en Set 1</h5>
-                    <p class="config-hint">Selecciona en qué posición quieres que inicie el/la colocador/a</p>
-                    <div class="posiciones-grid">
-                        <button class="btn-posicion" data-pos="1">Pos 1 (Saque)</button>
-                        <button class="btn-posicion" data-pos="2">Pos 2 (Delantero Derecha)</button>
-                        <button class="btn-posicion" data-pos="3">Pos 3 (Delantero Centro)</button>
-                        <button class="btn-posicion" data-pos="4">Pos 4 (Delantero Izquierda)</button>
-                        <button class="btn-posicion" data-pos="5">Pos 5 (Zaguero Izquierda)</button>
-                        <button class="btn-posicion" data-pos="6">Pos 6 (Zaguero Centro)</button>
+                    <p class="config-hint">Haz clic en la posición donde quieres que inicie el/la colocador/a</p>
+                    
+                    <!-- Campo de voleibol visual -->
+                    <div class="campo-voleibol-selector">
+                        <div class="fila-campo fila-delantera">
+                            <div class="posicion-volei" data-pos="4">
+                                <span class="numero-pos">4</span>
+                            </div>
+                            <div class="posicion-volei" data-pos="3">
+                                <span class="numero-pos">3</span>
+                            </div>
+                            <div class="posicion-volei" data-pos="2">
+                                <span class="numero-pos">2</span>
+                            </div>
+                        </div>
+                        <div class="fila-campo fila-zaguera">
+                            <div class="posicion-volei" data-pos="5">
+                                <span class="numero-pos">5</span>
+                            </div>
+                            <div class="posicion-volei" data-pos="6">
+                                <span class="numero-pos">6</span>
+                            </div>
+                            <div class="posicion-volei" data-pos="1">
+                                <span class="numero-pos">1</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -586,10 +594,6 @@
                     <label class="checkbox-option">
                         <input type="checkbox" id="balancearPuntos" checked>
                         <span>Balancear puntos de las últimas 3 jornadas</span>
-                    </label>
-                    <label class="checkbox-option">
-                        <input type="checkbox" id="respetarRoles" checked>
-                        <span>Respetar posiciones (colocador/a, central, opuesto/a)</span>
                     </label>
                 </div>
             </div>
