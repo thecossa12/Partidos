@@ -1799,45 +1799,52 @@
     }
 
     actualizarVistasSets() {
+        console.log('🔄 Actualizando vistas de sets...');
+        
         // Actualizar Set 1 - Campo de voleibol con posiciones fijas (4,3,2 arriba / 5,6,1 abajo)
         const set1Container = document.getElementById('jugadorasSet1');
-        if (set1Container) {
+        if (set1Container && this.jornadaActual?.set1) {
+            console.log('📊 Actualizando vista Set 1');
             set1Container.innerHTML = this.generarCampoVoleibol('set1');
         }
         
         // Actualizar Set 2 - Campo de voleibol con posiciones fijas
         const set2Container = document.getElementById('jugadorasSet2');
-        if (set2Container) {
+        if (set2Container && this.jornadaActual?.set2) {
+            console.log('📊 Actualizando vista Set 2');
             set2Container.innerHTML = this.generarCampoVoleibol('set2');
         }
         
         // Actualizar Set 3 - Campo de voleibol con posiciones fijas
         const set3Container = document.getElementById('jugadorasSet3');
-        if (set3Container) {
+        if (set3Container && this.jornadaActual?.set3) {
+            console.log('📊 Actualizando vista Set 3');
             set3Container.innerHTML = this.generarCampoVoleibol('set3');
         }
+        
+        console.log('✅ Vistas de sets actualizadas');
     }
 
     generarCampoVoleibol(setKey) {
-        // Asegurar que existe el array de jugadoras
-        if (!this.planificacionSets[setKey]) {
-            this.planificacionSets[setKey] = [];
+        // Obtener jugadoras del set desde jornadaActual
+        const setData = this.jornadaActual?.[setKey];
+        if (!setData || !setData.titulares) {
+            console.log(`⚠️ No hay datos para ${setKey}`);
+            return this.generarCampoVacio();
         }
         
-        const jugadoras = this.planificacionSets[setKey];
+        const jugadoras = setData.titulares;
+        console.log(`🏐 Generando campo para ${setKey} con ${jugadoras.length} titulares`);
         
-        // Convertir array a objeto de posiciones si no lo es
-        if (Array.isArray(jugadoras) && jugadoras.length > 0 && typeof jugadoras[0] !== 'object') {
-            // Ya es un array de objetos jugadora
-        }
-        
-        // Crear objeto de posiciones (1-6)
+        // Crear objeto de posiciones (1-6) basado en jugadoras.posicion
         const posiciones = {};
-        jugadoras.forEach((jugadora, index) => {
-            if (jugadora) {
-                posiciones[index + 1] = jugadora;
+        jugadoras.forEach(jugadora => {
+            if (jugadora && jugadora.posicion) {
+                posiciones[jugadora.posicion] = jugadora;
             }
         });
+        
+        console.log(`📍 Posiciones en ${setKey}:`, Object.keys(posiciones));
         
         // Orden de voleibol: 4,3,2 (arriba) / 5,6,1 (abajo)
         const ordenArriba = [4, 3, 2];
@@ -1879,6 +1886,33 @@
                 </div>
             `;
         }
+    }
+
+    generarCampoVacio() {
+        const ordenArriba = [4, 3, 2];
+        const ordenAbajo = [5, 6, 1];
+        
+        let html = '<div class="fila-campo">';
+        ordenArriba.forEach(pos => {
+            html += `
+                <div class="posicion-campo vacia">
+                    <span class="numero-posicion">${pos}</span>
+                    <span>Libre</span>
+                </div>
+            `;
+        });
+        html += '</div><div class="fila-campo">';
+        ordenAbajo.forEach(pos => {
+            html += `
+                <div class="posicion-campo vacia">
+                    <span class="numero-posicion">${pos}</span>
+                    <span>Libre</span>
+                </div>
+            `;
+        });
+        html += '</div>';
+        
+        return html;
     }
 
     añadirJugadoraAPosicion(posicion, setKey) {
@@ -3404,8 +3438,11 @@
         // Notificar
         showNotification('✅ Auto-Balance completado correctamente', 'success');
         
-        // Regenerar vista del partido - forzar actualización
-        this.mostrarPlanificadorSets(jugadorasPartido);
+        // IMPORTANTE: Actualizar TODAS las vistas de los sets
+        this.actualizarVistasSets();
+        this.actualizarJugadorasDisponibles();
+        
+        console.log('🔄 Vistas actualizadas después de auto-balance');
     }
 
     generarAutoBalance(jugadorasPartido, config) {
@@ -3660,14 +3697,36 @@
     aplicarRotacionAutoBalance(rotacion) {
         if (!this.jornadaActual) return;
 
+        console.log('💾 Aplicando rotación a jornada:', this.jornadaActual.id);
+        console.log('📊 Set 1 titulares:', rotacion.set1.titulares.length);
+        console.log('📊 Set 2 titulares:', rotacion.set2.titulares.length);
+        console.log('📊 Set 3 titulares:', rotacion.set3.titulares.length);
+
         // Aplicar set 1
-        this.jornadaActual.set1 = rotacion.set1;
+        this.jornadaActual.set1 = {
+            titulares: rotacion.set1.titulares,
+            suplentes: rotacion.set1.suplentes,
+            rotaciones: rotacion.set1.rotaciones || []
+        };
         
         // Aplicar set 2
-        this.jornadaActual.set2 = rotacion.set2;
+        this.jornadaActual.set2 = {
+            titulares: rotacion.set2.titulares,
+            suplentes: rotacion.set2.suplentes,
+            rotaciones: rotacion.set2.rotaciones || []
+        };
         
         // Aplicar set 3
-        this.jornadaActual.set3 = rotacion.set3;
+        this.jornadaActual.set3 = {
+            titulares: rotacion.set3.titulares,
+            suplentes: rotacion.set3.suplentes,
+            rotaciones: rotacion.set3.rotaciones || []
+        };
+
+        console.log('✅ Sets aplicados a jornada');
+        console.log('Set 1:', this.jornadaActual.set1);
+        console.log('Set 2:', this.jornadaActual.set2);
+        console.log('Set 3:', this.jornadaActual.set3);
 
         // Guardar
         this.guardarJornadas();
