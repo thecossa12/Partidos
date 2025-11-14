@@ -3514,65 +3514,265 @@
             return { ...j, prioridad };
         });
 
-        // Ordenar por prioridad (menor = más entrenamientos = MÁS debe jugar)
-        jugadorasConPrioridad.sort((a, b) => a.prioridad - b.prioridad);
+        // Separar por roles ANTES de ordenar
+        const colocadoras = jugadorasConPrioridad.filter(j => j.posicion === 'colocadora');
+        const centrales = jugadorasConPrioridad.filter(j => j.posicion === 'central');
+        const opuestas = jugadorasConPrioridad.filter(j => j.posicion === 'opuesta');
+        const jugadorasNormales = jugadorasConPrioridad.filter(j => j.posicion === 'jugadora');
 
-        console.log('📊 Jugadoras ordenadas por prioridad:', jugadorasConPrioridad.map(j => {
-            const asistioLunes = this.jornadaActual.asistenciaLunes?.includes(j.id);
-            const asistioMiercoles = this.jornadaActual.asistenciaMiercoles?.includes(j.id);
-            const entrenamientos = (asistioLunes ? 1 : 0) + (asistioMiercoles ? 1 : 0);
-            return `${j.nombre} (${j.posicion}) - ${entrenamientos} entrenos`;
-        }));
+        // Ordenar cada grupo por prioridad (menor = más entrenamientos = MÁS debe jugar)
+        colocadoras.sort((a, b) => a.prioridad - b.prioridad);
+        centrales.sort((a, b) => a.prioridad - b.prioridad);
+        opuestas.sort((a, b) => a.prioridad - b.prioridad);
+        jugadorasNormales.sort((a, b) => a.prioridad - b.prioridad);
 
-        const totalJugadoras = jugadorasConPrioridad.length;
+        console.log('📊 Distribución por roles:');
+        console.log(`   Colocadoras (${colocadoras.length}): ${colocadoras.map(j => j.nombre).join(', ')}`);
+        console.log(`   Centrales (${centrales.length}): ${centrales.map(j => j.nombre).join(', ')}`);
+        console.log(`   Opuestas (${opuestas.length}): ${opuestas.map(j => j.nombre).join(', ')}`);
+        console.log(`   Jugadoras (${jugadorasNormales.length}): ${jugadorasNormales.map(j => j.nombre).join(', ')}`);
 
-        // LÓGICA SIMPLE Y CLARA:
-        // Set 1: Primeras 6 jugadoras (mejores) + 1 suplente (la jugadora #7)
-        // Set 2: Siguientes 6 jugadoras (#7-#12 o repetir) + 1 suplente (la jugadora #13)
-        // Set 3: Las mejores si está activado (sin suplentes)
+        // REGLAS DE VOLEIBOL:
+        // 1. Si hay CENTRALES: 2 centrales por set (posiciones fijas junto a colocadores)
+        // 2. Si hay OPUESTO: 1 colocador + 1 opuesto (en lugar de 2 colocadores)
+        // 3. Si solo hay COLOCADORES y JUGADORAS: 2 colocadores + 4 jugadoras
         
-        console.log(`📦 Total jugadoras: ${totalJugadoras}`);
+        const hayCentrales = centrales.length > 0;
+        const hayOpuestos = opuestas.length > 0;
         
-        // Set 1: Jugadoras 0-5 (las 6 mejores)
-        const jugadorasSet1 = jugadorasConPrioridad.slice(0, 6);
-        // Suplente Set 1: Jugadora #7 (índice 6) si existe
-        const suplenteSet1 = totalJugadoras >= 7 ? [jugadorasConPrioridad[6]] : [];
-        
-        console.log(`Set 1: ${jugadorasSet1.map(j => j.nombre).join(', ')} + Suplente: ${suplenteSet1.map(j => j.nombre).join(', ')}`);
-        
-        const set1 = this.generarSetConRoles(jugadorasSet1, suplenteSet1, config, 1);
+        const jugadorasSet1 = [];
+        const jugadorasSet2 = [];
+        let suplenteSet1 = null;
+        let suplenteSet2 = null;
 
-        // Set 2: Determinar jugadoras según cantidad total
-        let jugadorasSet2 = [];
-        let suplenteSet2 = [];
-        
-        if (totalJugadoras >= 12) {
-            // Hay suficientes: jugadoras #7-#12 (índices 6-11)
-            jugadorasSet2 = jugadorasConPrioridad.slice(6, 12);
-            // Suplente Set 2: Jugadora #13 (índice 12) si existe
-            suplenteSet2 = totalJugadoras >= 13 ? [jugadorasConPrioridad[12]] : [];
-        } else if (totalJugadoras > 6) {
-            // Menos de 12: usar las que quedan (#7 en adelante) + rellenar con primeras
-            const restantes = jugadorasConPrioridad.slice(6);
-            const necesarias = 6 - restantes.length;
-            jugadorasSet2 = [...restantes, ...jugadorasConPrioridad.slice(0, necesarias)];
-            suplenteSet2 = []; // No hay suplente si repetimos jugadoras
-        } else {
-            // 6 o menos: repetir las mismas del set 1
-            jugadorasSet2 = [...jugadorasSet1];
-            suplenteSet2 = [];
+        // Caso 1: HAY OPUESTOS (1 colocador + 1 opuesto por set)
+        if (hayOpuestos) {
+            console.log('⚡ Modo: 1 Colocador + 1 Opuesto por set');
+            
+            // Set 1: 1 colocador + 1 opuesto
+            if (colocadoras.length >= 1) jugadorasSet1.push(colocadoras[0]);
+            if (opuestas.length >= 1) jugadorasSet1.push(opuestas[0]);
+            
+            // Set 2: 1 colocador + 1 opuesto
+            if (colocadoras.length >= 2) {
+                jugadorasSet2.push(colocadoras[1]);
+            } else if (colocadoras.length === 1) {
+                jugadorasSet2.push(colocadoras[0]); // Repetir
+            }
+            
+            if (opuestas.length >= 2) {
+                jugadorasSet2.push(opuestas[1]);
+            } else if (opuestas.length === 1) {
+                jugadorasSet2.push(opuestas[0]); // Repetir
+            }
+            
+            // Caso 1a: Si TAMBIÉN hay centrales (2 centrales por set)
+            if (hayCentrales) {
+                console.log('   + 2 Centrales por set');
+                
+                // Set 1: 2 centrales
+                if (centrales.length >= 2) {
+                    jugadorasSet1.push(centrales[0], centrales[1]);
+                } else if (centrales.length === 1) {
+                    jugadorasSet1.push(centrales[0], centrales[0]); // Repetir
+                }
+                
+                // Set 2: 2 centrales
+                if (centrales.length >= 4) {
+                    jugadorasSet2.push(centrales[2], centrales[3]);
+                } else if (centrales.length >= 2) {
+                    jugadorasSet2.push(centrales[0], centrales[1]); // Repetir
+                } else if (centrales.length === 1) {
+                    jugadorasSet2.push(centrales[0], centrales[0]); // Repetir
+                }
+                
+                // Rellenar con jugadoras normales (2 por set)
+                if (jugadorasNormales.length >= 4) {
+                    jugadorasSet1.push(jugadorasNormales[0], jugadorasNormales[1]);
+                    jugadorasSet2.push(jugadorasNormales[2], jugadorasNormales[3]);
+                    
+                    suplenteSet1 = jugadorasNormales[4] || null;
+                    suplenteSet2 = jugadorasNormales[5] || null;
+                } else if (jugadorasNormales.length >= 2) {
+                    jugadorasSet1.push(jugadorasNormales[0], jugadorasNormales[1]);
+                    jugadorasSet2.push(jugadorasNormales[0], jugadorasNormales[1]); // Repetir
+                } else if (jugadorasNormales.length === 1) {
+                    jugadorasSet1.push(jugadorasNormales[0], jugadorasNormales[0]);
+                    jugadorasSet2.push(jugadorasNormales[0], jugadorasNormales[0]);
+                }
+            } else {
+                // Sin centrales: rellenar con jugadoras normales (4 por set)
+                console.log('   + 4 Jugadoras normales por set');
+                
+                if (jugadorasNormales.length >= 8) {
+                    jugadorasSet1.push(...jugadorasNormales.slice(0, 4));
+                    jugadorasSet2.push(...jugadorasNormales.slice(4, 8));
+                    
+                    suplenteSet1 = jugadorasNormales[8] || null;
+                    suplenteSet2 = jugadorasNormales[9] || null;
+                } else if (jugadorasNormales.length >= 4) {
+                    jugadorasSet1.push(...jugadorasNormales.slice(0, 4));
+                    jugadorasSet2.push(...jugadorasNormales.slice(0, 4)); // Repetir
+                } else {
+                    // Rellenar repitiendo
+                    while (jugadorasSet1.length < 6 && jugadorasNormales.length > 0) {
+                        jugadorasSet1.push(jugadorasNormales[jugadorasSet1.length % jugadorasNormales.length]);
+                    }
+                    while (jugadorasSet2.length < 6 && jugadorasNormales.length > 0) {
+                        jugadorasSet2.push(jugadorasNormales[jugadorasSet2.length % jugadorasNormales.length]);
+                    }
+                }
+            }
         }
-        
-        console.log(`Set 2: ${jugadorasSet2.map(j => j.nombre).join(', ')} + Suplente: ${suplenteSet2.map(j => j.nombre).join(', ')}`);
-        
-        const set2 = this.generarSetConRoles(jugadorasSet2, suplenteSet2, config, 2);
+        // Caso 2: HAY CENTRALES pero NO opuestos (2 colocadores + 2 centrales + 2 jugadoras)
+        else if (hayCentrales) {
+            console.log('⚡ Modo: 2 Colocadores + 2 Centrales + 2 Jugadoras por set');
+            
+            // Distribuir colocadoras (2 por set)
+            if (colocadoras.length >= 4) {
+                jugadorasSet1.push(colocadoras[0], colocadoras[1]);
+                jugadorasSet2.push(colocadoras[2], colocadoras[3]);
+            } else if (colocadoras.length >= 2) {
+                jugadorasSet1.push(colocadoras[0], colocadoras[1]);
+                jugadorasSet2.push(colocadoras[0], colocadoras[1]); // Repetir
+            } else if (colocadoras.length === 1) {
+                jugadorasSet1.push(colocadoras[0], colocadoras[0]);
+                jugadorasSet2.push(colocadoras[0], colocadoras[0]);
+            }
+            
+            // Distribuir centrales (2 por set)
+            if (centrales.length >= 4) {
+                jugadorasSet1.push(centrales[0], centrales[1]);
+                jugadorasSet2.push(centrales[2], centrales[3]);
+            } else if (centrales.length >= 2) {
+                jugadorasSet1.push(centrales[0], centrales[1]);
+                jugadorasSet2.push(centrales[0], centrales[1]); // Repetir
+            } else if (centrales.length === 1) {
+                jugadorasSet1.push(centrales[0], centrales[0]);
+                jugadorasSet2.push(centrales[0], centrales[0]);
+            }
+            
+            // Rellenar con jugadoras normales (2 por set)
+            if (jugadorasNormales.length >= 4) {
+                jugadorasSet1.push(jugadorasNormales[0], jugadorasNormales[1]);
+                jugadorasSet2.push(jugadorasNormales[2], jugadorasNormales[3]);
+                
+                suplenteSet1 = jugadorasNormales[4] || null;
+                suplenteSet2 = jugadorasNormales[5] || null;
+            } else if (jugadorasNormales.length >= 2) {
+                jugadorasSet1.push(jugadorasNormales[0], jugadorasNormales[1]);
+                jugadorasSet2.push(jugadorasNormales[0], jugadorasNormales[1]); // Repetir
+            } else if (jugadorasNormales.length === 1) {
+                jugadorasSet1.push(jugadorasNormales[0], jugadorasNormales[0]);
+                jugadorasSet2.push(jugadorasNormales[0], jugadorasNormales[0]);
+            }
+        }
+        // Caso 3: SOLO COLOCADORES Y JUGADORAS (2 colocadores + 4 jugadoras)
+        else {
+            console.log('⚡ Modo: 2 Colocadores + 4 Jugadoras por set');
+            
+            // Distribuir colocadoras (2 por set)
+            if (colocadoras.length >= 4) {
+                jugadorasSet1.push(colocadoras[0], colocadoras[1]);
+                jugadorasSet2.push(colocadoras[2], colocadoras[3]);
+            } else if (colocadoras.length >= 2) {
+                jugadorasSet1.push(colocadoras[0], colocadoras[1]);
+                jugadorasSet2.push(colocadoras[0], colocadoras[1]); // Repetir
+            } else if (colocadoras.length === 1) {
+                jugadorasSet1.push(colocadoras[0]);
+                jugadorasSet2.push(colocadoras[0]);
+            }
 
-        // Set 3 OPCIONAL: Las mejores (si autocompletarSet3 está activado)
+            // Distribuir jugadoras normales (4 por set)
+            if (jugadorasNormales.length >= 8) {
+                jugadorasSet1.push(...jugadorasNormales.slice(0, 4));
+                jugadorasSet2.push(...jugadorasNormales.slice(4, 8));
+                
+                suplenteSet1 = jugadorasNormales[8] || null;
+                suplenteSet2 = jugadorasNormales[9] || null;
+            } else if (jugadorasNormales.length >= 4) {
+                const mitad = Math.ceil(jugadorasNormales.length / 2);
+                jugadorasSet1.push(...jugadorasNormales.slice(0, mitad));
+                jugadorasSet2.push(...jugadorasNormales.slice(mitad));
+                
+                // Rellenar hasta 6 si es necesario
+                while (jugadorasSet1.length < 6 && jugadorasNormales.length > 0) {
+                    jugadorasSet1.push(jugadorasNormales[jugadorasSet1.length % jugadorasNormales.length]);
+                }
+                while (jugadorasSet2.length < 6 && jugadorasNormales.length > 0) {
+                    jugadorasSet2.push(jugadorasNormales[jugadorasSet2.length % jugadorasNormales.length]);
+                }
+            } else {
+                // Menos de 4: distribuir y repetir
+                jugadorasSet1.push(...jugadorasNormales);
+                jugadorasSet2.push(...jugadorasNormales);
+            }
+        }
+
+        console.log(`\n🏐 Set 1: ${jugadorasSet1.map(j => `${j.nombre}(${j.posicion})`).join(', ')}`);
+        if (suplenteSet1) console.log(`   Suplente: ${suplenteSet1.nombre}`);
+        
+        console.log(`\n🏐 Set 2: ${jugadorasSet2.map(j => `${j.nombre}(${j.posicion})`).join(', ')}`);
+        if (suplenteSet2) console.log(`   Suplente: ${suplenteSet2.nombre}`);
+
+        const set1 = this.generarSetConRoles(
+            jugadorasSet1,
+            suplenteSet1 ? [suplenteSet1] : [],
+            config,
+            1
+        );
+
+        const set2 = this.generarSetConRoles(
+            jugadorasSet2,
+            suplenteSet2 ? [suplenteSet2] : [],
+            config,
+            2
+        );
+
+        // Set 3 OPCIONAL
         let set3 = { titulares: [], suplentes: [], rotaciones: [] };
-        if (config.autocompletarSet3 && totalJugadoras >= 6) {
-            // En Set 3 juegan las MEJORES (primeras 6 por prioridad) SIN SUPLENTES
-            const jugadorasSet3 = jugadorasConPrioridad.slice(0, 6);
-            console.log(`Set 3: ${jugadorasSet3.map(j => j.nombre).join(', ')}`);
+        if (config.autocompletarSet3) {
+            const jugadorasSet3 = [];
+            
+            // Aplicar misma lógica que sets anteriores
+            if (hayOpuestos) {
+                if (colocadoras.length >= 1) jugadorasSet3.push(colocadoras[0]);
+                if (opuestas.length >= 1) jugadorasSet3.push(opuestas[0]);
+                
+                if (hayCentrales) {
+                    if (centrales.length >= 2) {
+                        jugadorasSet3.push(centrales[0], centrales[1]);
+                    } else if (centrales.length === 1) {
+                        jugadorasSet3.push(centrales[0], centrales[0]);
+                    }
+                    jugadorasSet3.push(...jugadorasNormales.slice(0, 2));
+                } else {
+                    jugadorasSet3.push(...jugadorasNormales.slice(0, 4));
+                }
+            } else if (hayCentrales) {
+                if (colocadoras.length >= 2) {
+                    jugadorasSet3.push(colocadoras[0], colocadoras[1]);
+                } else if (colocadoras.length === 1) {
+                    jugadorasSet3.push(colocadoras[0], colocadoras[0]);
+                }
+                
+                if (centrales.length >= 2) {
+                    jugadorasSet3.push(centrales[0], centrales[1]);
+                } else if (centrales.length === 1) {
+                    jugadorasSet3.push(centrales[0], centrales[0]);
+                }
+                
+                jugadorasSet3.push(...jugadorasNormales.slice(0, 2));
+            } else {
+                if (colocadoras.length >= 2) {
+                    jugadorasSet3.push(colocadoras[0], colocadoras[1]);
+                } else if (colocadoras.length === 1) {
+                    jugadorasSet3.push(colocadoras[0]);
+                }
+                jugadorasSet3.push(...jugadorasNormales.slice(0, 4));
+            }
+            
+            console.log(`\n🏐 Set 3: ${jugadorasSet3.map(j => `${j.nombre}(${j.posicion})`).join(', ')}`);
             set3 = this.generarSetConRoles(jugadorasSet3, [], config, 3);
         }
 
@@ -3580,82 +3780,43 @@
     }
 
     generarSetConRoles(jugadoras, suplentes, config, numSet) {
-        // Separar por roles REALES de las jugadoras (sin forzar roles que no existen)
+        // Las jugadoras ya vienen distribuidas correctamente desde generarAutoBalance
+        // Solo necesitamos asignarles posiciones en campo (1-6)
+        
         const colocadoras = jugadoras.filter(j => j.posicion === 'colocadora');
-        const centrales = jugadoras.filter(j => j.posicion === 'central');
-        const opuestas = jugadoras.filter(j => j.posicion === 'opuesta');
-        const jugadorasNormales = jugadoras.filter(j => j.posicion === 'jugadora');
+        const noColocadoras = jugadoras.filter(j => j.posicion !== 'colocadora');
 
-        console.log(`🎯 Set ${numSet} roles disponibles: Col=${colocadoras.length}, Opu=${opuestas.length}, Cen=${centrales.length}, Jug=${jugadorasNormales.length}`);
+        console.log(`🎯 Set ${numSet}: ${colocadoras.length} colocadoras, ${noColocadoras.length} jugadoras`);
 
-        // Distribuir jugadoras por su ROL ORIGINAL sin cambiarlos
         return this.generarSetPorRoles(
-            colocadoras,
-            opuestas,
-            centrales,
-            jugadorasNormales,
+            jugadoras,
             suplentes,
             config,
             numSet
         );
     }
 
-    generarSetPorRoles(colocadoras, opuestas, centrales, jugadoras, suplentes, config, numSet) {
+    generarSetPorRoles(jugadoras, suplentes, config, numSet) {
         const set = {
             titulares: [],
             suplentes: [],
             rotaciones: []
         };
 
-        // Recopilar todas las jugadoras con sus roles ORIGINALES
-        const todasJugadoras = [];
-        
-        // Añadir colocadoras con su rol
-        colocadoras.forEach(j => todasJugadoras.push({...j, rolOriginal: j.posicion}));
-        
-        // Añadir opuestas SOLO si existen en el equipo
-        opuestas.forEach(j => todasJugadoras.push({...j, rolOriginal: j.posicion}));
-        
-        // Añadir centrales SOLO si existen en el equipo
-        centrales.forEach(j => todasJugadoras.push({...j, rolOriginal: j.posicion}));
-        
-        // Añadir jugadoras normales
-        jugadoras.forEach(j => todasJugadoras.push({...j, rolOriginal: j.posicion}));
-
-        // Determinar posiciones disponibles (1-6)
-        const posColocadora = config.posicionColocadora || 1;
+        // Asignar posiciones en campo (1-6) a las jugadoras
         const posicionesDisponibles = [1, 2, 3, 4, 5, 6];
         
-        // Si hay colocadora, asignarle su posición preferida
-        let posIndex = 0;
-        if (colocadoras.length > 0) {
-            set.titulares.push({
-                ...todasJugadoras[posIndex],
-                posicion: posColocadora,
-                posicionCampo: posColocadora,
-                puntosJugados: 25
-            });
-            posIndex++;
-        }
-        
-        // Asignar resto de jugadoras a posiciones libres (sin cambiar sus roles)
-        const posicionesRestantes = posicionesDisponibles.filter(p => p !== posColocadora);
-        let posRestanteIndex = 0;
-        
-        while (posIndex < todasJugadoras.length && posIndex < 6) {
-            const jugadora = todasJugadoras[posIndex];
-            const posAsignada = posicionesRestantes[posRestanteIndex] || (posIndex + 1);
-            
-            set.titulares.push({
-                ...jugadora,
-                posicion: posAsignada,
-                posicionCampo: posAsignada,
-                puntosJugados: 25
-            });
-            
-            posIndex++;
-            posRestanteIndex++;
-        }
+        jugadoras.forEach((jugadora, idx) => {
+            if (idx < 6) {
+                set.titulares.push({
+                    ...jugadora,
+                    rolOriginal: jugadora.posicion, // Mantener rol original
+                    posicion: posicionesDisponibles[idx],
+                    posicionCampo: posicionesDisponibles[idx],
+                    puntosJugados: 25
+                });
+            }
+        });
 
         // Asignar primer saque aleatorio
         if (set.titulares.length > 0) {
