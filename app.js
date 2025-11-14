@@ -702,7 +702,7 @@
                 .map(j => `
                     <div class="jugadora-setup-item">
                         <span class="jugadora-setup-info">
-                            ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} ${j.nombre} 
+                            ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : (j.posicion === 'opuesta' ? '🔥' : '🏐'))} ${j.nombre} 
                             <span class="dorsal-badge">#${j.dorsal}</span>
                         </span>
                         <button onclick="app.eliminarJugadoraSetup(${j.id})">❌</button>
@@ -1092,7 +1092,7 @@
                              onclick="app.toggleAsistencia('${grid.asistencia}', ${jugadora.id})">
                             <div class="jugadora-header">
                                 <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
-                                <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
+                                <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : (jugadora.posicion === 'opuesta' ? '🔥' : '🏐'))}</span>
                                 <span class="jugadora-nombre">${lesionadaIcon}${jugadora.nombre}</span>
                             </div>
                             ${jugadora.lesionada ? '<div class="warning-lesion">⚠️ LESIONADA</div>' : ''}
@@ -1857,6 +1857,7 @@
             let emojiRol = '🏐'; // Jugadora normal
             if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
             else if (jugadora.posicion === 'central') emojiRol = '🛡️';
+            else if (jugadora.posicion === 'opuesta') emojiRol = '🔥';
             
             return `
                 <div class="posicion-campo ocupada" onclick="app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
@@ -1942,6 +1943,7 @@
             let emojiRol = '🏐'; // Jugadora normal
             if (j.posicion === 'colocadora') emojiRol = '🎯';
             else if (j.posicion === 'central') emojiRol = '🛡️';
+            else if (j.posicion === 'opuesta') emojiRol = '🔥';
             
             let estadoTexto = '';
             let colorFondo = '';
@@ -2620,7 +2622,7 @@
                                     <div class="titular-slot occupied ${j.posicion === 'colocadora' ? 'colocadora' : ''}">
                                         <div class="titular-info">
                                             <div class="titular-nombre">
-                                                ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} #${j.dorsal} ${j.nombre}
+                                                ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : (j.posicion === 'opuesta' ? '🔥' : '🏐'))} #${j.dorsal} ${j.nombre}
                                             </div>
                                             <div class="titular-stats">
                                                 P: ${j.puntosJugados || 0}
@@ -2787,7 +2789,7 @@
                                 return `
                                     <div class="jugadora-draggable" data-id="${j.id}" draggable="true">
                                         <div class="jugadora-nombre">
-                                            ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} <span style="font-weight:bold">#${j.dorsal} ${j.nombre}</span>
+                                            ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : (j.posicion === 'opuesta' ? '🔥' : '🏐'))} <span style="font-weight:bold">#${j.dorsal} ${j.nombre}</span>
                                         </div>
                                         <div class="jugadora-stats-mini">
                                             P: ${j.puntosJugados || 0}
@@ -2980,7 +2982,7 @@
                                     <div class="titular-slot occupied saved ${j.posicion === 'colocadora' ? 'colocadora' : ''}">
                                         <div class="titular-info">
                                             <div class="titular-nombre">
-                                                ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} #${j.dorsal} ${j.nombre}
+                                                ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : (j.posicion === 'opuesta' ? '🔥' : '🏐'))} #${j.dorsal} ${j.nombre}
                                             </div>
                                             <div class="titular-stats">
                                                 P: ${j.puntosJugados || 0}
@@ -3172,19 +3174,151 @@
             };
         }
         
+        // Abrir modal de estadísticas y comentarios
+        this.abrirModalEstadisticas();
+    }
+
+    // ==================== MODAL DE ESTADÍSTICAS Y COMENTARIOS ====================
+    abrirModalEstadisticas() {
+        const modal = document.getElementById('modal-estadisticas-jornada');
+        if (!modal) return;
+        
+        // Cargar datos existentes si la jornada ya tiene resultados
+        const resultados = this.jornadaActual.resultados || {};
+        const notas = this.jornadaActual.notas || '';
+        
+        // Rellenar el formulario
+        document.getElementById('setsGanados').value = resultados.setsGanados || 3;
+        document.getElementById('setsPerdidos').value = resultados.setsPerdidos || 0;
+        document.getElementById('puntosTotales').value = resultados.puntosTotales || 0;
+        document.getElementById('erroresSaque').value = resultados.erroresSaque || 0;
+        document.getElementById('erroresRecepcion').value = resultados.erroresRecepcion || 0;
+        document.getElementById('erroresAtaque').value = resultados.erroresAtaque || 0;
+        document.getElementById('notasPartido').value = notas;
+        
+        modal.style.display = 'flex';
+    }
+
+    cerrarModalEstadisticas() {
+        const modal = document.getElementById('modal-estadisticas-jornada');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    cambiarContador(campo, delta) {
+        const input = document.getElementById(campo);
+        if (!input) return;
+        
+        let valor = parseInt(input.value) || 0;
+        valor = Math.max(0, valor + delta); // No permitir valores negativos
+        input.value = valor;
+    }
+
+    guardarEstadisticas() {
+        if (!this.jornadaActual) return;
+        
+        // Recoger datos del formulario
+        const resultados = {
+            setsGanados: parseInt(document.getElementById('setsGanados').value) || 0,
+            setsPerdidos: parseInt(document.getElementById('setsPerdidos').value) || 0,
+            puntosTotales: parseInt(document.getElementById('puntosTotales').value) || 0,
+            erroresSaque: parseInt(document.getElementById('erroresSaque').value) || 0,
+            erroresRecepcion: parseInt(document.getElementById('erroresRecepcion').value) || 0,
+            erroresAtaque: parseInt(document.getElementById('erroresAtaque').value) || 0
+        };
+        
+        const notas = document.getElementById('notasPartido').value.trim();
+        
+        // Guardar en la jornada
+        this.jornadaActual.resultados = resultados;
+        this.jornadaActual.notas = notas;
+        
         // Marcar como completada
         this.jornadaActual.completada = true;
         
         // Actualizar estadísticas de jugadoras
         this.actualizarEstadisticasJornada();
         
-        // Guardar
+        // Guardar en localStorage y MongoDB
         this.guardarJornadas();
         this.guardarJugadoras();
+        
+        // Cerrar modal
+        this.cerrarModalEstadisticas();
         
         // Volver al inicio y cambiar a pestaña historial
         this.volverAInicioJornada();
         this.cambiarTab('historial');
+        
+        // Mostrar notificación de éxito
+        showNotification('✅ Jornada completada y estadísticas guardadas correctamente', 'success');
+    }
+
+    editarEstadisticasJornada(jornadaId) {
+        // Buscar la jornada
+        const jornada = this.jornadas.find(j => j.id === jornadaId);
+        if (!jornada) {
+            alert('❌ Jornada no encontrada');
+            return;
+        }
+        
+        // Establecer como jornada actual temporalmente para el modal
+        this.jornadaActual = jornada;
+        
+        // Abrir modal con datos existentes
+        this.abrirModalEstadisticas();
+        
+        // Cambiar texto del botón para indicar que es edición
+        const btnGuardar = document.getElementById('guardarEstadisticas');
+        if (btnGuardar) {
+            btnGuardar.textContent = '💾 Actualizar';
+            btnGuardar.onclick = () => {
+                this.actualizarEstadisticasExistente();
+            };
+        }
+    }
+
+    actualizarEstadisticasExistente() {
+        if (!this.jornadaActual) return;
+        
+        // Recoger datos del formulario
+        const resultados = {
+            setsGanados: parseInt(document.getElementById('setsGanados').value) || 0,
+            setsPerdidos: parseInt(document.getElementById('setsPerdidos').value) || 0,
+            puntosTotales: parseInt(document.getElementById('puntosTotales').value) || 0,
+            erroresSaque: parseInt(document.getElementById('erroresSaque').value) || 0,
+            erroresRecepcion: parseInt(document.getElementById('erroresRecepcion').value) || 0,
+            erroresAtaque: parseInt(document.getElementById('erroresAtaque').value) || 0
+        };
+        
+        const notas = document.getElementById('notasPartido').value.trim();
+        
+        // Actualizar datos
+        this.jornadaActual.resultados = resultados;
+        this.jornadaActual.notas = notas;
+        
+        // Guardar
+        this.guardarJornadas();
+        
+        // Cerrar modal
+        this.cerrarModalEstadisticas();
+        
+        // Limpiar jornada actual
+        this.jornadaActual = null;
+        
+        // Recargar historial
+        this.generarHistorial();
+        
+        // Notificación
+        showNotification('✅ Estadísticas actualizadas correctamente', 'success');
+        
+        // Restaurar botón
+        const btnGuardar = document.getElementById('guardarEstadisticas');
+        if (btnGuardar) {
+            btnGuardar.textContent = '💾 Guardar';
+            btnGuardar.onclick = () => this.guardarEstadisticas();
+        }
     }
 
     // ==================== RECÁLCULO COMPLETO DE ESTADÍSTICAS ====================
@@ -3640,7 +3774,7 @@
         container.innerHTML = this.jugadoras
             .sort((a, b) => a.dorsal - b.dorsal)
             .map(jugadora => {
-                const emoji = jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐');
+                const emoji = jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : (jugadora.posicion === 'opuesta' ? '🔥' : '🏐'));
                 
                 // Posición con formato inclusivo
                 let posicion;
@@ -3648,6 +3782,8 @@
                     posicion = 'Colocador/a';
                 } else if (jugadora.posicion === 'central') {
                     posicion = 'Central';
+                } else if (jugadora.posicion === 'opuesta') {
+                    posicion = 'Opuesto/a';
                 } else {
                     posicion = 'Jugador/a';
                 }
@@ -4283,7 +4419,9 @@
                             ${!jornada.completada ? `
                                 <button onclick="app.continuarEditandoJornada(${jornada.id})" class="btn-editar-jornada">✏️ Editar</button>
                                 <button onclick="app.eliminarJornada(${jornada.id})" class="btn-eliminar-jornada">🗑️</button>
-                            ` : ''}
+                            ` : `
+                                <button onclick="app.editarEstadisticasJornada(${jornada.id})" class="btn-editar-stats">📊 Editar Stats</button>
+                            `}
                         </div>
                     </div>
                     
@@ -4324,6 +4462,35 @@
                             <h5>🏐 Sábado</h5>
                             ${this.generarVistaPartidoHistorial(jornada, jugadoraFiltrada)}
                         </div>
+                        
+                        ${jornada.completada && (jornada.resultados || jornada.notas) ? `
+                            <div class="dia-detalle stats-notas-historial">
+                                ${jornada.resultados ? `
+                                    <h5>📊 Resultados del Partido</h5>
+                                    <div class="resultados-resumen">
+                                        <div class="resultado-item">
+                                            <span class="resultado-label">Sets:</span>
+                                            <span class="resultado-valor">${jornada.resultados.setsGanados || 0} - ${jornada.resultados.setsPerdidos || 0}</span>
+                                        </div>
+                                        <div class="resultado-item">
+                                            <span class="resultado-label">Puntos Totales:</span>
+                                            <span class="resultado-valor">${jornada.resultados.puntosTotales || 0}</span>
+                                        </div>
+                                        ${(jornada.resultados.erroresSaque || jornada.resultados.erroresRecepcion || jornada.resultados.erroresAtaque) ? `
+                                            <div class="errores-resumen">
+                                                ${jornada.resultados.erroresSaque ? `<span>⚠️ Saque: ${jornada.resultados.erroresSaque}</span>` : ''}
+                                                ${jornada.resultados.erroresRecepcion ? `<span>⚠️ Recepción: ${jornada.resultados.erroresRecepcion}</span>` : ''}
+                                                ${jornada.resultados.erroresAtaque ? `<span>⚠️ Ataque: ${jornada.resultados.erroresAtaque}</span>` : ''}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                ` : ''}
+                                ${jornada.notas ? `
+                                    <h5>📝 Notas y Comentarios</h5>
+                                    <div class="notas-texto">${jornada.notas.replace(/\n/g, '<br>')}</div>
+                                ` : ''}
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -4564,6 +4731,7 @@
                             let emojiRol = '🏐';
                             if (j.posicion === 'colocadora') emojiRol = '🎯';
                             else if (j.posicion === 'central') emojiRol = '🛡️';
+                            else if (j.posicion === 'opuesta') emojiRol = '🔥';
                             const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                             return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                         }).join('')}
@@ -4575,12 +4743,13 @@
             if (!jornada.completada && jugadorasSabado.length > 0) {
                 html += `
                     <div class="jugadoras-asistiran" style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #28a745;">
-                        <strong>Jugadoras que asistirán:</strong>
+                        <strong>Jugadores/as que asistirán:</strong>
                         <div style="margin-top: 5px;">
                             ${jugadorasSabado.map(j => {
                                 let emojiRol = '🏐';
                                 if (j.posicion === 'colocadora') emojiRol = '🎯';
                                 else if (j.posicion === 'central') emojiRol = '🛡️';
+                                else if (j.posicion === 'opuesta') emojiRol = '🔥';
                                 const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                                 return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                             }).join('')}
@@ -4598,6 +4767,7 @@
                         let emojiRol = '🏐';
                         if (j.posicion === 'colocadora') emojiRol = '🎯';
                         else if (j.posicion === 'central') emojiRol = '🛡️';
+                        else if (j.posicion === 'opuesta') emojiRol = '🔥';
                         const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                         return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                     }).join('')}
@@ -4929,7 +5099,7 @@
             
             card.innerHTML = `
                 <div class="jugadora-header">
-                    <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
+                    <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : (jugadora.posicion === 'opuesta' ? '🔥' : '🏐'))}</span>
                     <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
                     <span class="jugadora-nombre">${lesionadaIcon}${jugadora.nombre}</span>
                 </div>
@@ -5413,6 +5583,8 @@ function verInfoJugadoraGlobal(jugadoraId) {
         posicionTexto = '🎯 Colocador/a';
     } else if (jugadora.posicion === 'central') {
         posicionTexto = '🛡️ Central';
+    } else if (jugadora.posicion === 'opuesta') {
+        posicionTexto = '🔥 Opuesto/a';
     } else {
         posicionTexto = '🏐 Jugador/a';
     }
@@ -5958,6 +6130,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const modalGestionDatos = document.getElementById('modal-gestion-datos');
         if (modalGestionDatos) {
             modalGestionDatos.addEventListener('click', async (e) => {
+                // Cerrar modal si se hace clic fuera del contenido
+                if (e.target === modalGestionDatos) {
+                    app.cerrarModalGestionDatos();
+                    return;
+                }
+                
                 if (e.target.classList.contains('btn-eliminar-item')) {
                     const tipo = e.target.dataset.tipo;
                     const valor = e.target.dataset.valor;
@@ -5967,6 +6145,32 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (tipo === 'rival') {
                         await app.eliminarRival(valor);
                     }
+                }
+            });
+        }
+        
+        // Event listeners para modal de estadísticas
+        const btnCerrarModalEstadisticas = document.getElementById('btnCerrarModalEstadisticas');
+        if (btnCerrarModalEstadisticas) {
+            btnCerrarModalEstadisticas.addEventListener('click', () => app.cerrarModalEstadisticas());
+        }
+        
+        const btnGuardarEstadisticas = document.getElementById('guardarEstadisticas');
+        if (btnGuardarEstadisticas) {
+            btnGuardarEstadisticas.addEventListener('click', () => app.guardarEstadisticas());
+        }
+        
+        const btnCancelarEstadisticas = document.getElementById('cancelarEstadisticas');
+        if (btnCancelarEstadisticas) {
+            btnCancelarEstadisticas.addEventListener('click', () => app.cerrarModalEstadisticas());
+        }
+        
+        // Cerrar modal de estadísticas al hacer clic fuera
+        const modalEstadisticas = document.getElementById('modal-estadisticas-jornada');
+        if (modalEstadisticas) {
+            modalEstadisticas.addEventListener('click', (e) => {
+                if (e.target === modalEstadisticas) {
+                    app.cerrarModalEstadisticas();
                 }
             });
         }

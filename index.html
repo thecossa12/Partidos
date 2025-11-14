@@ -199,9 +199,10 @@
                     <input type="text" id="nombreJugadora" placeholder="Nombre">
                     <input type="number" id="dorsalJugadora" placeholder="Dorsal" min="1" max="99">
                     <select id="posicionJugadora">
-                        <option value="jugadora">Jugador/a</option>
+                        <option value="jugadora">Jugador/a (Rematador/a por 4)</option>
                         <option value="colocadora">Colocador/a</option>
                         <option value="central">Central</option>
+                        <option value="opuesta">Opuesto/a (Rematador/a por 2)</option>
                     </select>
                         <button id="guardarJugadora" class="btn-save" type="button">Guardar</button>
                         <button id="cancelarJugadora" class="btn-cancel" type="button">Cancelar</button>
@@ -457,6 +458,88 @@
                     <div id="lista-rivales" class="lista-gestion-datos">
                         <!-- Se genera dinámicamente -->
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Estadísticas y Comentarios -->
+    <div id="modal-estadisticas-jornada" class="modal" style="display: none;">
+        <div class="modal-content modal-estadisticas-content">
+            <div class="modal-header">
+                <h4>📊 Resultados y Notas del Partido</h4>
+                <button class="btn-cerrar-modal" id="btnCerrarModalEstadisticas">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- Resultado del partido -->
+                <div class="stats-seccion">
+                    <h5>🏐 Resultado del Partido</h5>
+                    <div class="resultado-partido">
+                        <div class="sets-resultado">
+                            <label>Sets Ganados:</label>
+                            <select id="setsGanados">
+                                <option value="0">0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3" selected>3</option>
+                            </select>
+                        </div>
+                        <div class="sets-resultado">
+                            <label>Sets Perdidos:</label>
+                            <select id="setsPerdidos">
+                                <option value="0" selected>0</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="puntos-totales">
+                        <label>Puntos Totales Anotados:</label>
+                        <input type="number" id="puntosTotales" min="0" placeholder="Ej: 75" value="0">
+                    </div>
+                </div>
+
+                <!-- Errores (Opcional) -->
+                <div class="stats-seccion">
+                    <h5>⚠️ Errores (Opcional)</h5>
+                    <div class="errores-grid">
+                        <div class="error-contador">
+                            <label>Errores de Saque:</label>
+                            <div class="contador-botones">
+                                <button type="button" class="btn-contador" onclick="app.cambiarContador('erroresSaque', -1)">-</button>
+                                <input type="number" id="erroresSaque" value="0" min="0" readonly>
+                                <button type="button" class="btn-contador" onclick="app.cambiarContador('erroresSaque', 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="error-contador">
+                            <label>Errores de Recepción:</label>
+                            <div class="contador-botones">
+                                <button type="button" class="btn-contador" onclick="app.cambiarContador('erroresRecepcion', -1)">-</button>
+                                <input type="number" id="erroresRecepcion" value="0" min="0" readonly>
+                                <button type="button" class="btn-contador" onclick="app.cambiarContador('erroresRecepcion', 1)">+</button>
+                            </div>
+                        </div>
+                        <div class="error-contador">
+                            <label>Errores de Ataque:</label>
+                            <div class="contador-botones">
+                                <button type="button" class="btn-contador" onclick="app.cambiarContador('erroresAtaque', -1)">-</button>
+                                <input type="number" id="erroresAtaque" value="0" min="0" readonly>
+                                <button type="button" class="btn-contador" onclick="app.cambiarContador('erroresAtaque', 1)">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notas/Comentarios -->
+                <div class="stats-seccion">
+                    <h5>📝 Notas y Comentarios</h5>
+                    <textarea id="notasPartido" rows="6" placeholder="Escribe aquí tus notas pre-partido y post-partido...&#10;&#10;Ejemplos:&#10;- Pre: El rival hace muchas fintas, #4 remata muy fuerte&#10;- Post: Funcionó bien la rotación 2, mejorar defensa en zona 1"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button id="guardarEstadisticas" class="btn-confirmar">💾 Guardar</button>
+                    <button id="cancelarEstadisticas" class="btn-cancelar">❌ Cancelar</button>
                 </div>
             </div>
         </div>
