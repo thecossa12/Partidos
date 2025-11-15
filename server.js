@@ -20,33 +20,20 @@ app.get('/', (req, res) => {
 app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz
 
 let db;
-let isDBConnected = false;
-
-// Middleware para verificar conexión a DB
-const checkDBConnection = (req, res, next) => {
-    if (!isDBConnected || !db) {
-        return res.status(503).json({ 
-            error: 'Database connection not ready. Please try again in a few seconds.' 
-        });
-    }
-    next();
-};
 
 // Conectar a MongoDB al iniciar el servidor
 connectDB().then(database => {
     db = database;
-    isDBConnected = true;
     console.log('✅ Base de datos conectada');
 }).catch(err => {
     console.error('❌ Error conectando a la base de datos:', err);
-    console.log('⚠️ El servidor continuará ejecutándose pero las operaciones de BD fallarán');
-    // No exit - permitir que el servidor arranque
+    process.exit(1);
 });
 
 // ==================== ENDPOINTS DE JUGADORES ====================
 
 // Obtener todos los jugadores (filtrados por usuario)
-app.get('/api/jugadores', checkDBConnection, async (req, res) => {
+app.get('/api/jugadores', async (req, res) => {
     try {
         const userId = req.query.userId;
         if (!userId) {
@@ -430,8 +417,7 @@ app.post('/api/migrate', async (req, res) => {
 });
 
 // Iniciar servidor
-const HOST = process.env.HOST || '0.0.0.0';
-app.listen(PORT, HOST, () => {
-    console.log(`🚀 Servidor corriendo en http://${HOST}:${PORT}`);
+app.listen(PORT, () => {
+    console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     console.log(`📱 Abrir en: http://localhost:${PORT}`);
 });

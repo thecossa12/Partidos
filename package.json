@@ -3,9 +3,6 @@
   "version": "1.0.0",
   "description": "Aplicación web local para gestionar de manera equitativa la rotación de jugadoras de volleyball, considerando la asistencia a entrenamientos y el historial de participación. **Completamente rediseñada** para máxima facilidad de uso.",
   "main": "server.js",
-  "engines": {
-    "node": ">=18.0.0"
-  },
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",

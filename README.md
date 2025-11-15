@@ -1,70 +1,7 @@
 # 🏐 Gestor de Rotaciones - Volleyball
 
 ## Descripción
-Aplicación web para gestionar de manera equitativa la rotación de jugadoras de volleyball, considerando la asistencia a entrenamientos y el historial de participación.
-
-## 🚀 Deployment en Railway
-
-### Configuración de Variables de Entorno
-
-En tu proyecto de Railway, configura la siguiente variable:
-
-```
-MONGO_URI=mongodb+srv://usuario:contraseña@cluster.mongodb.net/?retryWrites=true&w=majority
-```
-
-### Configuración de MongoDB Atlas
-
-**IMPORTANTE**: El error SSL que estás experimentando se debe a la configuración de red en MongoDB Atlas.
-
-1. **Ve a MongoDB Atlas** → Tu Cluster → Network Access
-2. **Whitelist de IPs**: Añade `0.0.0.0/0` para permitir conexiones desde Railway
-   - Click en "Add IP Address"
-   - Click en "Allow Access from Anywhere"
-   - Confirma con "0.0.0.0/0"
-
-3. **Database Access**: Verifica que tu usuario tenga permisos
-   - Rol: `readWrite` en la base de datos `volleyball`
-   - Authentication: Password (no SCRAM-SHA)
-
-### Verificación de la URI de MongoDB
-
-Tu `MONGO_URI` debe tener este formato:
-```
-mongodb+srv://<username>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority&appName=<appname>
-```
-
-**Asegúrate de**:
-- Reemplazar `<password>` con la contraseña SIN caracteres especiales o URL-encode
-- Usar el cluster correcto (tu error muestra: `ac-81extiz-shard-00-00.t7cper9.mongodb.net`)
-- NO incluir el nombre de la base de datos en la URI (se especifica en el código)
-
-### Solución al Error SSL
-
-El error `tlsv1 alert internal error` indica un problema de compatibilidad SSL. He actualizado:
-
-1. ✅ **db.js**: Opciones de conexión más robustas con timeouts extendidos
-2. ✅ **package.json**: Especificado Node.js >= 18.0.0
-3. ✅ **.nvmrc**: Versión fija 18.20.0 para Railway
-4. ✅ **railway.json**: Configuración de deployment
-5. ✅ **server.js**: Manejo de errores mejorado (no crash si falla DB inicial)
-
-### Pasos para Redeploy
-
-1. **Commit y push** de estos cambios:
-```bash
-git add .
-git commit -m "Fix: MongoDB SSL connection issues for Railway"
-git push
-```
-
-2. **En Railway**:
-   - Verifica que `MONGO_URI` esté configurada correctamente
-   - El deploy se ejecutará automáticamente
-
-3. **Monitorea los logs**:
-   - Deberías ver: `✅ Conectado a MongoDB Atlas`
-   - Si ves errores, verifica la whitelist de IPs en Atlas
+Aplicación web local para gestionar de manera equitativa la rotación de jugadoras de volleyball, considerando la asistencia a entrenamientos y el historial de participación. **Completamente rediseñada** para máxima facilidad de uso.
 
 ## 🆕 Nuevas Características Principales
 
