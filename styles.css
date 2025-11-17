@@ -6271,12 +6271,13 @@ input:checked + .slider:before {
     background: white;
     border-radius: 12px;
     width: 100%;
-    max-width: 700px;
+    max-width: 900px;
     max-height: 90vh;
     display: flex;
     flex-direction: column;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     animation: slideIn 0.3s ease;
+    overflow: hidden;
 }
 
 @keyframes slideIn {
@@ -6371,31 +6372,36 @@ input:checked + .slider:before {
 }
 
 .resultado-inputs {
-    display: grid;
-    grid-template-columns: 1fr auto auto auto 1fr;
-    gap: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
     align-items: center;
+    justify-content: center;
 }
 
 .resultado-inputs input[type="text"] {
     padding: 10px 12px;
     border: 1px solid #ced4da;
     border-radius: 6px;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     background: white;
     text-align: center;
     font-weight: 500;
+    min-width: 120px;
+    flex: 1;
+    max-width: 200px;
 }
 
 .resultado-inputs input[type="number"] {
-    width: 70px;
-    padding: 10px;
+    width: 65px;
+    padding: 10px 8px;
     border: 2px solid #667eea;
     border-radius: 6px;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-weight: 700;
     text-align: center;
     background: white;
+    flex-shrink: 0;
 }
 
 .resultado-inputs input[type="number"]:focus {
@@ -6405,9 +6411,11 @@ input:checked + .slider:before {
 }
 
 .separador {
-    font-size: 1.5rem;
+    font-size: 1.3rem;
     font-weight: 700;
     color: #6c757d;
+    flex-shrink: 0;
+    padding: 0 4px;
 }
 
 .nota-set3 {
@@ -6596,17 +6604,32 @@ input:checked + .slider:before {
         margin: 10px;
     }
 
+    .modal-body-estadisticas {
+        padding: 16px;
+    }
+
     .resultado-inputs {
-        grid-template-columns: 1fr;
-        gap: 8px;
+        flex-direction: column;
+        gap: 10px;
     }
 
     .resultado-inputs input[type="text"] {
+        width: 100%;
+        max-width: 100%;
         order: -1;
     }
 
+    .resultado-inputs input[type="number"] {
+        width: 80px;
+        font-size: 1.3rem;
+    }
+
     .separador {
-        display: none;
+        font-size: 1.5rem;
+    }
+
+    .set-resultado {
+        padding: 12px;
     }
 
     .modal-footer-estadisticas {

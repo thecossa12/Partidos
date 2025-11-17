@@ -5991,13 +5991,50 @@ VolleyballManager.prototype.abrirModalEstadisticas = function(jornadaId) {
         this.actualizarPreviewResultado();
         
         // Mostrar modal
-        document.getElementById('modalEstadisticasPartido').style.display = 'flex';
+        const modal = document.getElementById('modalEstadisticasPartido');
+        modal.style.display = 'flex';
+        
+        // Configurar eventos para cerrar modal
+        this.configurarCierreModalEstadisticas();
     });
 };
 
+VolleyballManager.prototype.configurarCierreModalEstadisticas = function() {
+    const modal = document.getElementById('modalEstadisticasPartido');
+    const modalContent = modal.querySelector('.modal-estadisticas');
+    
+    // Cerrar al hacer click fuera del modal
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            this.cerrarModalEstadisticas();
+        }
+    };
+    
+    // Evitar que clicks dentro del modal lo cierren
+    if (modalContent) {
+        modalContent.onclick = (e) => {
+            e.stopPropagation();
+        };
+    }
+    
+    // Cerrar con tecla ESC
+    const handleEscape = (e) => {
+        if (e.key === 'Escape' || e.key === 'Esc') {
+            this.cerrarModalEstadisticas();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+};
+
 VolleyballManager.prototype.cerrarModalEstadisticas = function() {
-    document.getElementById('modalEstadisticasPartido').style.display = 'none';
+    const modal = document.getElementById('modalEstadisticasPartido');
+    modal.style.display = 'none';
     this.jornadaEditandoEstadisticas = null;
+    
+    // Limpiar event listeners
+    modal.onclick = null;
 };
 
 VolleyballManager.prototype.actualizarPreviewResultado = function() {
