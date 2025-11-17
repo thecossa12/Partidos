@@ -6356,8 +6356,8 @@ input:checked + .slider:before {
 }
 
 .set-resultado {
-    margin-bottom: 20px;
-    padding: 16px;
+    margin-bottom: 16px;
+    padding: 12px;
     background: #f8f9fa;
     border-radius: 8px;
     border-left: 4px solid #667eea;
@@ -6374,30 +6374,29 @@ input:checked + .slider:before {
 .resultado-inputs {
     display: flex;
     flex-wrap: wrap;
-    gap: 10px;
+    gap: 8px;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
 }
 
 .resultado-inputs input[type="text"] {
-    padding: 10px 12px;
+    padding: 8px 10px;
     border: 1px solid #ced4da;
     border-radius: 6px;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
     background: white;
     text-align: center;
     font-weight: 500;
-    min-width: 120px;
-    flex: 1;
-    max-width: 200px;
+    min-width: 100px;
+    flex: 0 1 auto;
 }
 
 .resultado-inputs input[type="number"] {
-    width: 65px;
-    padding: 10px 8px;
+    width: 55px;
+    padding: 8px 6px;
     border: 2px solid #667eea;
     border-radius: 6px;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     text-align: center;
     background: white;
@@ -6411,11 +6410,11 @@ input:checked + .slider:before {
 }
 
 .separador {
-    font-size: 1.3rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: #6c757d;
     flex-shrink: 0;
-    padding: 0 4px;
+    padding: 0 2px;
 }
 
 .nota-set3 {
@@ -6609,27 +6608,40 @@ input:checked + .slider:before {
     }
 
     .resultado-inputs {
-        flex-direction: column;
-        gap: 10px;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        gap: 6px;
+        align-items: center;
+        justify-content: center;
     }
 
     .resultado-inputs input[type="text"] {
-        width: 100%;
-        max-width: 100%;
-        order: -1;
+        min-width: 80px;
+        font-size: 0.8rem;
+        padding: 6px 8px;
+        flex: 0 1 auto;
     }
 
     .resultado-inputs input[type="number"] {
-        width: 80px;
-        font-size: 1.3rem;
+        width: 50px;
+        font-size: 1rem;
+        padding: 6px 4px;
     }
 
     .separador {
-        font-size: 1.5rem;
+        font-size: 1rem;
+        padding: 0;
     }
 
     .set-resultado {
-        padding: 12px;
+        padding: 10px;
+        margin-bottom: 12px;
+    }
+
+    .set-label {
+        font-size: 0.9rem;
+        margin-bottom: 8px;
     }
 
     .modal-footer-estadisticas {

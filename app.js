@@ -4384,7 +4384,7 @@
         if (est.set2 && (est.set2.puntosLocal > 0 || est.set2.puntosVisitante > 0)) {
             html += `<div class="set-marcador">
                 <span>Set 2:</span>
-                <span><strong>${nombreVisitante}</strong> ${est.set2.puntosVisitante} - ${est.set2.puntosLocal} <strong>${nombreLocal}</strong></span>
+                <span><strong>${nombreLocal}</strong> ${est.set2.puntosLocal} - ${est.set2.puntosVisitante} <strong>${nombreVisitante}</strong></span>
             </div>`;
         }
         
