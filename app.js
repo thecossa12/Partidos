@@ -5959,6 +5959,7 @@ VolleyballManager.prototype.abrirModalEstadisticas = function(jornadaId) {
     this.cargarConfiguracion().then(config => {
         const nombreLocal = config.nombreEquipo || 'Tu equipo';
         const nombreRival = jornada.rival || 'Equipo rival';
+        const esPartidoCasa = jornada.tipoUbicacion !== 'fuera'; // true si es en casa, false si es fuera
         
         // Llenar información de la jornada
         const fechaMostrar = jornada.fechaSeleccionada || jornada.fechaSabado || jornada.fechaLunes;
@@ -5966,23 +5967,49 @@ VolleyballManager.prototype.abrirModalEstadisticas = function(jornadaId) {
         document.getElementById('estadUbicacion').textContent = `${jornada.tipoUbicacion === 'fuera' ? 'Fuera' : 'Casa'} - ${jornada.ubicacion || 'Sin ubicación'}`;
         document.getElementById('estadRival').textContent = nombreRival;
         
-        // Set 1: Local primero
-        document.getElementById('nombreEquipoLocal1').value = nombreLocal;
-        document.getElementById('nombreEquipoVisitante1').value = nombreRival;
-        document.getElementById('puntosLocal1').value = jornada.estadisticas?.set1?.puntosLocal || '';
-        document.getElementById('puntosVisitante1').value = jornada.estadisticas?.set1?.puntosVisitante || '';
+        // LÓGICA DE ALTERNANCIA:
+        // Casa: Set 1 (Local-Rival), Set 2 (Rival-Local), Set 3 (Local-Rival)
+        // Fuera: Set 1 (Rival-Local), Set 2 (Local-Rival), Set 3 (Rival-Local)
         
-        // Set 2: Rival primero (cambiados)
-        document.getElementById('nombreEquipoVisitante2').value = nombreRival;
-        document.getElementById('nombreEquipoLocal2').value = nombreLocal;
-        document.getElementById('puntosVisitante2').value = jornada.estadisticas?.set2?.puntosVisitante || '';
-        document.getElementById('puntosLocal2').value = jornada.estadisticas?.set2?.puntosLocal || '';
-        
-        // Set 3: Local primero
-        document.getElementById('nombreEquipoLocal3').value = nombreLocal;
-        document.getElementById('nombreEquipoVisitante3').value = nombreRival;
-        document.getElementById('puntosLocal3').value = jornada.estadisticas?.set3?.puntosLocal || '';
-        document.getElementById('puntosVisitante3').value = jornada.estadisticas?.set3?.puntosVisitante || '';
+        if (esPartidoCasa) {
+            // PARTIDO EN CASA
+            // Set 1: Local primero
+            document.getElementById('nombreEquipoLocal1').value = nombreLocal;
+            document.getElementById('nombreEquipoVisitante1').value = nombreRival;
+            document.getElementById('puntosLocal1').value = jornada.estadisticas?.set1?.puntosLocal || '';
+            document.getElementById('puntosVisitante1').value = jornada.estadisticas?.set1?.puntosVisitante || '';
+            
+            // Set 2: Rival primero
+            document.getElementById('nombreEquipoLocal2').value = nombreRival;
+            document.getElementById('nombreEquipoVisitante2').value = nombreLocal;
+            document.getElementById('puntosLocal2').value = jornada.estadisticas?.set2?.puntosVisitante || '';
+            document.getElementById('puntosVisitante2').value = jornada.estadisticas?.set2?.puntosLocal || '';
+            
+            // Set 3: Local primero
+            document.getElementById('nombreEquipoLocal3').value = nombreLocal;
+            document.getElementById('nombreEquipoVisitante3').value = nombreRival;
+            document.getElementById('puntosLocal3').value = jornada.estadisticas?.set3?.puntosLocal || '';
+            document.getElementById('puntosVisitante3').value = jornada.estadisticas?.set3?.puntosVisitante || '';
+        } else {
+            // PARTIDO FUERA DE CASA
+            // Set 1: Rival primero
+            document.getElementById('nombreEquipoLocal1').value = nombreRival;
+            document.getElementById('nombreEquipoVisitante1').value = nombreLocal;
+            document.getElementById('puntosLocal1').value = jornada.estadisticas?.set1?.puntosVisitante || '';
+            document.getElementById('puntosVisitante1').value = jornada.estadisticas?.set1?.puntosLocal || '';
+            
+            // Set 2: Local primero
+            document.getElementById('nombreEquipoLocal2').value = nombreLocal;
+            document.getElementById('nombreEquipoVisitante2').value = nombreRival;
+            document.getElementById('puntosLocal2').value = jornada.estadisticas?.set2?.puntosLocal || '';
+            document.getElementById('puntosVisitante2').value = jornada.estadisticas?.set2?.puntosVisitante || '';
+            
+            // Set 3: Rival primero
+            document.getElementById('nombreEquipoLocal3').value = nombreRival;
+            document.getElementById('nombreEquipoVisitante3').value = nombreLocal;
+            document.getElementById('puntosLocal3').value = jornada.estadisticas?.set3?.puntosVisitante || '';
+            document.getElementById('puntosVisitante3').value = jornada.estadisticas?.set3?.puntosLocal || '';
+        }
         
         // Notas
         document.getElementById('notasPartido').value = jornada.estadisticas?.notas || '';
@@ -6038,14 +6065,41 @@ VolleyballManager.prototype.cerrarModalEstadisticas = function() {
 };
 
 VolleyballManager.prototype.actualizarPreviewResultado = function() {
-    const puntosLocal1 = parseInt(document.getElementById('puntosLocal1').value) || 0;
-    const puntosVisitante1 = parseInt(document.getElementById('puntosVisitante1').value) || 0;
-    const puntosLocal2 = parseInt(document.getElementById('puntosLocal2').value) || 0;
-    const puntosVisitante2 = parseInt(document.getElementById('puntosVisitante2').value) || 0;
-    const puntosLocal3 = parseInt(document.getElementById('puntosLocal3').value) || 0;
-    const puntosVisitante3 = parseInt(document.getElementById('puntosVisitante3').value) || 0;
+    if (!this.jornadaEditandoEstadisticas) return;
     
-    // Calcular sets ganados
+    const jornada = this.jornadaEditandoEstadisticas;
+    const esPartidoCasa = jornada.tipoUbicacion !== 'fuera';
+    
+    // Leer valores de los inputs (orden de visualización)
+    const input1Local = parseInt(document.getElementById('puntosLocal1').value) || 0;
+    const input1Visitante = parseInt(document.getElementById('puntosVisitante1').value) || 0;
+    const input2Local = parseInt(document.getElementById('puntosLocal2').value) || 0;
+    const input2Visitante = parseInt(document.getElementById('puntosVisitante2').value) || 0;
+    const input3Local = parseInt(document.getElementById('puntosLocal3').value) || 0;
+    const input3Visitante = parseInt(document.getElementById('puntosVisitante3').value) || 0;
+    
+    // Convertir a puntos reales (Mi equipo vs Rival)
+    let puntosLocal1, puntosVisitante1, puntosLocal2, puntosVisitante2, puntosLocal3, puntosVisitante3;
+    
+    if (esPartidoCasa) {
+        // CASA: Set1(Local-Rival), Set2(Rival-Local), Set3(Local-Rival)
+        puntosLocal1 = input1Local;
+        puntosVisitante1 = input1Visitante;
+        puntosLocal2 = input2Visitante;
+        puntosVisitante2 = input2Local;
+        puntosLocal3 = input3Local;
+        puntosVisitante3 = input3Visitante;
+    } else {
+        // FUERA: Set1(Rival-Local), Set2(Local-Rival), Set3(Rival-Local)
+        puntosLocal1 = input1Visitante;
+        puntosVisitante1 = input1Local;
+        puntosLocal2 = input2Local;
+        puntosVisitante2 = input2Visitante;
+        puntosLocal3 = input3Visitante;
+        puntosVisitante3 = input3Local;
+    }
+    
+    // Calcular sets ganados (ahora con puntos correctos)
     let setsLocal = 0;
     let setsVisitante = 0;
     
@@ -6068,20 +6122,24 @@ VolleyballManager.prototype.actualizarPreviewResultado = function() {
     const ganadorDiv = document.getElementById('ganadorDisplay');
     
     if (setsLocal > 0 || setsVisitante > 0) {
-        const nombreLocal = document.getElementById('nombreEquipoLocal1').value;
-        const nombreVisitante = document.getElementById('nombreEquipoVisitante1').value;
-        
-        let textoGanador = '';
-        if (setsLocal > setsVisitante) {
-            textoGanador = `🏆 ${nombreLocal} gana ${setsLocal}-${setsVisitante}`;
-        } else if (setsVisitante > setsLocal) {
-            textoGanador = `${nombreVisitante} gana ${setsVisitante}-${setsLocal}`;
-        } else {
-            textoGanador = `Empate ${setsLocal}-${setsVisitante}`;
-        }
-        
-        ganadorDiv.textContent = textoGanador;
-        resultadoDiv.style.display = 'block';
+        // Obtener nombre real de mi equipo y rival (no del input que puede cambiar)
+        const nombreLocal = document.getElementById('estadRival').textContent; // Aquí guardo el rival
+        this.cargarConfiguracion().then(config => {
+            const nombreMiEquipo = config.nombreEquipo || 'Tu equipo';
+            const nombreRival = this.jornadaEditandoEstadisticas.rival || 'Equipo rival';
+            
+            let textoGanador = '';
+            if (setsLocal > setsVisitante) {
+                textoGanador = `🏆 ${nombreMiEquipo} gana ${setsLocal}-${setsVisitante}`;
+            } else if (setsVisitante > setsLocal) {
+                textoGanador = `${nombreRival} gana ${setsVisitante}-${setsLocal}`;
+            } else {
+                textoGanador = `Empate ${setsLocal}-${setsVisitante}`;
+            }
+            
+            ganadorDiv.textContent = textoGanador;
+            resultadoDiv.style.display = 'block';
+        });
     } else {
         resultadoDiv.style.display = 'none';
     }
@@ -6090,15 +6148,41 @@ VolleyballManager.prototype.actualizarPreviewResultado = function() {
 VolleyballManager.prototype.guardarEstadisticasPartido = function() {
     if (!this.jornadaEditandoEstadisticas) return;
     
-    const puntosLocal1 = parseInt(document.getElementById('puntosLocal1').value) || 0;
-    const puntosVisitante1 = parseInt(document.getElementById('puntosVisitante1').value) || 0;
-    const puntosLocal2 = parseInt(document.getElementById('puntosLocal2').value) || 0;
-    const puntosVisitante2 = parseInt(document.getElementById('puntosVisitante2').value) || 0;
-    const puntosLocal3 = parseInt(document.getElementById('puntosLocal3').value) || 0;
-    const puntosVisitante3 = parseInt(document.getElementById('puntosVisitante3').value) || 0;
+    const jornada = this.jornadaEditandoEstadisticas;
+    const esPartidoCasa = jornada.tipoUbicacion !== 'fuera';
+    
+    // Leer los valores de los inputs (estos están en el orden de visualización)
+    const input1Local = parseInt(document.getElementById('puntosLocal1').value) || 0;
+    const input1Visitante = parseInt(document.getElementById('puntosVisitante1').value) || 0;
+    const input2Local = parseInt(document.getElementById('puntosLocal2').value) || 0;
+    const input2Visitante = parseInt(document.getElementById('puntosVisitante2').value) || 0;
+    const input3Local = parseInt(document.getElementById('puntosLocal3').value) || 0;
+    const input3Visitante = parseInt(document.getElementById('puntosVisitante3').value) || 0;
+    
+    // Convertir a puntos reales (Mi equipo vs Rival) según ubicación
+    let puntosLocal1, puntosVisitante1, puntosLocal2, puntosVisitante2, puntosLocal3, puntosVisitante3;
+    
+    if (esPartidoCasa) {
+        // CASA: Set1(Local-Rival), Set2(Rival-Local), Set3(Local-Rival)
+        puntosLocal1 = input1Local;
+        puntosVisitante1 = input1Visitante;
+        puntosLocal2 = input2Visitante; // En set 2 están invertidos en pantalla
+        puntosVisitante2 = input2Local;
+        puntosLocal3 = input3Local;
+        puntosVisitante3 = input3Visitante;
+    } else {
+        // FUERA: Set1(Rival-Local), Set2(Local-Rival), Set3(Rival-Local)
+        puntosLocal1 = input1Visitante; // En set 1 están invertidos en pantalla
+        puntosVisitante1 = input1Local;
+        puntosLocal2 = input2Local;
+        puntosVisitante2 = input2Visitante;
+        puntosLocal3 = input3Visitante; // En set 3 están invertidos en pantalla
+        puntosVisitante3 = input3Local;
+    }
+    
     const notas = document.getElementById('notasPartido').value.trim();
     
-    // Calcular ganador
+    // Calcular ganador (ahora con los puntos correctamente asignados)
     let setsLocal = 0;
     let setsVisitante = 0;
     
@@ -6115,7 +6199,7 @@ VolleyballManager.prototype.guardarEstadisticasPartido = function() {
     if (setsLocal > setsVisitante) ganador = 'local';
     else if (setsVisitante > setsLocal) ganador = 'visitante';
     
-    // Guardar estadísticas en la jornada
+    // Guardar estadísticas en la jornada (siempre en formato Local-Visitante)
     this.jornadaEditandoEstadisticas.estadisticas = {
         set1: { puntosLocal: puntosLocal1, puntosVisitante: puntosVisitante1 },
         set2: { puntosLocal: puntosLocal2, puntosVisitante: puntosVisitante2 },
