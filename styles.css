@@ -6251,6 +6251,381 @@ input:checked + .slider:before {
         font-size: 1rem;
     }
 }
+
+/* ==================== MODAL ESTADÍSTICAS PARTIDO ==================== */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    padding: 20px;
+}
+
+.modal-estadisticas {
+    background: white;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 700px;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.modal-header-estadisticas {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px;
+    border-bottom: 2px solid #e9ecef;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+}
+
+.modal-header-estadisticas h3 {
+    margin: 0;
+    font-size: 1.3rem;
+}
+
+.btn-cerrar-modal {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    font-size: 1.5rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.btn-cerrar-modal:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.modal-body-estadisticas {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.info-partido {
+    background: #f8f9fa;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+}
+
+.info-partido p {
+    margin: 6px 0;
+    font-size: 0.95rem;
+}
+
+.sets-container {
+    margin-bottom: 24px;
+}
+
+.sets-container h4 {
+    margin: 0 0 16px 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.set-resultado {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #667eea;
+}
+
+.set-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #495057;
+    font-size: 1rem;
+}
+
+.resultado-inputs {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto 1fr;
+    gap: 8px;
+    align-items: center;
+}
+
+.resultado-inputs input[type="text"] {
+    padding: 10px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    background: white;
+    text-align: center;
+    font-weight: 500;
+}
+
+.resultado-inputs input[type="number"] {
+    width: 70px;
+    padding: 10px;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    text-align: center;
+    background: white;
+}
+
+.resultado-inputs input[type="number"]:focus {
+    outline: none;
+    border-color: #764ba2;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.separador {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #6c757d;
+}
+
+.nota-set3 {
+    display: block;
+    margin-top: 8px;
+    color: #6c757d;
+    font-style: italic;
+    font-size: 0.85rem;
+}
+
+.resultado-final {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    color: white;
+    text-align: center;
+}
+
+.resultado-final h4 {
+    margin: 0 0 12px 0;
+    font-size: 1.2rem;
+}
+
+.ganador-display {
+    font-size: 1.5rem;
+    font-weight: 700;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.notas-partido-container h4 {
+    margin: 0 0 12px 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.notas-partido-container textarea {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #e9ecef;
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 0.95rem;
+    resize: vertical;
+    transition: border-color 0.2s;
+}
+
+.notas-partido-container textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.modal-footer-estadisticas {
+    padding: 16px 24px;
+    border-top: 2px solid #e9ecef;
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+
+.btn-guardar-estadisticas {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-guardar-estadisticas:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-cancelar-estadisticas {
+    background: #6c757d;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancelar-estadisticas:hover {
+    background: #5a6268;
+}
+
+.btn-estadisticas-partido {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-estadisticas-partido:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.resultado-partido-preview {
+    background: #e7f3ff;
+    border-left: 4px solid #0066cc;
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 4px;
+}
+
+.resultado-partido-preview h5 {
+    margin: 0 0 8px 0;
+    color: #0066cc;
+    font-size: 0.95rem;
+}
+
+.sets-resultados {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.9rem;
+}
+
+.set-marcador {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+}
+
+.ganador-badge {
+    display: inline-block;
+    background: #28a745;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.perdedor-badge {
+    display: inline-block;
+    background: #dc3545;
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+
+.notas-partido-display {
+    background: #fff3cd;
+    border-left: 4px solid #ffc107;
+    padding: 12px;
+    margin: 12px 0;
+    border-radius: 4px;
+}
+
+.notas-partido-display h5 {
+    margin: 0 0 8px 0;
+    color: #856404;
+    font-size: 0.95rem;
+}
+
+.notas-partido-display p {
+    margin: 0;
+    color: #856404;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 768px) {
+    .modal-estadisticas {
+        max-width: 95%;
+        margin: 10px;
+    }
+
+    .resultado-inputs {
+        grid-template-columns: 1fr;
+        gap: 8px;
+    }
+
+    .resultado-inputs input[type="text"] {
+        order: -1;
+    }
+
+    .separador {
+        display: none;
+    }
+
+    .modal-footer-estadisticas {
+        flex-direction: column;
+    }
+
+    .btn-guardar-estadisticas,
+    .btn-cancelar-estadisticas {
+        width: 100%;
+    }
+}
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
