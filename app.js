@@ -4295,15 +4295,20 @@
                         <div class="jornada-header-izquierda">
                             <input type="checkbox" class="checkbox-jornada" value="${jornada.id}" onclick="event.stopPropagation()">
                             <span class="icono-expandir">▶</span>
-                            <span class="jornada-titulo">Semana del ${this.formatearFecha(fechaMostrar)}${partidoInfo}</span>
-                            <span class="estado ${jornada.completada ? 'completada' : 'pendiente'}">
-                                ${jornada.completada ? '✅ Finalizado/a' : '⏳ Pendiente'}
-                            </span>
-                            ${jornada.estadisticas?.ganador ? `
-                                <span class="estado ${jornada.estadisticas.ganador === 'local' ? 'completada' : 'pendiente'}">
-                                    ${jornada.estadisticas.ganador === 'local' ? '🏆 Victoria' : '😔 Derrota'}
-                                </span>
-                            ` : ''}
+                            <div class="jornada-info-completa">
+                                <div class="jornada-titulo">Semana del ${this.formatearFecha(fechaMostrar)}</div>
+                                ${partidoInfo ? `<div class="jornada-partido-info">${partidoInfo.substring(3)}</div>` : ''}
+                                <div class="jornada-badges">
+                                    <span class="estado ${jornada.completada ? 'completada' : 'pendiente'}">
+                                        ${jornada.completada ? '✅ Finalizado/a' : '⏳ Pendiente'}
+                                    </span>
+                                    ${jornada.estadisticas?.ganador ? `
+                                        <span class="estado ${jornada.estadisticas.ganador === 'local' ? 'completada' : 'pendiente'}">
+                                            ${jornada.estadisticas.ganador === 'local' ? '🏆 Victoria' : '😔 Derrota'}
+                                        </span>
+                                    ` : ''}
+                                </div>
+                            </div>
                         </div>
                         <div class="jornada-acciones" onclick="event.stopPropagation()">
                             <button onclick="app.abrirModalEstadisticas(${jornada.id})" class="btn-estadisticas-partido">
