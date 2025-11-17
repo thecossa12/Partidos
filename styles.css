@@ -6611,27 +6611,29 @@ input:checked + .slider:before {
         display: flex;
         flex-direction: row;
         flex-wrap: nowrap;
-        gap: 6px;
+        gap: 4px;
         align-items: center;
         justify-content: center;
     }
 
     .resultado-inputs input[type="text"] {
-        min-width: 80px;
-        font-size: 0.8rem;
-        padding: 6px 8px;
-        flex: 0 1 auto;
+        min-width: 55px;
+        max-width: 60px;
+        font-size: 0.7rem;
+        padding: 6px 4px;
+        flex: 0 0 auto;
     }
 
     .resultado-inputs input[type="number"] {
-        width: 50px;
+        width: 45px;
         font-size: 1rem;
         padding: 6px 4px;
     }
 
     .separador {
-        font-size: 1rem;
+        font-size: 0.9rem;
         padding: 0;
+        margin: 0 2px;
     }
 
     .set-resultado {
