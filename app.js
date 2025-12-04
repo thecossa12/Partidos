@@ -911,25 +911,32 @@
     async crearNuevaJornada() {
         const fechaInput = document.getElementById('fechaJornada');
         const fechaSeleccionada = fechaInput.value;
+        const sinPartido = document.getElementById('sinPartido').checked;
         
         if (!fechaSeleccionada) {
             alert('Selecciona una fecha para la jornada');
             return;
         }
         
-        // Obtener ubicación y rival
-        const ubicacionInput = document.getElementById('ubicacionPartido').value.trim();
-        const rivalInput = document.getElementById('equipoRival').value.trim();
-        const tipoUbicacion = document.querySelector('input[name="tipoUbicacion"]:checked').value;
+        let ubicacionInput = '';
+        let rivalInput = '';
+        let tipoUbicacion = 'casa';
         
-        if (!ubicacionInput) {
-            alert('Ingresa la ubicación del partido');
-            return;
-        }
-        
-        if (!rivalInput) {
-            alert('Ingresa el equipo rival');
-            return;
+        // Solo pedir ubicación y rival si HAY partido
+        if (!sinPartido) {
+            ubicacionInput = document.getElementById('ubicacionPartido').value.trim();
+            rivalInput = document.getElementById('equipoRival').value.trim();
+            tipoUbicacion = document.querySelector('input[name="tipoUbicacion"]:checked').value;
+            
+            if (!ubicacionInput) {
+                alert('Ingresa la ubicación del partido');
+                return;
+            }
+            
+            if (!rivalInput) {
+                alert('Ingresa el equipo rival');
+                return;
+            }
         }
         
         // Verificar si es la primera jornada y pedir polideportivo casa
@@ -944,7 +951,8 @@
             }
         }
         
-        if (!config.polideportivoCasa && tipoUbicacion === 'casa') {
+        // Solo guardar polideportivo casa si hay partido y es en casa
+        if (!sinPartido && !config.polideportivoCasa && tipoUbicacion === 'casa') {
             const confirmar = confirm(
                 `¿"${ubicacionInput}" es tu polideportivo casa?\n\n` +
                 `Se guardará para futuras jornadas y podrás seleccionarlo rápidamente.`
@@ -955,9 +963,11 @@
             }
         }
         
-        // Guardar ubicación y rival en listas
-        await this.agregarUbicacion(ubicacionInput);
-        await this.agregarRival(rivalInput);
+        // Guardar ubicación y rival en listas solo si hay partido
+        if (!sinPartido) {
+            await this.agregarUbicacion(ubicacionInput);
+            await this.agregarRival(rivalInput);
+        }
         
         // Convertir la fecha seleccionada a Date object (YYYY-MM-DD)
         const [year, month, day] = fechaSeleccionada.split('-').map(Number);
@@ -1016,9 +1026,10 @@
             rotacion: null,
             completada: false,
             fechaCreacion: new Date().toISOString(),
-            ubicacion: ubicacionInput,
-            tipoUbicacion: tipoUbicacion, // 'casa' o 'fuera'
-            rival: rivalInput
+            sinPartido: sinPartido, // Indicador de si hubo partido o no
+            ubicacion: sinPartido ? '' : ubicacionInput,
+            tipoUbicacion: sinPartido ? '' : tipoUbicacion, // 'casa' o 'fuera'
+            rival: sinPartido ? '' : rivalInput
         };
         
         this.jornadas.unshift(nuevaJornada);
@@ -1053,6 +1064,28 @@
         const fechaMostrar = this.jornadaActual.fechaSeleccionada || this.jornadaActual.fechaLunes;
         document.getElementById('tituloJornada').textContent = 
             `Jornada: Semana del ${this.formatearFecha(fechaMostrar)}`;
+        
+        // Ocultar/mostrar botón de sábado según si hay partido
+        const btnSabado = document.getElementById('irSabado');
+        if (btnSabado) {
+            if (this.jornadaActual.sinPartido) {
+                btnSabado.style.display = 'none';
+            } else {
+                btnSabado.style.display = '';
+            }
+        }
+        
+        // Cambiar texto del botón de miércoles según si hay partido
+        const btnSiguienteMiercoles = document.getElementById('siguienteMiercoles');
+        if (btnSiguienteMiercoles) {
+            if (this.jornadaActual.sinPartido) {
+                btnSiguienteMiercoles.textContent = '✅ Completar Jornada';
+                btnSiguienteMiercoles.className = 'btn-completar';
+            } else {
+                btnSiguienteMiercoles.textContent = 'Continuar a Sábado';
+                btnSiguienteMiercoles.className = 'btn-siguiente';
+            }
+        }
         
         // Actualizar títulos de días con fechas específicas
         this.actualizarTitulosDias();
@@ -1424,7 +1457,8 @@
     actualizarProgreso() {
         const pasos = { lunes: 1, miercoles: 2, sabado: 3 };
         const pasoNum = pasos[this.pasoActual] || 1;
-        document.getElementById('progresoJornada').textContent = `Paso ${pasoNum} de 3`;
+        const totalPasos = this.jornadaActual?.sinPartido ? 2 : 3;
+        document.getElementById('progresoJornada').textContent = `Paso ${pasoNum} de ${totalPasos}`;
     }
 
     generarPlanificacionPartido() {
@@ -3070,6 +3104,30 @@
         this.volverAInicioJornada();
     }
 
+    completarJornadaSinPartido() {
+        if (!this.jornadaActual) return;
+        
+        // Validar que tenga asistencia en lunes y miércoles
+        if (this.jornadaActual.asistenciaLunes.length === 0 && this.jornadaActual.asistenciaMiercoles.length === 0) {
+            alert('⚠️ Debe haber al menos asistencia en lunes o miércoles para completar la jornada');
+            return;
+        }
+        
+        // Marcar como completada
+        this.jornadaActual.completada = true;
+        this.jornadaActual.fechaCompletada = new Date().toISOString();
+        
+        this.guardarJornadas();
+        this.actualizarListaHistorial();
+        
+        // Resetear estado
+        this.jornadaActual = null;
+        this.pasoActual = 'lunes';
+        document.getElementById('jornadaActual').style.display = 'none';
+        
+        showNotification('✅ Jornada sin partido completada correctamente', 'success');
+    }
+
     completarJornada() {
         if (!this.jornadaActual) return;
         
@@ -4358,7 +4416,10 @@
                         
                         <div class="dia-detalle">
                             <h5>🏐 Sábado</h5>
-                            ${this.generarVistaPartidoHistorial(jornada, jugadoraFiltrada)}
+                            ${jornada.sinPartido ? 
+                                '<div class="no-partido-mensaje">🚫 <strong>No hubo partido</strong> (solo entrenamientos)</div>' : 
+                                this.generarVistaPartidoHistorial(jornada, jugadoraFiltrada)
+                            }
                         </div>
                     </div>
                 </div>
@@ -5048,11 +5109,30 @@
         document.getElementById('crearJornada')?.addEventListener('click', () => this.crearNuevaJornada());
         document.getElementById('siguienteLunes')?.addEventListener('click', () => this.irAPaso('miercoles'));
         document.getElementById('volverLunes')?.addEventListener('click', () => this.irAPaso('lunes'));
-        document.getElementById('siguienteMiercoles')?.addEventListener('click', () => this.irAPaso('sabado'));
+        document.getElementById('siguienteMiercoles')?.addEventListener('click', () => {
+            if (this.jornadaActual?.sinPartido) {
+                this.completarJornadaSinPartido();
+            } else {
+                this.irAPaso('sabado');
+            }
+        });
         document.getElementById('volverMiercoles')?.addEventListener('click', () => this.irAPaso('miercoles'));
         document.getElementById('volverInicio')?.addEventListener('click', () => this.volverAInicioJornada());
         document.getElementById('completarJornada')?.addEventListener('click', () => this.completarJornada());
         document.getElementById('guardarBorrador')?.addEventListener('click', () => this.guardarBorrador());
+        
+        // Checkbox sin partido - mostrar/ocultar campos
+        const sinPartidoCheckbox = document.getElementById('sinPartido');
+        const camposPartido = document.getElementById('camposPartido');
+        if (sinPartidoCheckbox && camposPartido) {
+            sinPartidoCheckbox.addEventListener('change', function() {
+                if (this.checked) {
+                    camposPartido.style.display = 'none';
+                } else {
+                    camposPartido.style.display = 'block';
+                }
+            });
+        }
         
         // Radio buttons para ubicación del partido
         const radioCasa = document.getElementById('radioCasa');

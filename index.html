@@ -80,30 +80,39 @@
                 <div class="jornada-config">
                     <input type="date" id="fechaJornada">
                     
-                    <div class="campo-grupo">
-                        <label for="ubicacionPartido">Ubicación del partido:</label>
-                        <div class="input-autocomplete">
-                            <input type="text" id="ubicacionPartido" list="ubicacionesList" placeholder="Ej: Mariano Benlliure, Collado Villalba">
-                            <datalist id="ubicacionesList">
+                    <div class="campo-grupo sin-partido-checkbox">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; background: #f8f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                            <input type="checkbox" id="sinPartido" style="width: 20px; height: 20px; cursor: pointer;">
+                            <span style="font-weight: 600; font-size: 1rem;">🚫 No hubo partido este sábado (solo entrenamientos)</span>
+                        </label>
+                    </div>
+                    
+                    <div id="camposPartido">
+                        <div class="campo-grupo">
+                            <label for="ubicacionPartido">Ubicación del partido:</label>
+                            <div class="input-autocomplete">
+                                <input type="text" id="ubicacionPartido" list="ubicacionesList" placeholder="Ej: Mariano Benlliure, Collado Villalba">
+                                <datalist id="ubicacionesList">
+                                    <!-- Se llenará dinámicamente -->
+                                </datalist>
+                            </div>
+                            <div class="tipo-ubicacion">
+                                <label>
+                                    <input type="radio" name="tipoUbicacion" value="casa" checked> Casa
+                                </label>
+                                <label>
+                                    <input type="radio" name="tipoUbicacion" value="fuera"> Fuera
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="campo-grupo">
+                            <label for="equipoRival">Equipo rival:</label>
+                            <input type="text" id="equipoRival" list="rivalesList" placeholder="Ej: Colmenarejo A">
+                            <datalist id="rivalesList">
                                 <!-- Se llenará dinámicamente -->
                             </datalist>
                         </div>
-                        <div class="tipo-ubicacion">
-                            <label>
-                                <input type="radio" name="tipoUbicacion" value="casa" checked> Casa
-                            </label>
-                            <label>
-                                <input type="radio" name="tipoUbicacion" value="fuera"> Fuera
-                            </label>
-                        </div>
-                    </div>
-
-                    <div class="campo-grupo">
-                        <label for="equipoRival">Equipo rival:</label>
-                        <input type="text" id="equipoRival" list="rivalesList" placeholder="Ej: Colmenarejo A">
-                        <datalist id="rivalesList">
-                            <!-- Se llenará dinámicamente -->
-                        </datalist>
                     </div>
                     
                     <button id="crearJornada" class="btn-crear">+ Crear Jornada</button>

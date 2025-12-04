@@ -2082,6 +2082,21 @@ button:hover {
     line-height: 1.4;
 }
 
+.no-partido-mensaje {
+    background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%);
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 1rem;
+    border: 2px solid #ffc107;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.no-partido-mensaje strong {
+    font-size: 1.1rem;
+}
+
 .jugadora-asistente {
     display: inline-block;
     background: linear-gradient(135deg, #f5f5f5 0%, #e8e8e8 100%);
