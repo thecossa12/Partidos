@@ -416,7 +416,39 @@
         if (modal) {
             modal.style.display = 'flex';
             await this.cargarListasGestionDatos();
+            
+            // Configurar eventos para cerrar el modal
+            this.configurarCierreModalGestion();
         }
+    }
+
+    configurarCierreModalGestion() {
+        const modal = document.getElementById('modal-gestion-datos');
+        const modalContent = modal?.querySelector('.modal-content-gestion');
+        
+        // Cerrar al hacer click fuera del modal
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                this.cerrarModalGestionDatos();
+            }
+        };
+        
+        // Evitar que clicks dentro del modal lo cierren
+        if (modalContent) {
+            modalContent.onclick = (e) => {
+                e.stopPropagation();
+            };
+        }
+        
+        // Cerrar con tecla ESC
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                this.cerrarModalGestionDatos();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        
+        document.addEventListener('keydown', handleEscape);
     }
 
     cerrarModalGestionDatos() {
