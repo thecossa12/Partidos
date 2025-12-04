@@ -332,6 +332,7 @@
         // Fallback a localStorage si MongoDB falla
         const data = localStorage.getItem(`volleyball_config_${userId}`);
         return data ? JSON.parse(data) : {
+            nombreEquipo: '',
             polideportivoCasa: '',
             ubicacionesGuardadas: [],
             rivalesGuardados: []
@@ -942,14 +943,24 @@
         // Verificar si es la primera jornada y pedir polideportivo casa
         const config = await this.cargarConfiguracion();
         
+        console.log('🔍 DEBUG - Configuración cargada:', config);
+        console.log('🔍 DEBUG - nombreEquipo actual:', config.nombreEquipo);
+        
         // Pedir nombre del equipo si no existe (solo la primera vez)
         if (!config.nombreEquipo || config.nombreEquipo.trim() === '') {
+            console.log('⚠️ nombreEquipo no existe o está vacío, pidiendo al usuario...');
             const nombreEquipo = prompt('¿Cuál es el nombre de tu equipo?\n\nSe usará en las estadísticas de los partidos.');
             if (nombreEquipo && nombreEquipo.trim()) {
                 config.nombreEquipo = nombreEquipo.trim();
                 await this.guardarConfiguracion(config);
                 console.log('✅ Nombre del equipo guardado:', config.nombreEquipo);
+                
+                // Verificar que se guardó correctamente
+                const configVerificar = await this.cargarConfiguracion();
+                console.log('✅ Verificación - nombreEquipo guardado:', configVerificar.nombreEquipo);
             }
+        } else {
+            console.log('✅ nombreEquipo ya existe:', config.nombreEquipo);
         }
         
         // Solo guardar polideportivo casa si hay partido y es en casa
@@ -4904,6 +4915,7 @@
         this.cargarAsistenciasEnGrids(jornada);
         
         // Determinar a qué paso ir según si hay partido o no
+        console.log('🔍 DEBUG - jornada.sinPartido:', jornada.sinPartido);
         if (jornada.sinPartido) {
             // Si no hay partido, ir a miércoles (último paso)
             this.irAPaso('miercoles');
@@ -4911,6 +4923,20 @@
         } else {
             // Si hay partido, ir al paso de planificación de sets
             this.irAPaso('sabado');
+            
+            // Asegurar que el botón de Sábado esté visible
+            const btnSabado = document.getElementById('irSabado');
+            if (btnSabado) {
+                btnSabado.style.display = '';
+                console.log('✅ Botón de Sábado mostrado');
+            }
+            
+            // Asegurar que el botón de miércoles tenga el texto correcto
+            const btnSiguienteMiercoles = document.getElementById('siguienteMiercoles');
+            if (btnSiguienteMiercoles) {
+                btnSiguienteMiercoles.textContent = 'Continuar a Sábado';
+                btnSiguienteMiercoles.className = 'btn-siguiente';
+            }
             
             // Obtener jugadoras disponibles
             const jugadorasDisponibles = this.jugadoras.filter(j => 
