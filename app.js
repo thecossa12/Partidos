@@ -942,12 +942,13 @@
         // Verificar si es la primera jornada y pedir polideportivo casa
         const config = await this.cargarConfiguracion();
         
-        // Pedir nombre del equipo si no existe
-        if (!config.nombreEquipo) {
+        // Pedir nombre del equipo si no existe (solo la primera vez)
+        if (!config.nombreEquipo || config.nombreEquipo.trim() === '') {
             const nombreEquipo = prompt('¿Cuál es el nombre de tu equipo?\n\nSe usará en las estadísticas de los partidos.');
             if (nombreEquipo && nombreEquipo.trim()) {
                 config.nombreEquipo = nombreEquipo.trim();
                 await this.guardarConfiguracion(config);
+                console.log('✅ Nombre del equipo guardado:', config.nombreEquipo);
             }
         }
         
@@ -4902,32 +4903,40 @@
         // Cargar asistencias en los grids
         this.cargarAsistenciasEnGrids(jornada);
         
-        // Ir al paso de planificación de sets
-        this.irAPaso('sabado');
-        
-        // Obtener jugadoras disponibles
-        const jugadorasDisponibles = this.jugadoras.filter(j => 
-            jornada.asistenciaSabado && jornada.asistenciaSabado.includes(j.id)
-        );
-        
-        // Forzar mostrar el planificador directamente
-        setTimeout(() => {
-            console.log('🎯 Forzando mostrar planificador de sets...');
-            this.mostrarPlanificadorSets(jugadorasDisponibles);
+        // Determinar a qué paso ir según si hay partido o no
+        if (jornada.sinPartido) {
+            // Si no hay partido, ir a miércoles (último paso)
+            this.irAPaso('miercoles');
+            alert(`Editando jornada del ${this.formatearFecha(fechaMostrar)} (sin partido)`);
+        } else {
+            // Si hay partido, ir al paso de planificación de sets
+            this.irAPaso('sabado');
             
-            // Actualizar vistas
-            this.actualizarVistasSets();
-            this.actualizarJugadorasDisponibles();
+            // Obtener jugadoras disponibles
+            const jugadorasDisponibles = this.jugadoras.filter(j => 
+                jornada.asistenciaSabado && jornada.asistenciaSabado.includes(j.id)
+            );
             
-            // Hacer scroll al planificador
-            const planificador = document.querySelector('.planificador-sets');
-            if (planificador) {
-                planificador.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 500);
+            // Forzar mostrar el planificador directamente
+            setTimeout(() => {
+                console.log('🎯 Forzando mostrar planificador de sets...');
+                this.mostrarPlanificadorSets(jugadorasDisponibles);
+                
+                // Actualizar vistas
+                this.actualizarVistasSets();
+                this.actualizarJugadorasDisponibles();
+                
+                // Hacer scroll al planificador
+                const planificador = document.querySelector('.planificador-sets');
+                if (planificador) {
+                    planificador.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }, 500);
+            
+            alert(`Editando jornada del ${this.formatearFecha(fechaMostrar)}`);
+        }
         
-        console.log('✅ Planificador de sets mostrado para edición');
-        alert(`Editando jornada del ${this.formatearFecha(jornada.fechaLunes)}`);
+        console.log('✅ Jornada lista para edición');
         this.configurarEventListeners();
     }
 
