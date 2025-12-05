@@ -47,7 +47,7 @@ app.get('/api/equipos', async (req, res) => {
     }
 });
 
-// Crear un equipo
+// Crear/Actualizar un equipo
 app.post('/api/equipos', async (req, res) => {
     try {
         const equipo = req.body;
@@ -56,9 +56,20 @@ app.post('/api/equipos', async (req, res) => {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        const result = await db.collection('equipos').insertOne(equipo);
-        res.json({ ...equipo, _id: result.insertedId });
+        if (!equipo.id) {
+            return res.status(400).json({ error: 'id es requerido' });
+        }
+        
+        // Usar updateOne con upsert para evitar duplicados
+        const result = await db.collection('equipos').updateOne(
+            { id: equipo.id, userId: equipo.userId },
+            { $set: equipo },
+            { upsert: true }
+        );
+        
+        res.json({ success: true, equipo });
     } catch (error) {
+        console.error('Error guardando equipo:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -84,7 +95,7 @@ app.put('/api/equipos/:id', async (req, res) => {
     }
 });
 
-// Eliminar un equipo
+// Eliminar un equipo y todos sus datos asociados
 app.delete('/api/equipos/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -94,9 +105,23 @@ app.delete('/api/equipos/:id', async (req, res) => {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        await db.collection('equipos').deleteOne({ id, userId });
+        // Eliminar equipo
+        await db.collection('equipos').deleteMany({ 
+            $or: [
+                { id, userId },
+                { id: parseInt(id), userId }
+            ]
+        });
+        
+        // Eliminar jugadores del equipo
+        await db.collection('jugadores').deleteMany({ equipoId: id, userId });
+        
+        // Eliminar jornadas del equipo
+        await db.collection('jornadas').deleteMany({ equipoId: id, userId });
+        
         res.json({ success: true });
     } catch (error) {
+        console.error('Error eliminando equipo:', error);
         res.status(500).json({ error: error.message });
     }
 });

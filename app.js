@@ -364,9 +364,30 @@
         const confirmar = confirm(`¿Estás seguro de eliminar "${equipo.nombre}"?\n\n⚠️ Se eliminarán TODAS las jugadoras y jornadas de este equipo.`);
         if (!confirmar) return;
         
-        // Eliminar equipo
-        this.equipos = this.equipos.filter(e => e.id !== equipoId);
-        await this.guardarEquipos();
+        const userId = this.getUserId();
+        
+        // Eliminar de MongoDB primero
+        try {
+            const response = await fetch(`${this.API_URL}/equipos/${equipoId}?userId=${userId}`, {
+                method: 'DELETE'
+            });
+            
+            if (!response.ok) {
+                console.error('Error eliminando equipo de MongoDB');
+            }
+        } catch (error) {
+            console.error('Error eliminando equipo:', error);
+        }
+        
+        // Eliminar equipo del array local
+        this.equipos = this.equipos.filter(e => String(e.id) !== String(equipoId) && e.id !== equipoId);
+        
+        // Guardar cambios en localStorage
+        localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(this.equipos));
+        
+        // Eliminar datos del equipo de localStorage
+        localStorage.removeItem(`volleyball_jugadoras_${userId}_${equipoId}`);
+        localStorage.removeItem(`volleyball_jornadas_${userId}_${equipoId}`);
         
         // Si era el equipo actual, cambiar al primero disponible
         if (String(this.equipoActualId) === String(equipoId) || this.equipoActualId === equipoId) {
