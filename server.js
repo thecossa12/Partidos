@@ -75,15 +75,18 @@ app.post('/api/equipos', async (req, res) => {
             return res.status(503).json({ error: 'Base de datos no disponible' });
         }
         
+        // Crear copia del equipo SIN el campo _id para evitar error de MongoDB
+        const { _id, ...equipoSinId } = equipo;
+        
         // Usar updateOne con upsert para evitar duplicados
         const result = await db.collection('equipos').updateOne(
             { id: equipo.id, userId: equipo.userId },
-            { $set: equipo },
+            { $set: equipoSinId },
             { upsert: true }
         );
         
         console.log('✅ Equipo guardado:', result.upsertedCount > 0 ? 'nuevo' : 'actualizado');
-        res.json({ success: true, equipo });
+        res.json({ success: true, equipo: equipoSinId });
     } catch (error) {
         console.error('❌ Error guardando equipo:', error);
         res.status(500).json({ error: error.message, details: error.stack });

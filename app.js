@@ -426,8 +426,13 @@
             fechaCreacion: new Date().toISOString()
         };
         
+        console.log('➕ Creando nuevo equipo:', nuevoEquipo.nombre);
+        
         this.equipos.push(nuevoEquipo);
         await this.guardarEquipos();
+        
+        // Recargar equipos desde MongoDB para asegurar sincronización
+        this.equipos = await this.cargarEquipos();
         
         // Cambiar al nuevo equipo
         await this.cambiarEquipo(nuevoEquipo.id);
@@ -524,6 +529,9 @@
         localStorage.removeItem(`volleyball_jugadoras_${userId}_${equipoId}`);
         localStorage.removeItem(`volleyball_jornadas_${userId}_${equipoId}`);
         
+        // Recargar equipos desde MongoDB para asegurar sincronización
+        this.equipos = await this.cargarEquipos();
+        
         // Si era el equipo actual, cambiar al primero disponible
         if (String(this.equipoActualId) === String(equipoId) || this.equipoActualId === equipoId) {
             await this.cambiarEquipo(this.equipos[0].id);
@@ -549,11 +557,23 @@
         const selector = document.getElementById('selectorEquipos');
         if (!selector) return;
         
+        // Deduplicar equipos por ID antes de mostrar
+        const equiposUnicos = new Map();
+        this.equipos.forEach(equipo => {
+            if (equipo && equipo.id && equipo.nombre) {
+                equiposUnicos.set(String(equipo.id), equipo);
+            }
+        });
+        
+        this.equipos = Array.from(equiposUnicos.values());
+        
         selector.innerHTML = this.equipos.map(equipo => 
             `<option value="${equipo.id}" ${equipo.id === this.equipoActualId ? 'selected' : ''}>
                 ${equipo.nombre}
             </option>`
         ).join('');
+        
+        console.log('🔄 Selector actualizado con', this.equipos.length, 'equipos');
     }
 
     actualizarVistaActual() {
