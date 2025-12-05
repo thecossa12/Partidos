@@ -441,7 +441,12 @@
     }
 
     async cambiarEquipo(equipoId) {
-        console.log('🔄 Cambiando a equipo:', equipoId);
+        // Asegurar que equipoId sea número si viene como string del HTML
+        if (typeof equipoId === 'string' && !isNaN(equipoId)) {
+            equipoId = parseInt(equipoId);
+        }
+        
+        console.log('🔄 Cambiando a equipo:', equipoId, typeof equipoId);
         
         this.equipoActualId = equipoId;
         localStorage.setItem(`volleyball_ultimoEquipo_${this.userId}`, equipoId);
@@ -453,8 +458,14 @@
         this.jugadoras = await this.cargarJugadoras();
         this.jornadas = await this.cargarJornadas();
         
-        // Actualizar UI
+        // Actualizar UI - IMPORTANTE: actualizar selector DESPUÉS de cambiar equipoActualId
         this.actualizarSelectorEquipos();
+        
+        // Actualizar lista del modal si está abierto
+        const modal = document.getElementById('modalGestionEquipos');
+        if (modal && modal.style.display !== 'none') {
+            this.cargarListaEquiposGestion();
+        }
         
         // Forzar actualización de TODAS las vistas inmediatamente
         this.actualizarEquipo(); // Actualizar pestaña de equipo
@@ -473,8 +484,12 @@
     }
 
     async editarNombreEquipo(equipoId) {
-        const equipo = this.equipos.find(e => e.id === equipoId);
-        if (!equipo) return;
+        // Comparar tanto string como número
+        const equipo = this.equipos.find(e => String(e.id) === String(equipoId) || e.id === equipoId);
+        if (!equipo) {
+            console.error('❌ No se encontró equipo con id:', equipoId);
+            return;
+        }
         
         const nuevoNombre = prompt('Editar nombre del equipo:', equipo.nombre);
         
@@ -484,6 +499,9 @@
         
         equipo.nombre = nuevoNombre.trim();
         await this.guardarEquipos();
+        
+        // Recargar equipos desde MongoDB
+        this.equipos = await this.cargarEquipos();
         
         // Actualizar selector y lista
         this.actualizarSelectorEquipos();
@@ -567,13 +585,17 @@
         
         this.equipos = Array.from(equiposUnicos.values());
         
-        selector.innerHTML = this.equipos.map(equipo => 
-            `<option value="${equipo.id}" ${equipo.id === this.equipoActualId ? 'selected' : ''}>
-                ${equipo.nombre}
-            </option>`
-        ).join('');
+        console.log('🔄 Selector actualizado. Equipo actual:', this.equipoActualId, typeof this.equipoActualId);
         
-        console.log('🔄 Selector actualizado con', this.equipos.length, 'equipos');
+        selector.innerHTML = this.equipos.map(equipo => {
+            // Comparar tanto string como número
+            const esSeleccionado = String(equipo.id) === String(this.equipoActualId) || equipo.id === this.equipoActualId;
+            return `<option value="${equipo.id}" ${esSeleccionado ? 'selected' : ''}>
+                ${equipo.nombre}
+            </option>`;
+        }).join('');
+        
+        console.log('📋 Equipos en selector:', this.equipos.map(e => ({ id: e.id, nombre: e.nombre, seleccionado: String(e.id) === String(this.equipoActualId) })));
     }
 
     actualizarVistaActual() {
@@ -1001,7 +1023,8 @@
         }
         
         lista.innerHTML = this.equipos.map(equipo => {
-            const esActual = equipo.id === this.equipoActualId;
+            // Comparar tanto string como número
+            const esActual = String(equipo.id) === String(this.equipoActualId) || equipo.id === this.equipoActualId;
             return `
                 <div class="equipo-gestion-item ${esActual ? 'equipo-activo' : ''}" data-equipo-id="${equipo.id}">
                     <div class="equipo-info">
@@ -1021,7 +1044,14 @@
         lista.querySelectorAll('[data-action]').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 const action = btn.dataset.action;
-                const equipoId = btn.dataset.equipoId;
+                let equipoId = btn.dataset.equipoId;
+                
+                // Convertir a número si es numérico
+                if (!isNaN(equipoId)) {
+                    equipoId = parseInt(equipoId);
+                }
+                
+                console.log(`🎯 Acción: ${action}, equipoId:`, equipoId, typeof equipoId);
                 
                 if (action === 'editar') {
                     await this.editarNombreEquipo(equipoId);
