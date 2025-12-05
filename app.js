@@ -40,15 +40,15 @@
         
         console.log('🎯 Equipo actual seleccionado:', this.equipoActualId);
         
-        // 4. Cargar datos del equipo actual
+        // 4. Migrar datos antiguos ANTES de cargar datos del equipo
+        await this.migrarDatosAntiguos();
+        
+        // 5. Cargar datos del equipo actual
         this.jugadoras = await this.cargarJugadoras();
         console.log('👥 Jugadoras cargadas:', this.jugadoras.length);
         
         this.jornadas = await this.cargarJornadas();
         console.log('📅 Jornadas cargadas:', this.jornadas.length);
-        
-        // 5. Migrar datos antiguos sin equipoId si existen
-        await this.migrarDatosAntiguos();
         
         this.inicializarApp();
     }
@@ -340,7 +340,7 @@
             }
             this.actualizarListaHistorial();
         } else if (this.currentTab === 'jugadoras') {
-            this.actualizarTablaJugadoras();
+            this.mostrarJugadoras();
         }
     }
 
@@ -781,9 +781,6 @@
                     // Eliminar clave antigua
                     localStorage.removeItem(jugadorasAntiguasKey);
                     
-                    // Recargar jugadoras
-                    this.jugadoras = await this.cargarJugadoras();
-                    
                     console.log(`✅ ${jugadores.length} jugadores migrados`);
                     migrados = true;
                 }
@@ -814,9 +811,6 @@
                     
                     // Eliminar clave antigua
                     localStorage.removeItem(jornadasAntiguasKey);
-                    
-                    // Recargar jornadas
-                    this.jornadas = await this.cargarJornadas();
                     
                     console.log(`✅ ${jornadas.length} jornadas migradas`);
                     migrados = true;
