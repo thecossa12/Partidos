@@ -352,36 +352,47 @@
             return this.jugadoras || [];
         }
         
-        console.log('📂 Cargando jugadoras desde MongoDB (prioridad)...');
+        const userId = this.getUserId();
+        const equipoId = this.equipoActualId;
+        
+        console.log('📂 Cargando jugadoras...');
+        console.log('👤 userId:', userId, 'equipoId:', equipoId);
+        
         let jugadoras = [];
         
-        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario Y equipo)
-        try {
-            const userId = this.getUserId();
-            const equipoId = this.equipoActualId;
-            console.log('👤 Cargando jugadoras para userId:', userId, 'equipoId:', equipoId);
-            const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
-            if (response.ok) {
-                jugadoras = await response.json();
-                console.log('☁️ Jugadoras cargadas desde MongoDB:', jugadoras.length);
-                
-                // Guardar en localStorage como backup
-                if (jugadoras.length > 0) {
-                    localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadoras));
-                }
+        // PRIMERO: Intentar cargar desde localStorage (donde están los datos migrados)
+        const localKey = `volleyball_jugadoras_${userId}_${equipoId}`;
+        const localData = localStorage.getItem(localKey);
+        
+        if (localData) {
+            try {
+                jugadoras = JSON.parse(localData);
+                console.log('💾 Jugadoras cargadas desde localStorage:', jugadoras.length);
+            } catch (e) {
+                console.error('Error parseando jugadoras de localStorage:', e);
             }
-        } catch (error) {
-            console.warn('⚠️ No se pudo cargar desde MongoDB, intentando localStorage:', error.message);
-            
-            // FALLBACK: usar localStorage
-            const userId = this.getUserId();
-            const equipoId = this.equipoActualId;
-            const data = localStorage.getItem(`volleyball_jugadoras_${userId}_${equipoId}`);
-            jugadoras = data ? JSON.parse(data) : [];
-            console.log('💾 Jugadoras cargadas desde localStorage:', jugadoras.length);
         }
         
-        console.log('👥 Jugadoras parseadas:', jugadoras.length);
+        // SEGUNDO: Si no hay datos locales, intentar MongoDB
+        if (jugadoras.length === 0) {
+            try {
+                console.log('📂 Intentando cargar desde MongoDB...');
+                const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
+                if (response.ok) {
+                    jugadoras = await response.json();
+                    console.log('☁️ Jugadoras cargadas desde MongoDB:', jugadoras.length);
+                    
+                    // Guardar en localStorage como backup
+                    if (jugadoras.length > 0) {
+                        localStorage.setItem(localKey, JSON.stringify(jugadoras));
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
+            }
+        }
+        
+        console.log('👥 Jugadoras totales:', jugadoras.length);
         
         this._jugadorasCargadas = true;
         
@@ -463,36 +474,47 @@
         console.log('✅ Jugadora guardada exitosamente');
 }
     async cargarJornadas() {
-        console.log('📂 Cargando jornadas desde MongoDB (prioridad)...');
+        const userId = this.getUserId();
+        const equipoId = this.equipoActualId;
+        
+        console.log('📂 Cargando jornadas...');
+        console.log('👤 userId:', userId, 'equipoId:', equipoId);
+        
         let jornadas = [];
         
-        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario Y equipo)
-        try {
-            const userId = this.getUserId();
-            const equipoId = this.equipoActualId;
-            console.log('👤 Cargando jornadas para userId:', userId, 'equipoId:', equipoId);
-            const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
-            if (response.ok) {
-                jornadas = await response.json();
-                console.log('☁️ Jornadas cargadas desde MongoDB:', jornadas.length);
-                
-                // Guardar en localStorage como backup
-                if (jornadas.length > 0) {
-                    localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadas));
-                }
+        // PRIMERO: Intentar cargar desde localStorage (donde están los datos migrados)
+        const localKey = `volleyball_jornadas_${userId}_${equipoId}`;
+        const localData = localStorage.getItem(localKey);
+        
+        if (localData) {
+            try {
+                jornadas = JSON.parse(localData);
+                console.log('💾 Jornadas cargadas desde localStorage:', jornadas.length);
+            } catch (e) {
+                console.error('Error parseando jornadas de localStorage:', e);
             }
-        } catch (error) {
-            console.warn('⚠️ No se pudo cargar desde MongoDB, intentando localStorage:', error.message);
-            
-            // FALLBACK: usar localStorage
-            const userId = this.getUserId();
-            const equipoId = this.equipoActualId;
-            const data = localStorage.getItem(`volleyball_jornadas_${userId}_${equipoId}`);
-            jornadas = data ? JSON.parse(data) : [];
-            console.log('💾 Jornadas cargadas desde localStorage:', jornadas.length);
         }
         
-        console.log('📅 Jornadas parseadas:', jornadas.length);
+        // SEGUNDO: Si no hay datos locales, intentar MongoDB
+        if (jornadas.length === 0) {
+            try {
+                console.log('📂 Intentando cargar desde MongoDB...');
+                const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
+                if (response.ok) {
+                    jornadas = await response.json();
+                    console.log('☁️ Jornadas cargadas desde MongoDB:', jornadas.length);
+                    
+                    // Guardar en localStorage como backup
+                    if (jornadas.length > 0) {
+                        localStorage.setItem(localKey, JSON.stringify(jornadas));
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
+            }
+        }
+        
+        console.log('📅 Jornadas totales:', jornadas.length);
         
         // Limpiar null/undefined de sets y planificación existentes
         jornadas.forEach(jornada => {
