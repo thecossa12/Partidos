@@ -315,7 +315,15 @@
         
         // Actualizar UI
         this.actualizarSelectorEquipos();
-        this.actualizarVistaActual();
+        
+        // Forzar actualización de TODAS las vistas inmediatamente
+        this.actualizarEquipo(); // Actualizar pestaña de equipo
+        this.actualizarListaHistorial(); // Actualizar pestaña de historial
+        
+        // Si hay jornada actual, actualizarla también
+        if (this.jornadaActual) {
+            this.mostrarJornadaActual();
+        }
         
         // Buscar equipo comparando string y número
         const equipo = this.equipos.find(e => String(e.id) === String(equipoId) || e.id === equipoId);
@@ -345,7 +353,7 @@
     }
 
     async eliminarEquipo(equipoId) {
-        const equipo = this.equipos.find(e => e.id === equipoId);
+        const equipo = this.equipos.find(e => String(e.id) === String(equipoId) || e.id === equipoId);
         if (!equipo) return;
         
         if (this.equipos.length === 1) {
@@ -361,9 +369,12 @@
         await this.guardarEquipos();
         
         // Si era el equipo actual, cambiar al primero disponible
-        if (this.equipoActualId === equipoId) {
+        if (String(this.equipoActualId) === String(equipoId) || this.equipoActualId === equipoId) {
             await this.cambiarEquipo(this.equipos[0].id);
         }
+        
+        // Recargar lista del modal
+        this.cargarListaEquiposGestion();
         
         showNotification(`✅ Equipo "${equipo.nombre}" eliminado`, 'success');
     }
@@ -391,7 +402,9 @@
             }
             this.actualizarListaHistorial();
         } else if (this.currentTab === 'jugadoras') {
-            this.mostrarJugadoras();
+            this.actualizarEquipo();
+        } else if (this.currentTab === 'historial') {
+            this.actualizarListaHistorial();
         }
     }
 
@@ -808,19 +821,36 @@
         lista.innerHTML = this.equipos.map(equipo => {
             const esActual = equipo.id === this.equipoActualId;
             return `
-                <div class="equipo-gestion-item ${esActual ? 'equipo-activo' : ''}">
+                <div class="equipo-gestion-item ${esActual ? 'equipo-activo' : ''}" data-equipo-id="${equipo.id}">
                     <div class="equipo-info">
                         <span class="equipo-nombre">${esActual ? '🏆 ' : ''}${equipo.nombre}</span>
                         <small class="equipo-fecha">Creado: ${new Date(equipo.fechaCreacion).toLocaleDateString()}</small>
                     </div>
                     <div class="equipo-acciones">
-                        <button onclick="app.editarNombreEquipo('${equipo.id}')" class="btn-editar-equipo" title="Editar nombre">✏️</button>
-                        ${!esActual ? `<button onclick="app.cambiarEquipo('${equipo.id}'); app.cerrarModalGestionEquipos();" class="btn-seleccionar-equipo">Seleccionar</button>` : '<span class="badge-activo">Activo</span>'}
-                        ${this.equipos.length > 1 ? `<button onclick="app.eliminarEquipo('${equipo.id}')" class="btn-eliminar-equipo">🗑️</button>` : ''}
+                        <button class="btn-editar-equipo" data-action="editar" data-equipo-id="${equipo.id}" title="Editar nombre">✏️</button>
+                        ${!esActual ? `<button class="btn-seleccionar-equipo" data-action="seleccionar" data-equipo-id="${equipo.id}">Seleccionar</button>` : '<span class="badge-activo">Activo</span>'}
+                        ${this.equipos.length > 1 ? `<button class="btn-eliminar-equipo" data-action="eliminar" data-equipo-id="${equipo.id}">🗑️</button>` : ''}
                     </div>
                 </div>
             `;
         }).join('');
+        
+        // Configurar eventos de los botones
+        lista.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const action = btn.dataset.action;
+                const equipoId = btn.dataset.equipoId;
+                
+                if (action === 'editar') {
+                    await this.editarNombreEquipo(equipoId);
+                } else if (action === 'seleccionar') {
+                    await this.cambiarEquipo(equipoId);
+                    this.cerrarModalGestionEquipos();
+                } else if (action === 'eliminar') {
+                    await this.eliminarEquipo(equipoId);
+                }
+            });
+        });
     }
 
     async migrarDatosAntiguos() {
