@@ -105,23 +105,85 @@ app.delete('/api/equipos/:id', async (req, res) => {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        // Eliminar equipo
-        await db.collection('equipos').deleteMany({ 
+        console.log(`🗑️ Eliminando equipo ${id} del usuario ${userId}`);
+        
+        // Convertir ID a diferentes formatos para buscar
+        const idNumber = parseInt(id);
+        const idString = String(id);
+        
+        // Eliminar equipos directos (varios formatos de ID)
+        const result1 = await db.collection('equipos').deleteMany({ 
+            userId,
             $or: [
-                { id, userId },
-                { id: parseInt(id), userId }
+                { id: idString },
+                { id: idNumber },
+                { 'equipos.id': idString },
+                { 'equipos.id': idNumber }
             ]
         });
         
+        console.log(`✅ Equipos eliminados: ${result1.deletedCount}`);
+        
+        // Eliminar también documentos que contengan el equipo anidado
+        const result2 = await db.collection('equipos').updateMany(
+            { userId },
+            { $pull: { equipos: { id: { $in: [idString, idNumber] } } } }
+        );
+        
+        console.log(`✅ Equipos anidados eliminados: ${result2.modifiedCount}`);
+        
         // Eliminar jugadores del equipo
-        await db.collection('jugadores').deleteMany({ equipoId: id, userId });
+        const result3 = await db.collection('jugadores').deleteMany({ 
+            userId,
+            $or: [
+                { equipoId: idString },
+                { equipoId: idNumber }
+            ]
+        });
+        
+        console.log(`✅ Jugadores eliminados: ${result3.deletedCount}`);
         
         // Eliminar jornadas del equipo
-        await db.collection('jornadas').deleteMany({ equipoId: id, userId });
+        const result4 = await db.collection('jornadas').deleteMany({ 
+            userId,
+            $or: [
+                { equipoId: idString },
+                { equipoId: idNumber }
+            ]
+        });
         
-        res.json({ success: true });
+        console.log(`✅ Jornadas eliminadas: ${result4.deletedCount}`);
+        
+        res.json({ 
+            success: true,
+            deletedEquipos: result1.deletedCount + result2.modifiedCount,
+            deletedJugadores: result3.deletedCount,
+            deletedJornadas: result4.deletedCount
+        });
     } catch (error) {
         console.error('Error eliminando equipo:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Limpiar todos los equipos de un usuario (para reorganización)
+app.delete('/api/equipos/cleanup', async (req, res) => {
+    try {
+        const userId = req.query.userId;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        console.log(`🧹 Limpiando todos los equipos del usuario ${userId}`);
+        
+        const result = await db.collection('equipos').deleteMany({ userId });
+        
+        console.log(`✅ ${result.deletedCount} documentos de equipos eliminados`);
+        
+        res.json({ success: true, deletedCount: result.deletedCount });
+    } catch (error) {
+        console.error('Error limpiando equipos:', error);
         res.status(500).json({ error: error.message });
     }
 });

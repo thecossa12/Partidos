@@ -206,6 +206,8 @@
             if (response.ok) {
                 const rawEquipos = await response.json();
                 
+                console.log('📦 Equipos raw desde MongoDB:', rawEquipos.length);
+                
                 // Normalizar estructura: extraer equipos si están anidados
                 equipos = rawEquipos.map(item => {
                     // Si tiene propiedad 'equipos', es estructura anidada incorrecta
@@ -222,12 +224,20 @@
                 // Eliminar duplicados basándose en el ID
                 const equiposUnicos = new Map();
                 equipos.forEach(equipo => {
-                    equiposUnicos.set(equipo.id, equipo);
+                    equiposUnicos.set(String(equipo.id), equipo);
                 });
                 equipos = Array.from(equiposUnicos.values());
                 
                 console.log('🏆 Equipos cargados desde MongoDB:', equipos.length);
+                
+                // Guardar versión limpia
                 localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(equipos));
+                
+                // LIMPIEZA: Si encontramos equipos anidados, limpiar MongoDB
+                if (rawEquipos.some(item => item.equipos && Array.isArray(item.equipos))) {
+                    console.log('🧹 Limpiando estructura anidada de MongoDB...');
+                    await this.limpiarEquiposAnidados(equipos);
+                }
             }
         } catch (error) {
             console.warn('⚠️ No se pudo cargar equipos desde MongoDB, usando localStorage');
@@ -236,6 +246,30 @@
         }
         
         return equipos;
+    }
+    
+    async limpiarEquiposAnidados(equiposLimpios) {
+        const userId = this.getUserId();
+        
+        try {
+            // Eliminar TODOS los documentos de equipos del usuario en MongoDB
+            await fetch(`${this.API_URL}/equipos/cleanup?userId=${userId}`, {
+                method: 'DELETE'
+            });
+            
+            // Re-guardar solo los equipos limpios
+            for (const equipo of equiposLimpios) {
+                await fetch(`${this.API_URL}/equipos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(equipo)
+                });
+            }
+            
+            console.log('✅ Estructura de equipos limpiada en MongoDB');
+        } catch (error) {
+            console.error('❌ Error limpiando equipos:', error);
+        }
     }
 
     async guardarEquipos() {
