@@ -21,17 +21,23 @@
     async inicializarAppAsync() {
         // 1. Cargar equipos primero
         this.equipos = await this.cargarEquipos();
-        console.log('🏆 Equipos cargados:', this.equipos.length);
+        
+        // LIMPIEZA: Filtrar equipos inválidos
+        this.equipos = this.equipos.filter(e => e && e.id && e.nombre && e.nombre !== 'undefined');
+        
+        console.log('🏆 Equipos cargados (después de filtrar):', this.equipos.length);
         console.log('📊 Detalle de equipos:', JSON.stringify(this.equipos));
         
-        // 2. Si no hay equipos, crear uno por defecto SIN popup
+        // 2. Si no hay equipos válidos, crear uno por defecto
         if (!this.equipos || this.equipos.length === 0) {
+            console.log('⚠️ No hay equipos válidos, creando equipo por defecto...');
             await this.crearEquipoPorDefecto();
         }
         
-        // Verificar que equipos tenga elementos antes de continuar
-        if (!this.equipos || this.equipos.length === 0) {
-            console.error('❌ Error: No hay equipos disponibles');
+        // Verificar que ahora sí tengamos equipos
+        if (!this.equipos || this.equipos.length === 0 || !this.equipos[0]) {
+            console.error('❌ CRÍTICO: No se pudo crear equipo por defecto');
+            alert('Error: No se pudo inicializar el sistema. Por favor, recarga la página.');
             return;
         }
         
@@ -41,13 +47,20 @@
         
         console.log('🔍 Buscando último equipo:', ultimoEquipoId);
         
+        // Asegurar que el primer equipo tenga ID válido
+        if (!this.equipos[0].id) {
+            console.error('❌ El primer equipo no tiene ID válido');
+            this.equipos[0].id = Date.now();
+            await this.guardarEquipos();
+        }
+        
         // Buscar el equipo, comparando tanto string como número
-        if (ultimoEquipoId) {
+        if (ultimoEquipoId && ultimoEquipoId !== 'undefined' && ultimoEquipoId !== 'null') {
             const equipoEncontrado = this.equipos.find(e => 
-                String(e.id) === String(ultimoEquipoId) || e.id === ultimoEquipoId
+                e && e.id && (String(e.id) === String(ultimoEquipoId) || e.id === ultimoEquipoId)
             );
             console.log('🎯 Equipo encontrado por último ID:', equipoEncontrado);
-            if (equipoEncontrado) {
+            if (equipoEncontrado && equipoEncontrado.id) {
                 this.equipoActualId = equipoEncontrado.id;
             } else {
                 this.equipoActualId = this.equipos[0].id;
@@ -61,12 +74,16 @@
         console.log('🎯 Equipo actual seleccionado:', this.equipoActualId);
         console.log('📋 Equipos disponibles:', this.equipos.map(e => ({ id: e.id, nombre: e.nombre })));
         
-        // VERIFICACIÓN CRÍTICA: Si equipoActualId es undefined, crear equipo por defecto
-        if (!this.equipoActualId) {
-            console.log('❌ ERROR: equipoActualId es undefined. Creando equipo por defecto...');
-            await this.crearEquipoPorDefecto();
-            console.log('✅ Equipo por defecto creado:', this.equipoActualId);
+        // VERIFICACIÓN CRÍTICA FINAL
+        if (!this.equipoActualId || this.equipoActualId === 'undefined') {
+            console.error('❌ CRÍTICO: equipoActualId sigue siendo undefined');
+            this.equipoActualId = this.equipos[0].id;
+            localStorage.setItem(`volleyball_ultimoEquipo_${userId}`, this.equipoActualId);
+            console.log('✅ Forzado equipoActualId a:', this.equipoActualId);
         }
+        
+        // LIMPIEZA FINAL: Eliminar del localStorage cualquier clave con "undefined"
+        this.limpiarLocalStorageUndefined(userId);
         
         // 4. Migrar datos antiguos ANTES de cargar datos del equipo
         await this.migrarDatosAntiguos();
@@ -79,6 +96,31 @@
         console.log('📅 Jornadas cargadas:', this.jornadas.length);
         
         this.inicializarApp();
+    }
+    
+    limpiarLocalStorageUndefined(userId) {
+        console.log('🧹 Limpiando localStorage de claves con "undefined"...');
+        const toRemove = [];
+        
+        // Buscar todas las claves que contengan "undefined"
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.includes('undefined') || key.includes('null'))) {
+                toRemove.push(key);
+            }
+        }
+        
+        // Eliminar las claves encontradas
+        toRemove.forEach(key => {
+            console.log(`  ❌ Eliminando: ${key}`);
+            localStorage.removeItem(key);
+        });
+        
+        if (toRemove.length > 0) {
+            console.log(`✅ Eliminadas ${toRemove.length} claves con undefined/null`);
+        } else {
+            console.log('✅ No se encontraron claves con undefined/null');
+        }
     }
 
     // ==================== SINCRONIZACIÓN MONGODB ====================
@@ -208,6 +250,17 @@
         let equipos = [];
         
         try {
+            // PASO 1: Limpiar equipos inválidos primero
+            console.log('🧹 Limpiando equipos inválidos de MongoDB...');
+            const cleanupRes = await fetch(`${this.API_URL}/equipos/cleanup-invalid?userId=${userId}`, {
+                method: 'DELETE'
+            });
+            if (cleanupRes.ok) {
+                const cleanupData = await cleanupRes.json();
+                console.log(`✅ Limpiados ${cleanupData.deletedCount} equipos inválidos`);
+            }
+            
+            // PASO 2: Cargar equipos desde MongoDB
             const response = await fetch(`${this.API_URL}/equipos?userId=${userId}`);
             if (response.ok) {
                 const rawEquipos = await response.json();
@@ -227,6 +280,16 @@
                     return null;
                 }).flat().filter(e => e !== null);
                 
+                // Filtrar equipos inválidos que puedan quedar
+                equipos = equipos.filter(e => 
+                    e && 
+                    e.id && 
+                    e.id !== 'undefined' && 
+                    e.nombre && 
+                    e.nombre !== 'undefined' && 
+                    e.nombre !== 'null'
+                );
+                
                 // Eliminar duplicados basándose en el ID
                 const equiposUnicos = new Map();
                 equipos.forEach(equipo => {
@@ -234,7 +297,7 @@
                 });
                 equipos = Array.from(equiposUnicos.values());
                 
-                console.log('🏆 Equipos cargados desde MongoDB:', equipos.length);
+                console.log('🏆 Equipos válidos cargados desde MongoDB:', equipos.length);
                 
                 // Guardar versión limpia
                 localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(equipos));
@@ -249,6 +312,15 @@
             console.warn('⚠️ No se pudo cargar equipos desde MongoDB, usando localStorage');
             const data = localStorage.getItem(`volleyball_equipos_${userId}`);
             equipos = data ? JSON.parse(data) : [];
+            // Filtrar también del localStorage
+            equipos = equipos.filter(e => 
+                e && 
+                e.id && 
+                e.id !== 'undefined' && 
+                e.nombre && 
+                e.nombre !== 'undefined' && 
+                e.nombre !== 'null'
+            );
         }
         
         return equipos;

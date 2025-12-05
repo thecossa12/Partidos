@@ -166,6 +166,41 @@ app.delete('/api/equipos/:id', async (req, res) => {
     }
 });
 
+// Endpoint para limpiar equipos inválidos (undefined, null, sin nombre)
+app.delete('/api/equipos/cleanup-invalid', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        console.log('🧹 Limpiando equipos inválidos para userId:', userId);
+        
+        // Eliminar equipos con nombre undefined, null, vacío o sin ID
+        const result = await db.collection('equipos').deleteMany({
+            userId: userId,
+            $or: [
+                { nombre: { $in: [null, 'undefined', '', 'null'] } },
+                { id: { $in: [null, 'undefined', ''] } },
+                { id: { $exists: false } },
+                { nombre: { $exists: false } }
+            ]
+        });
+        
+        console.log('✅ Equipos inválidos eliminados:', result.deletedCount);
+        
+        res.json({ 
+            success: true, 
+            deletedCount: result.deletedCount,
+            message: `${result.deletedCount} equipos inválidos eliminados`
+        });
+    } catch (error) {
+        console.error('❌ Error limpiando equipos inválidos:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Limpiar todos los equipos de un usuario (para reorganización)
 app.delete('/api/equipos/cleanup', async (req, res) => {
     try {
