@@ -2966,16 +2966,16 @@
             const enSet2 = this.planificacionSets.set2.find(js => js && js.id === j.id);
             const enSet3 = this.planificacionSets.set3.find(js => js && js.id === j.id);
             
-            // Verificar si es suplente en algún set
-            const esSuplente1 = this.verificarSiEsSuplente(j.id, 1);
-            const esSuplente2 = this.verificarSiEsSuplente(j.id, 2);
-            const esSuplente3 = this.verificarSiEsSuplente(j.id, 3);
+            // Verificar si es suplente en algún set (verificar si ENTRA como sustituta)
+            const haEntradoSet1 = this.verificarSiHaEntradoComoSuplente(j.id, 1);
+            const haEntradoSet2 = this.verificarSiHaEntradoComoSuplente(j.id, 2);
+            const haEntradoSet3 = this.verificarSiHaEntradoComoSuplente(j.id, 3);
             
-            // Contar en cuántos sets está
+            // Contar en cuántos sets está (incluyendo si entró como sustituta)
             const setsConJugadora = [];
-            if (enSet1 || esSuplente1) setsConJugadora.push('1');
-            if (enSet2 || esSuplente2) setsConJugadora.push('2');
-            if (enSet3 || esSuplente3) setsConJugadora.push('3');
+            if (enSet1 || haEntradoSet1) setsConJugadora.push('1');
+            if (enSet2 || haEntradoSet2) setsConJugadora.push('2');
+            if (enSet3 || haEntradoSet3) setsConJugadora.push('3');
             
             let etiqueta = '';
             if (setsConJugadora.length === 3) {
@@ -3010,6 +3010,16 @@
             }
         }
         return false;
+    }
+    
+    verificarSiHaEntradoComoSuplente(jugadoraId, set) {
+        // Verificar si la jugadora ha ENTRADO como sustituta (no solo si aparece en sustituciones)
+        if (!this.jornadaActual?.sustituciones) return false;
+        
+        const sustitucionesSet = this.jornadaActual.sustituciones[`set${set}`] || [];
+        
+        // Buscar si esta jugadora es la que ENTRA en alguna sustitución
+        return sustitucionesSet.some(s => s.entraId === jugadoraId);
     }
 
     removerJugadoraDeSet(jugadoraId, set) {
@@ -3180,15 +3190,17 @@
             const enSet1 = this.planificacionSets.set1.find(js => js && js.id === j.id);
             const enSet2 = this.planificacionSets.set2.find(js => js && js.id === j.id);
             const enSet3 = this.planificacionSets.set3.find(js => js && js.id === j.id);
-            const esSuplente1 = this.verificarSiEsSuplente(j.id, 1);
-            const esSuplente2 = this.verificarSiEsSuplente(j.id, 2);
-            const esSuplente3 = this.verificarSiEsSuplente(j.id, 3);
             
-            // Contar en cuántos sets está
+            // Verificar si ha ENTRADO como sustituta en algún set
+            const haEntradoSet1 = this.verificarSiHaEntradoComoSuplente(j.id, 1);
+            const haEntradoSet2 = this.verificarSiHaEntradoComoSuplente(j.id, 2);
+            const haEntradoSet3 = this.verificarSiHaEntradoComoSuplente(j.id, 3);
+            
+            // Contar en cuántos sets está (incluyendo si entró como sustituta)
             const setsConJugadora = [];
-            if (enSet1 || esSuplente1) setsConJugadora.push('1');
-            if (enSet2 || esSuplente2) setsConJugadora.push('2');
-            if (enSet3 || esSuplente3) setsConJugadora.push('3');
+            if (enSet1 || haEntradoSet1) setsConJugadora.push('1');
+            if (enSet2 || haEntradoSet2) setsConJugadora.push('2');
+            if (enSet3 || haEntradoSet3) setsConJugadora.push('3');
             
             let estado = '';
             let color = '#dc3545'; // Rojo por defecto (no ha jugado)
