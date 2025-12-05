@@ -25,8 +25,14 @@
         console.log('📊 Detalle de equipos:', JSON.stringify(this.equipos));
         
         // 2. Si no hay equipos, crear uno por defecto SIN popup
-        if (this.equipos.length === 0) {
+        if (!this.equipos || this.equipos.length === 0) {
             await this.crearEquipoPorDefecto();
+        }
+        
+        // Verificar que equipos tenga elementos antes de continuar
+        if (!this.equipos || this.equipos.length === 0) {
+            console.error('❌ Error: No hay equipos disponibles');
+            return;
         }
         
         // 3. Seleccionar equipo actual (último usado o el primero)
@@ -275,17 +281,22 @@
     async guardarEquipos() {
         const userId = this.getUserId();
         
+        // Filtrar equipos válidos (con id y nombre)
+        this.equipos = this.equipos.filter(e => e && e.id && e.nombre);
+        
         // Guardar en localStorage inmediatamente
         localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(this.equipos));
         
         // Sincronizar cada equipo individualmente con MongoDB
         try {
             for (const equipo of this.equipos) {
-                await fetch(`${this.API_URL}/equipos`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(equipo)
-                });
+                if (equipo && equipo.id && equipo.nombre) {
+                    await fetch(`${this.API_URL}/equipos`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(equipo)
+                    });
+                }
             }
             console.log('✅ Equipos sincronizados con MongoDB');
         } catch (error) {
@@ -426,6 +437,9 @@
         // Si era el equipo actual, cambiar al primero disponible
         if (String(this.equipoActualId) === String(equipoId) || this.equipoActualId === equipoId) {
             await this.cambiarEquipo(this.equipos[0].id);
+        } else {
+            // Si NO era el actual, solo actualizar el selector
+            this.actualizarSelectorEquipos();
         }
         
         // Recargar lista del modal
@@ -435,7 +449,10 @@
     }
 
     getEquipoActual() {
-        return this.equipos.find(e => e.id === this.equipoActualId);
+        if (!this.equipos || this.equipos.length === 0) {
+            return null;
+        }
+        return this.equipos.find(e => String(e.id) === String(this.equipoActualId) || e.id === this.equipoActualId);
     }
 
     actualizarSelectorEquipos() {
