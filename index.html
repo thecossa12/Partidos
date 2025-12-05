@@ -56,6 +56,21 @@
     <div class="container" id="mainApp" style="display: none;">
         <div class="header">
             <h1>🏐 Sistema de Rotaciones</h1>
+            
+            <!-- Selector de Equipos -->
+            <div class="selector-equipos-container">
+                <label for="selectorEquipos" style="font-weight: 600; margin-right: 8px;">🏆 Equipo:</label>
+                <select id="selectorEquipos" onchange="app.cambiarEquipo(this.value)" style="padding: 8px 12px; border: 2px solid #667eea; border-radius: 6px; font-size: 0.95rem; background: white; cursor: pointer; min-width: 200px;">
+                    <!-- Se llenará dinámicamente -->
+                </select>
+                <button onclick="app.crearNuevoEquipo()" style="margin-left: 10px; padding: 8px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    ➕ Nuevo Equipo
+                </button>
+                <button onclick="app.mostrarModalGestionEquipos()" style="margin-left: 5px; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    ⚙️
+                </button>
+            </div>
+            
             <div class="user-info" style="position: absolute; top: 20px; right: 20px; background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 14px;">
                 <span id="current-user">Cargando...</span>
                 <button onclick="logout()" style="margin-left: 10px; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
@@ -541,6 +556,28 @@
             <div class="modal-footer-estadisticas">
                 <button onclick="app.guardarEstadisticasPartido()" class="btn-guardar-estadisticas">💾 Guardar</button>
                 <button onclick="app.cerrarModalEstadisticas()" class="btn-cancelar-estadisticas">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestión de Equipos -->
+    <div id="modalGestionEquipos" class="modal-overlay" style="display: none;">
+        <div class="modal-estadisticas" style="max-width: 600px;">
+            <div class="modal-header-estadisticas">
+                <h3>🏆 Gestión de Equipos</h3>
+                <button onclick="app.cerrarModalGestionEquipos()" class="btn-cerrar-modal">✕</button>
+            </div>
+            
+            <div class="modal-body-estadisticas">
+                <div class="lista-equipos-gestion" id="listaEquiposGestion">
+                    <!-- Se llenará dinámicamente -->
+                </div>
+                
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+                    <button onclick="app.crearNuevoEquipo(); app.cerrarModalGestionEquipos();" class="btn-crear" style="width: 100%;">
+                        ➕ Crear Nuevo Equipo
+                    </button>
+                </div>
             </div>
         </div>
     </div>

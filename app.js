@@ -8,6 +8,8 @@
         console.log('🌐 API URL:', this.API_URL);
         this.syncEnabled = true; // Habilitar sincronización automática
         this.getUserId(); // Inicializar userId
+        this.equipos = []; // Lista de todos los equipos
+        this.equipoActualId = null; // ID del equipo seleccionado
         this.jugadoras = [];
         this.jornadas = [];
         this.currentTab = 'jornadas';
@@ -17,10 +19,37 @@
     }
 
     async inicializarAppAsync() {
+        // 1. Cargar equipos primero
+        this.equipos = await this.cargarEquipos();
+        console.log('🏆 Equipos cargados:', this.equipos.length);
+        
+        // 2. Si no hay equipos, crear el primero
+        if (this.equipos.length === 0) {
+            await this.crearEquipoInicial();
+        }
+        
+        // 3. Seleccionar equipo actual (último usado o el primero)
+        const userId = this.getUserId();
+        const ultimoEquipoId = localStorage.getItem(`volleyball_ultimoEquipo_${userId}`);
+        
+        if (ultimoEquipoId && this.equipos.find(e => e.id === ultimoEquipoId)) {
+            this.equipoActualId = ultimoEquipoId;
+        } else {
+            this.equipoActualId = this.equipos[0].id;
+        }
+        
+        console.log('🎯 Equipo actual seleccionado:', this.equipoActualId);
+        
+        // 4. Cargar datos del equipo actual
         this.jugadoras = await this.cargarJugadoras();
-        console.log('� Jugadoras cargadas en constructor:', this.jugadoras.length);
+        console.log('👥 Jugadoras cargadas:', this.jugadoras.length);
+        
         this.jornadas = await this.cargarJornadas();
-        console.log('📅 Jornadas cargadas en constructor:', this.jornadas.length);
+        console.log('📅 Jornadas cargadas:', this.jornadas.length);
+        
+        // 5. Migrar datos antiguos sin equipoId si existen
+        await this.migrarDatosAntiguos();
+        
         this.inicializarApp();
     }
 
@@ -145,6 +174,163 @@
         return null;
     }
 
+    // ==================== GESTIÓN DE EQUIPOS ====================
+    async cargarEquipos() {
+        const userId = this.getUserId();
+        let equipos = [];
+        
+        try {
+            const response = await fetch(`${this.API_URL}/equipos?userId=${userId}`);
+            if (response.ok) {
+                equipos = await response.json();
+                console.log('🏆 Equipos cargados desde MongoDB:', equipos.length);
+                localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(equipos));
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar equipos desde MongoDB, usando localStorage');
+            const data = localStorage.getItem(`volleyball_equipos_${userId}`);
+            equipos = data ? JSON.parse(data) : [];
+        }
+        
+        return equipos;
+    }
+
+    async guardarEquipos() {
+        const userId = this.getUserId();
+        
+        // Guardar en localStorage inmediatamente
+        localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(this.equipos));
+        
+        // Sincronizar con MongoDB
+        try {
+            await fetch(`${this.API_URL}/equipos`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId, equipos: this.equipos })
+            });
+            console.log('✅ Equipos sincronizados con MongoDB');
+        } catch (error) {
+            console.error('❌ Error sincronizando equipos:', error);
+        }
+    }
+
+    async crearEquipoInicial() {
+        const nombreEquipo = prompt('¿Cuál es el nombre de tu equipo?\n\nEjemplo: "Juvenil Femenino Villalba Voley"');
+        
+        if (!nombreEquipo || nombreEquipo.trim() === '') {
+            alert('⚠️ Debes ingresar un nombre para el equipo');
+            return await this.crearEquipoInicial(); // Volver a preguntar
+        }
+        
+        const nuevoEquipo = {
+            id: Date.now(),
+            nombre: nombreEquipo.trim(),
+            userId: this.getUserId(),
+            fechaCreacion: new Date().toISOString()
+        };
+        
+        this.equipos.push(nuevoEquipo);
+        this.equipoActualId = nuevoEquipo.id;
+        
+        await this.guardarEquipos();
+        localStorage.setItem(`ultimoEquipo_${this.userId}`, this.equipoActualId);
+        
+        console.log('✅ Equipo inicial creado:', nuevoEquipo);
+        return nuevoEquipo;
+    }
+
+    async crearNuevoEquipo() {
+        const nombreEquipo = prompt('¿Cuál es el nombre del nuevo equipo?\n\nEjemplo: "Cadete Mixto Villalba Voley"');
+        
+        if (!nombreEquipo || nombreEquipo.trim() === '') {
+            return;
+        }
+        
+        const nuevoEquipo = {
+            id: Date.now(),
+            nombre: nombreEquipo.trim(),
+            userId: this.getUserId(),
+            fechaCreacion: new Date().toISOString()
+        };
+        
+        this.equipos.push(nuevoEquipo);
+        await this.guardarEquipos();
+        
+        // Cambiar al nuevo equipo
+        await this.cambiarEquipo(nuevoEquipo.id);
+        
+        showNotification(`✅ Equipo "${nuevoEquipo.nombre}" creado correctamente`, 'success');
+    }
+
+    async cambiarEquipo(equipoId) {
+        console.log('🔄 Cambiando a equipo:', equipoId);
+        
+        this.equipoActualId = equipoId;
+        localStorage.setItem(`ultimoEquipo_${this.userId}`, equipoId);
+        
+        // Recargar datos del nuevo equipo
+        this.jugadoras = await this.cargarJugadoras();
+        this.jornadas = await this.cargarJornadas();
+        
+        // Actualizar UI
+        this.actualizarSelectorEquipos();
+        this.actualizarVistaActual();
+        
+        const equipo = this.equipos.find(e => e.id === equipoId);
+        showNotification(`🏆 Cambiado a: ${equipo.nombre}`, 'success');
+    }
+
+    async eliminarEquipo(equipoId) {
+        const equipo = this.equipos.find(e => e.id === equipoId);
+        if (!equipo) return;
+        
+        if (this.equipos.length === 1) {
+            alert('⚠️ No puedes eliminar el único equipo. Debe haber al menos uno.');
+            return;
+        }
+        
+        const confirmar = confirm(`¿Estás seguro de eliminar "${equipo.nombre}"?\n\n⚠️ Se eliminarán TODAS las jugadoras y jornadas de este equipo.`);
+        if (!confirmar) return;
+        
+        // Eliminar equipo
+        this.equipos = this.equipos.filter(e => e.id !== equipoId);
+        await this.guardarEquipos();
+        
+        // Si era el equipo actual, cambiar al primero disponible
+        if (this.equipoActualId === equipoId) {
+            await this.cambiarEquipo(this.equipos[0].id);
+        }
+        
+        showNotification(`✅ Equipo "${equipo.nombre}" eliminado`, 'success');
+    }
+
+    getEquipoActual() {
+        return this.equipos.find(e => e.id === this.equipoActualId);
+    }
+
+    actualizarSelectorEquipos() {
+        const selector = document.getElementById('selectorEquipos');
+        if (!selector) return;
+        
+        selector.innerHTML = this.equipos.map(equipo => 
+            `<option value="${equipo.id}" ${equipo.id === this.equipoActualId ? 'selected' : ''}>
+                ${equipo.nombre}
+            </option>`
+        ).join('');
+    }
+
+    actualizarVistaActual() {
+        // Actualizar según la pestaña activa
+        if (this.currentTab === 'jornadas') {
+            if (this.jornadaActual) {
+                this.mostrarJornadaActual();
+            }
+            this.actualizarListaHistorial();
+        } else if (this.currentTab === 'jugadoras') {
+            this.actualizarTablaJugadoras();
+        }
+    }
+
     // ==================== SISTEMA DE ALMACENAMIENTO ====================
     async cargarJugadoras() {
         // Prevenir múltiples cargas
@@ -156,28 +342,30 @@
         console.log('📂 Cargando jugadoras desde MongoDB (prioridad)...');
         let jugadoras = [];
         
-        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario)
+        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario Y equipo)
         try {
             const userId = this.getUserId();
-            console.log('👤 Cargando jugadoras para userId:', userId);
-            const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
+            const equipoId = this.equipoActualId;
+            console.log('👤 Cargando jugadoras para userId:', userId, 'equipoId:', equipoId);
+            const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
             if (response.ok) {
                 jugadoras = await response.json();
                 console.log('☁️ Jugadoras cargadas desde MongoDB:', jugadoras.length);
                 
-                // Guardar en localStorage como backup (SIN mezclar con otros usuarios)
+                // Guardar en localStorage como backup
                 if (jugadoras.length > 0) {
-                    localStorage.setItem(`volleyball_jugadoras_${userId}`, JSON.stringify(jugadoras));
+                    localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadoras));
                 }
             }
         } catch (error) {
             console.warn('⚠️ No se pudo cargar desde MongoDB, intentando localStorage:', error.message);
             
-            // FALLBACK: usar localStorage SOLO del usuario actual
+            // FALLBACK: usar localStorage
             const userId = this.getUserId();
-            const data = localStorage.getItem(`volleyball_jugadoras_${userId}`);
+            const equipoId = this.equipoActualId;
+            const data = localStorage.getItem(`volleyball_jugadoras_${userId}_${equipoId}`);
             jugadoras = data ? JSON.parse(data) : [];
-            console.log('💾 Jugadoras cargadas desde localStorage (userId-específico):', jugadoras.length);
+            console.log('💾 Jugadoras cargadas desde localStorage:', jugadoras.length);
         }
         
         console.log('👥 Jugadoras parseadas:', jugadoras.length);
@@ -186,6 +374,7 @@
         
         return jugadoras.map(j => ({
             ...j,
+            equipoId: j.equipoId || this.equipoActualId, // Asegurar que tenga equipoId
             puntosJugados: j.puntosJugados || 0,
             partidosJugados: j.partidosJugados || 0,
             entrenamientosAsistidos: j.entrenamientosAsistidos || 0,
@@ -198,7 +387,15 @@
 
     guardarJugadoras() {
         const userId = this.getUserId();
-        localStorage.setItem(`volleyball_jugadoras_${userId}`, JSON.stringify(this.jugadoras));
+        const equipoId = this.equipoActualId;
+        
+        // Asegurar que todas las jugadoras tengan equipoId
+        const jugadorasConEquipo = this.jugadoras.map(j => ({
+            ...j,
+            equipoId: j.equipoId || equipoId
+        }));
+        
+        localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadorasConEquipo));
         // Sincronización automática con MongoDB
         this.syncToMongoDB('jugadores', 'save');
     }
@@ -229,6 +426,7 @@
             nombre,
             dorsal,
             posicion,
+            equipoId: this.equipoActualId, // Agregar equipoId
             puntosJugados: 0,
             partidosJugados: 0,
             entrenamientosAsistidos: 0,
@@ -255,28 +453,30 @@
         console.log('📂 Cargando jornadas desde MongoDB (prioridad)...');
         let jornadas = [];
         
-        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario)
+        // PRIMERO intentar cargar desde MongoDB (filtrado por usuario Y equipo)
         try {
             const userId = this.getUserId();
-            console.log('👤 Cargando jornadas para userId:', userId);
-            const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}`);
+            const equipoId = this.equipoActualId;
+            console.log('👤 Cargando jornadas para userId:', userId, 'equipoId:', equipoId);
+            const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
             if (response.ok) {
                 jornadas = await response.json();
                 console.log('☁️ Jornadas cargadas desde MongoDB:', jornadas.length);
                 
-                // Guardar en localStorage como backup (SIN mezclar con otros usuarios)
+                // Guardar en localStorage como backup
                 if (jornadas.length > 0) {
-                    localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(jornadas));
+                    localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadas));
                 }
             }
         } catch (error) {
             console.warn('⚠️ No se pudo cargar desde MongoDB, intentando localStorage:', error.message);
             
-            // FALLBACK: usar localStorage SOLO del usuario actual
+            // FALLBACK: usar localStorage
             const userId = this.getUserId();
-            const data = localStorage.getItem(`volleyball_jornadas_${userId}`);
+            const equipoId = this.equipoActualId;
+            const data = localStorage.getItem(`volleyball_jornadas_${userId}_${equipoId}`);
             jornadas = data ? JSON.parse(data) : [];
-            console.log('💾 Jornadas cargadas desde localStorage (userId-específico):', jornadas.length);
+            console.log('💾 Jornadas cargadas desde localStorage:', jornadas.length);
         }
         
         console.log('📅 Jornadas parseadas:', jornadas.length);
@@ -300,7 +500,15 @@
 
     guardarJornadas() {
         const userId = this.getUserId();
-        localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
+        const equipoId = this.equipoActualId;
+        
+        // Asegurar que todas las jornadas tengan equipoId
+        const jornadasConEquipo = this.jornadas.map(j => ({
+            ...j,
+            equipoId: j.equipoId || equipoId
+        }));
+        
+        localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadasConEquipo));
         // Sincronización automática con MongoDB (no esperar, es asíncrona)
         this.syncToMongoDB('jornadas', 'save');
     }
@@ -455,6 +663,160 @@
         const modal = document.getElementById('modal-gestion-datos');
         if (modal) {
             modal.style.display = 'none';
+        }
+    }
+
+    mostrarModalGestionEquipos() {
+        const modal = document.getElementById('modalGestionEquipos');
+        if (!modal) return;
+        
+        this.cargarListaEquiposGestion();
+        modal.style.display = 'flex';
+        
+        // Configurar cierre con ESC y clic fuera
+        this.configurarCierreModalEquipos();
+    }
+
+    configurarCierreModalEquipos() {
+        const modal = document.getElementById('modalGestionEquipos');
+        const modalContent = modal?.querySelector('.modal-estadisticas');
+        
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                this.cerrarModalGestionEquipos();
+            }
+        };
+        
+        if (modalContent) {
+            modalContent.onclick = (e) => {
+                e.stopPropagation();
+            };
+        }
+        
+        const handleEscape = (e) => {
+            if (e.key === 'Escape' || e.key === 'Esc') {
+                this.cerrarModalGestionEquipos();
+                document.removeEventListener('keydown', handleEscape);
+            }
+        };
+        
+        document.addEventListener('keydown', handleEscape);
+    }
+
+    cerrarModalGestionEquipos() {
+        const modal = document.getElementById('modalGestionEquipos');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    }
+
+    cargarListaEquiposGestion() {
+        const lista = document.getElementById('listaEquiposGestion');
+        if (!lista) return;
+        
+        if (this.equipos.length === 0) {
+            lista.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No hay equipos creados</div>';
+            return;
+        }
+        
+        lista.innerHTML = this.equipos.map(equipo => {
+            const esActual = equipo.id === this.equipoActualId;
+            return `
+                <div class="equipo-gestion-item ${esActual ? 'equipo-activo' : ''}">
+                    <div class="equipo-info">
+                        <span class="equipo-nombre">${esActual ? '🏆 ' : ''}${equipo.nombre}</span>
+                        <small class="equipo-fecha">Creado: ${new Date(equipo.fechaCreacion).toLocaleDateString()}</small>
+                    </div>
+                    <div class="equipo-acciones">
+                        ${!esActual ? `<button onclick="app.cambiarEquipo('${equipo.id}'); app.cerrarModalGestionEquipos();" class="btn-seleccionar-equipo">Seleccionar</button>` : '<span class="badge-activo">Activo</span>'}
+                        ${this.equipos.length > 1 ? `<button onclick="app.eliminarEquipo('${equipo.id}')" class="btn-eliminar-equipo">🗑️</button>` : ''}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async migrarDatosAntiguos() {
+        const userId = this.getUserId();
+        
+        // Verificar si hay datos antiguos en localStorage sin equipoId
+        const jugadorasAntiguasKey = `volleyball_jugadoras_${userId}`;
+        const jornadasAntiguasKey = `volleyball_jornadas_${userId}`;
+        
+        const jugadorasAntiguas = localStorage.getItem(jugadorasAntiguasKey);
+        const jornadasAntiguas = localStorage.getItem(jornadasAntiguasKey);
+        
+        let migrados = false;
+        
+        if (jugadorasAntiguas) {
+            try {
+                const jugadores = JSON.parse(jugadorasAntiguas);
+                if (jugadores.length > 0 && !jugadores[0].equipoId) {
+                    console.log('🔄 Migrando jugadores antiguos al equipo actual...');
+                    
+                    // Asignar equipoId actual a todos los jugadores
+                    const jugadoresMigrados = jugadores.map(j => ({
+                        ...j,
+                        equipoId: this.equipoActualId
+                    }));
+                    
+                    // Guardar en la nueva clave con equipoId
+                    const nuevaKey = `volleyball_jugadoras_${userId}_${this.equipoActualId}`;
+                    localStorage.setItem(nuevaKey, JSON.stringify(jugadoresMigrados));
+                    
+                    // Eliminar clave antigua
+                    localStorage.removeItem(jugadorasAntiguasKey);
+                    
+                    // Recargar jugadoras
+                    this.jugadoras = await this.cargarJugadoras();
+                    
+                    console.log(`✅ ${jugadores.length} jugadores migrados`);
+                    migrados = true;
+                }
+            } catch (e) {
+                console.error('Error migrando jugadores:', e);
+            }
+        }
+        
+        if (jornadasAntiguas) {
+            try {
+                const jornadas = JSON.parse(jornadasAntiguas);
+                if (jornadas.length > 0 && !jornadas[0].equipoId) {
+                    console.log('🔄 Migrando jornadas antiguas al equipo actual...');
+                    
+                    const equipoActual = this.getEquipoActual();
+                    const nombreEquipo = equipoActual ? equipoActual.nombre : 'Mi Equipo';
+                    
+                    // Asignar equipoId y nombreEquipo a todas las jornadas
+                    const jornadasMigradas = jornadas.map(j => ({
+                        ...j,
+                        equipoId: this.equipoActualId,
+                        nombreEquipo: nombreEquipo
+                    }));
+                    
+                    // Guardar en la nueva clave con equipoId
+                    const nuevaKey = `volleyball_jornadas_${userId}_${this.equipoActualId}`;
+                    localStorage.setItem(nuevaKey, JSON.stringify(jornadasMigradas));
+                    
+                    // Eliminar clave antigua
+                    localStorage.removeItem(jornadasAntiguasKey);
+                    
+                    // Recargar jornadas
+                    this.jornadas = await this.cargarJornadas();
+                    
+                    console.log(`✅ ${jornadas.length} jornadas migradas`);
+                    migrados = true;
+                }
+            } catch (e) {
+                console.error('Error migrando jornadas:', e);
+            }
+        }
+        
+        if (migrados) {
+            console.log('✅ Migración automática completada');
+            
+            // Sincronizar con MongoDB
+            await this.sincronizarDatos();
         }
     }
 
@@ -972,28 +1334,12 @@
             }
         }
         
+        // Obtener nombre del equipo actual
+        const equipoActual = this.getEquipoActual();
+        const nombreEquipoActual = equipoActual ? equipoActual.nombre : 'Mi Equipo';
+        
         // Verificar si es la primera jornada y pedir polideportivo casa
         const config = await this.cargarConfiguracion();
-        
-        console.log('🔍 DEBUG - Configuración cargada:', config);
-        console.log('🔍 DEBUG - nombreEquipo actual:', config.nombreEquipo);
-        
-        // Pedir nombre del equipo si no existe (solo la primera vez)
-        if (!config.nombreEquipo || config.nombreEquipo.trim() === '') {
-            console.log('⚠️ nombreEquipo no existe o está vacío, pidiendo al usuario...');
-            const nombreEquipo = prompt('¿Cuál es el nombre de tu equipo?\n\nSe usará en las estadísticas de los partidos.');
-            if (nombreEquipo && nombreEquipo.trim()) {
-                config.nombreEquipo = nombreEquipo.trim();
-                await this.guardarConfiguracion(config);
-                console.log('✅ Nombre del equipo guardado:', config.nombreEquipo);
-                
-                // Verificar que se guardó correctamente
-                const configVerificar = await this.cargarConfiguracion();
-                console.log('✅ Verificación - nombreEquipo guardado:', configVerificar.nombreEquipo);
-            }
-        } else {
-            console.log('✅ nombreEquipo ya existe:', config.nombreEquipo);
-        }
         
         // Solo guardar polideportivo casa si hay partido y es en casa
         if (!sinPartido && !config.polideportivoCasa && tipoUbicacion === 'casa') {
@@ -1059,6 +1405,8 @@
         
         const nuevaJornada = {
             id: Date.now(),
+            equipoId: this.equipoActualId, // ID del equipo
+            nombreEquipo: nombreEquipoActual, // Nombre del equipo para estadísticas
             fechaSeleccionada: fechaSeleccionada, // Guardar la fecha que seleccionó el usuario
             fechaLunes: fechaLunes,
             fechaMiercoles: fechaMiercoles,

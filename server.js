@@ -30,17 +30,95 @@ connectDB().then(database => {
     process.exit(1);
 });
 
-// ==================== ENDPOINTS DE JUGADORES ====================
+// ==================== ENDPOINTS DE EQUIPOS ====================
 
-// Obtener todos los jugadores (filtrados por usuario)
-app.get('/api/jugadores', async (req, res) => {
+// Obtener todos los equipos de un usuario
+app.get('/api/equipos', async (req, res) => {
     try {
         const userId = req.query.userId;
         if (!userId) {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        const jugadores = await db.collection('jugadores').find({ userId }).toArray();
+        const equipos = await db.collection('equipos').find({ userId }).toArray();
+        res.json(equipos);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Crear un equipo
+app.post('/api/equipos', async (req, res) => {
+    try {
+        const equipo = req.body;
+        
+        if (!equipo.userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        const result = await db.collection('equipos').insertOne(equipo);
+        res.json({ ...equipo, _id: result.insertedId });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Actualizar un equipo
+app.put('/api/equipos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const equipo = req.body;
+        const userId = req.query.userId;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        await db.collection('equipos').updateOne(
+            { id, userId },
+            { $set: equipo }
+        );
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Eliminar un equipo
+app.delete('/api/equipos/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.query.userId;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        await db.collection('equipos').deleteOne({ id, userId });
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// ==================== ENDPOINTS DE JUGADORES ====================
+
+// Obtener todos los jugadores (filtrados por usuario)
+app.get('/api/jugadores', async (req, res) => {
+    try {
+        const userId = req.query.userId;
+        const equipoId = req.query.equipoId;
+        
+        if (!userId) {
+            return res.status(400).json({ error: 'userId es requerido' });
+        }
+        
+        const filter = { userId };
+        if (equipoId) {
+            filter.equipoId = equipoId;
+        }
+        
+        const jugadores = await db.collection('jugadores').find(filter).toArray();
         res.json(jugadores);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -103,15 +181,22 @@ app.delete('/api/jugadores/:id', async (req, res) => {
 
 // ==================== ENDPOINTS DE JORNADAS ====================
 
-// Obtener todas las jornadas (filtradas por usuario)
+// Obtener todas las jornadas (filtradas por usuario y opcionalmente por equipo)
 app.get('/api/jornadas', async (req, res) => {
     try {
         const userId = req.query.userId;
+        const equipoId = req.query.equipoId;
+        
         if (!userId) {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        const jornadas = await db.collection('jornadas').find({ userId }).toArray();
+        const filter = { userId };
+        if (equipoId) {
+            filter.equipoId = equipoId;
+        }
+        
+        const jornadas = await db.collection('jornadas').find(filter).toArray();
         res.json(jornadas);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -258,7 +343,7 @@ app.post('/api/users/login', async (req, res) => {
 // Sincronización completa (usa upsert para actualizar o insertar)
 app.post('/api/sync', async (req, res) => {
     try {
-        const { jugadores, jornadas, userId } = req.body;
+        const { jugadores, jornadas, equipos, userId } = req.body;
         
         if (!userId) {
             return res.status(400).json({ error: 'userId es requerido' });
@@ -266,6 +351,25 @@ app.post('/api/sync', async (req, res) => {
         
         let jugadoresCount = 0;
         let jornadasCount = 0;
+        let equiposCount = 0;
+        
+        // Sincronizar equipos usando bulkWrite con upsert
+        if (equipos && equipos.length > 0) {
+            const equiposOperations = equipos.map(equipo => {
+                const { _id, ...equipoSinMongoId } = equipo;
+                
+                return {
+                    updateOne: {
+                        filter: { id: equipo.id, userId },
+                        update: { $set: { ...equipoSinMongoId, userId } },
+                        upsert: true
+                    }
+                };
+            });
+            
+            const resultEquipos = await db.collection('equipos').bulkWrite(equiposOperations);
+            equiposCount = resultEquipos.upsertedCount + resultEquipos.modifiedCount;
+        }
         
         // Sincronizar jugadores usando bulkWrite con upsert
         if (jugadores && jugadores.length > 0) {
@@ -307,6 +411,7 @@ app.post('/api/sync', async (req, res) => {
         
         res.json({ 
             success: true,
+            equiposCount: equipos?.length || 0,
             jugadoresCount: jugadores?.length || 0,
             jornadasCount: jornadas?.length || 0
         });
