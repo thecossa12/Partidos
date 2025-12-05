@@ -219,6 +219,13 @@
                     return null;
                 }).flat().filter(e => e !== null);
                 
+                // Eliminar duplicados basándose en el ID
+                const equiposUnicos = new Map();
+                equipos.forEach(equipo => {
+                    equiposUnicos.set(equipo.id, equipo);
+                });
+                equipos = Array.from(equiposUnicos.values());
+                
                 console.log('🏆 Equipos cargados desde MongoDB:', equipos.length);
                 localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(equipos));
             }
@@ -297,7 +304,10 @@
         console.log('🔄 Cambiando a equipo:', equipoId);
         
         this.equipoActualId = equipoId;
-        localStorage.setItem(`ultimoEquipo_${this.userId}`, equipoId);
+        localStorage.setItem(`volleyball_ultimoEquipo_${this.userId}`, equipoId);
+        
+        // Resetear cache para forzar recarga
+        this._jugadorasCargadas = false;
         
         // Recargar datos del nuevo equipo
         this.jugadoras = await this.cargarJugadoras();
@@ -307,8 +317,11 @@
         this.actualizarSelectorEquipos();
         this.actualizarVistaActual();
         
-        const equipo = this.equipos.find(e => e.id === equipoId);
-        showNotification(`🏆 Cambiado a: ${equipo.nombre}`, 'success');
+        // Buscar equipo comparando string y número
+        const equipo = this.equipos.find(e => String(e.id) === String(equipoId) || e.id === equipoId);
+        if (equipo) {
+            showNotification(`🏆 Cambiado a: ${equipo.nombre}`, 'success');
+        }
     }
 
     async editarNombreEquipo(equipoId) {
@@ -920,6 +933,48 @@
             }
         } catch (e) {
             console.warn('⚠️ No se pudo buscar en MongoDB:', e.message);
+        }
+        
+        // TAMBIÉN BUSCAR JORNADAS EN MONGODB sin equipoId
+        try {
+            console.log('🔍 Buscando jornadas antiguas en MongoDB...');
+            const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}`);
+            if (response.ok) {
+                const jornadas = await response.json();
+                const jornadasSinEquipo = jornadas.filter(j => !j.equipoId);
+                
+                if (jornadasSinEquipo.length > 0) {
+                    console.log(`🔄 Encontradas ${jornadasSinEquipo.length} jornadas en MongoDB sin equipoId`);
+                    
+                    const equipoActual = this.getEquipoActual();
+                    const nombreEquipo = equipoActual ? equipoActual.nombre : 'Mi Equipo';
+                    
+                    // Asignar equipoId y nombreEquipo
+                    const jornadasMigradas = jornadasSinEquipo.map(j => ({
+                        ...j,
+                        equipoId: this.equipoActualId,
+                        nombreEquipo: nombreEquipo
+                    }));
+                    
+                    // Guardar en localStorage
+                    const nuevaKey = `volleyball_jornadas_${userId}_${this.equipoActualId}`;
+                    const datosExistentes = localStorage.getItem(nuevaKey);
+                    const jornadasExistentes = datosExistentes ? JSON.parse(datosExistentes) : [];
+                    
+                    // Combinar sin duplicar
+                    const idsMigrados = new Set(jornadasExistentes.map(j => j.id));
+                    const jornadasNuevas = jornadasMigradas.filter(j => !idsMigrados.has(j.id));
+                    
+                    if (jornadasNuevas.length > 0) {
+                        const todasJornadas = [...jornadasExistentes, ...jornadasNuevas];
+                        localStorage.setItem(nuevaKey, JSON.stringify(todasJornadas));
+                        console.log(`✅ ${jornadasNuevas.length} jornadas de MongoDB migradas`);
+                        migrados = true;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ No se pudo buscar jornadas en MongoDB:', e.message);
         }
         
         if (migrados) {
