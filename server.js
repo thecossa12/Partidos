@@ -52,12 +52,27 @@ app.post('/api/equipos', async (req, res) => {
     try {
         const equipo = req.body;
         
+        console.log('📥 POST /api/equipos - Recibiendo:', JSON.stringify(equipo));
+        
         if (!equipo.userId) {
+            console.error('❌ Error: userId faltante');
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
         if (!equipo.id) {
+            console.error('❌ Error: id faltante');
             return res.status(400).json({ error: 'id es requerido' });
+        }
+        
+        if (!equipo.nombre || equipo.nombre === 'undefined') {
+            console.error('❌ Error: nombre inválido');
+            return res.status(400).json({ error: 'nombre es requerido y debe ser válido' });
+        }
+        
+        // Verificar conexión a MongoDB
+        if (!db) {
+            console.error('❌ Error: MongoDB no conectado');
+            return res.status(503).json({ error: 'Base de datos no disponible' });
         }
         
         // Usar updateOne con upsert para evitar duplicados
@@ -67,10 +82,11 @@ app.post('/api/equipos', async (req, res) => {
             { upsert: true }
         );
         
+        console.log('✅ Equipo guardado:', result.upsertedCount > 0 ? 'nuevo' : 'actualizado');
         res.json({ success: true, equipo });
     } catch (error) {
-        console.error('Error guardando equipo:', error);
-        res.status(500).json({ error: error.message });
+        console.error('❌ Error guardando equipo:', error);
+        res.status(500).json({ error: error.message, details: error.stack });
     }
 });
 
