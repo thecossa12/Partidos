@@ -32,13 +32,22 @@
         const userId = this.getUserId();
         const ultimoEquipoId = localStorage.getItem(`volleyball_ultimoEquipo_${userId}`);
         
-        if (ultimoEquipoId && this.equipos.find(e => e.id === ultimoEquipoId)) {
-            this.equipoActualId = ultimoEquipoId;
+        // Buscar el equipo, comparando tanto string como número
+        if (ultimoEquipoId) {
+            const equipoEncontrado = this.equipos.find(e => 
+                String(e.id) === String(ultimoEquipoId) || e.id === ultimoEquipoId
+            );
+            if (equipoEncontrado) {
+                this.equipoActualId = equipoEncontrado.id;
+            } else {
+                this.equipoActualId = this.equipos[0].id;
+            }
         } else {
             this.equipoActualId = this.equipos[0].id;
         }
         
         console.log('🎯 Equipo actual seleccionado:', this.equipoActualId);
+        console.log('📋 Equipos disponibles:', this.equipos.map(e => ({ id: e.id, nombre: e.nombre })));
         
         // 4. Migrar datos antiguos ANTES de cargar datos del equipo
         await this.migrarDatosAntiguos();
@@ -964,6 +973,9 @@
         this.jornadas.forEach(jornada => {
             this.sincronizarReferenciasJugadoras(jornada);
         });
+        
+        // Actualizar selector de equipos
+        this.actualizarSelectorEquipos();
         
         // TEMPORAL: Siempre mostrar la app principal, sin setup
         this.mostrarAppPrincipal();
