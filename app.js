@@ -22,6 +22,7 @@
         // 1. Cargar equipos primero
         this.equipos = await this.cargarEquipos();
         console.log('🏆 Equipos cargados:', this.equipos.length);
+        console.log('📊 Detalle de equipos:', JSON.stringify(this.equipos));
         
         // 2. Si no hay equipos, crear uno por defecto SIN popup
         if (this.equipos.length === 0) {
@@ -32,22 +33,34 @@
         const userId = this.getUserId();
         const ultimoEquipoId = localStorage.getItem(`volleyball_ultimoEquipo_${userId}`);
         
+        console.log('🔍 Buscando último equipo:', ultimoEquipoId);
+        
         // Buscar el equipo, comparando tanto string como número
         if (ultimoEquipoId) {
             const equipoEncontrado = this.equipos.find(e => 
                 String(e.id) === String(ultimoEquipoId) || e.id === ultimoEquipoId
             );
+            console.log('🎯 Equipo encontrado por último ID:', equipoEncontrado);
             if (equipoEncontrado) {
                 this.equipoActualId = equipoEncontrado.id;
             } else {
                 this.equipoActualId = this.equipos[0].id;
+                console.log('⚠️ No se encontró último equipo, usando primero:', this.equipos[0]);
             }
         } else {
             this.equipoActualId = this.equipos[0].id;
+            console.log('ℹ️ No hay último equipo guardado, usando primero:', this.equipos[0]);
         }
         
         console.log('🎯 Equipo actual seleccionado:', this.equipoActualId);
         console.log('📋 Equipos disponibles:', this.equipos.map(e => ({ id: e.id, nombre: e.nombre })));
+        
+        // VERIFICACIÓN CRÍTICA: Si equipoActualId es undefined, crear equipo por defecto
+        if (!this.equipoActualId) {
+            console.log('❌ ERROR: equipoActualId es undefined. Creando equipo por defecto...');
+            await this.crearEquipoPorDefecto();
+            console.log('✅ Equipo por defecto creado:', this.equipoActualId);
+        }
         
         // 4. Migrar datos antiguos ANTES de cargar datos del equipo
         await this.migrarDatosAntiguos();
@@ -784,6 +797,8 @@
     async migrarDatosAntiguos() {
         const userId = this.getUserId();
         
+        console.log('🔍 Buscando datos antiguos para migrar...');
+        
         // Verificar si hay datos antiguos en localStorage sin equipoId
         const jugadorasAntiguasKey = `volleyball_jugadoras_${userId}`;
         const jornadasAntiguasKey = `volleyball_jornadas_${userId}`;
@@ -793,11 +808,12 @@
         
         let migrados = false;
         
+        // MIGRACIÓN DE JUGADORES
         if (jugadorasAntiguas) {
             try {
                 const jugadores = JSON.parse(jugadorasAntiguas);
-                if (jugadores.length > 0 && !jugadores[0].equipoId) {
-                    console.log('🔄 Migrando jugadores antiguos al equipo actual...');
+                if (jugadores.length > 0) {
+                    console.log(`🔄 Migrando ${jugadores.length} jugadores antiguos al equipo actual...`);
                     
                     // Asignar equipoId actual a todos los jugadores
                     const jugadoresMigrados = jugadores.map(j => ({
@@ -812,19 +828,20 @@
                     // Eliminar clave antigua
                     localStorage.removeItem(jugadorasAntiguasKey);
                     
-                    console.log(`✅ ${jugadores.length} jugadores migrados`);
+                    console.log(`✅ ${jugadores.length} jugadores migrados a localStorage`);
                     migrados = true;
                 }
             } catch (e) {
-                console.error('Error migrando jugadores:', e);
+                console.error('Error migrando jugadores de localStorage:', e);
             }
         }
         
+        // MIGRACIÓN DE JORNADAS
         if (jornadasAntiguas) {
             try {
                 const jornadas = JSON.parse(jornadasAntiguas);
-                if (jornadas.length > 0 && !jornadas[0].equipoId) {
-                    console.log('🔄 Migrando jornadas antiguas al equipo actual...');
+                if (jornadas.length > 0) {
+                    console.log(`🔄 Migrando ${jornadas.length} jornadas antiguas al equipo actual...`);
                     
                     const equipoActual = this.getEquipoActual();
                     const nombreEquipo = equipoActual ? equipoActual.nombre : 'Mi Equipo';
@@ -843,12 +860,50 @@
                     // Eliminar clave antigua
                     localStorage.removeItem(jornadasAntiguasKey);
                     
-                    console.log(`✅ ${jornadas.length} jornadas migradas`);
+                    console.log(`✅ ${jornadas.length} jornadas migradas a localStorage`);
                     migrados = true;
                 }
             } catch (e) {
-                console.error('Error migrando jornadas:', e);
+                console.error('Error migrando jornadas de localStorage:', e);
             }
+        }
+        
+        // TAMBIÉN BUSCAR EN MONGODB datos sin equipoId
+        try {
+            console.log('🔍 Buscando datos antiguos en MongoDB...');
+            const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
+            if (response.ok) {
+                const jugadores = await response.json();
+                const jugadoresSinEquipo = jugadores.filter(j => !j.equipoId);
+                
+                if (jugadoresSinEquipo.length > 0) {
+                    console.log(`🔄 Encontrados ${jugadoresSinEquipo.length} jugadores en MongoDB sin equipoId`);
+                    
+                    // Asignar equipoId
+                    const jugadoresMigrados = jugadoresSinEquipo.map(j => ({
+                        ...j,
+                        equipoId: this.equipoActualId
+                    }));
+                    
+                    // Guardar en localStorage
+                    const nuevaKey = `volleyball_jugadoras_${userId}_${this.equipoActualId}`;
+                    const datosExistentes = localStorage.getItem(nuevaKey);
+                    const jugadoresExistentes = datosExistentes ? JSON.parse(datosExistentes) : [];
+                    
+                    // Combinar sin duplicar
+                    const idsMigrados = new Set(jugadoresExistentes.map(j => j.id));
+                    const jugadoresNuevos = jugadoresMigrados.filter(j => !idsMigrados.has(j.id));
+                    
+                    if (jugadoresNuevos.length > 0) {
+                        const todosJugadores = [...jugadoresExistentes, ...jugadoresNuevos];
+                        localStorage.setItem(nuevaKey, JSON.stringify(todosJugadores));
+                        console.log(`✅ ${jugadoresNuevos.length} jugadores de MongoDB migrados`);
+                        migrados = true;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('⚠️ No se pudo buscar en MongoDB:', e.message);
         }
         
         if (migrados) {
