@@ -204,7 +204,21 @@
         try {
             const response = await fetch(`${this.API_URL}/equipos?userId=${userId}`);
             if (response.ok) {
-                equipos = await response.json();
+                const rawEquipos = await response.json();
+                
+                // Normalizar estructura: extraer equipos si están anidados
+                equipos = rawEquipos.map(item => {
+                    // Si tiene propiedad 'equipos', es estructura anidada incorrecta
+                    if (item.equipos && Array.isArray(item.equipos)) {
+                        return item.equipos;
+                    }
+                    // Si es un equipo directo, usarlo
+                    if (item.id && item.nombre) {
+                        return item;
+                    }
+                    return null;
+                }).flat().filter(e => e !== null);
+                
                 console.log('🏆 Equipos cargados desde MongoDB:', equipos.length);
                 localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(equipos));
             }
@@ -223,13 +237,15 @@
         // Guardar en localStorage inmediatamente
         localStorage.setItem(`volleyball_equipos_${userId}`, JSON.stringify(this.equipos));
         
-        // Sincronizar con MongoDB
+        // Sincronizar cada equipo individualmente con MongoDB
         try {
-            await fetch(`${this.API_URL}/equipos`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, equipos: this.equipos })
-            });
+            for (const equipo of this.equipos) {
+                await fetch(`${this.API_URL}/equipos`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(equipo)
+                });
+            }
             console.log('✅ Equipos sincronizados con MongoDB');
         } catch (error) {
             console.error('❌ Error sincronizando equipos:', error);
@@ -908,9 +924,6 @@
         
         if (migrados) {
             console.log('✅ Migración automática completada');
-            
-            // Sincronizar con MongoDB
-            await this.sincronizarConMongoDB();
         }
     }
 
