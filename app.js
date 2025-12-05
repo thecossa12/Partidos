@@ -23,9 +23,9 @@
         this.equipos = await this.cargarEquipos();
         console.log('🏆 Equipos cargados:', this.equipos.length);
         
-        // 2. Si no hay equipos, crear el primero
+        // 2. Si no hay equipos, crear uno por defecto SIN popup
         if (this.equipos.length === 0) {
-            await this.crearEquipoInicial();
+            await this.crearEquipoPorDefecto();
         }
         
         // 3. Seleccionar equipo actual (último usado o el primero)
@@ -214,17 +214,10 @@
         }
     }
 
-    async crearEquipoInicial() {
-        const nombreEquipo = prompt('¿Cuál es el nombre de tu equipo?\n\nEjemplo: "Juvenil Femenino Villalba Voley"');
-        
-        if (!nombreEquipo || nombreEquipo.trim() === '') {
-            alert('⚠️ Debes ingresar un nombre para el equipo');
-            return await this.crearEquipoInicial(); // Volver a preguntar
-        }
-        
+    async crearEquipoPorDefecto() {
         const nuevoEquipo = {
             id: Date.now(),
-            nombre: nombreEquipo.trim(),
+            nombre: 'Mi Equipo',
             userId: this.getUserId(),
             fechaCreacion: new Date().toISOString()
         };
@@ -233,9 +226,9 @@
         this.equipoActualId = nuevoEquipo.id;
         
         await this.guardarEquipos();
-        localStorage.setItem(`ultimoEquipo_${this.userId}`, this.equipoActualId);
+        localStorage.setItem(`volleyball_ultimoEquipo_${this.userId}`, this.equipoActualId);
         
-        console.log('✅ Equipo inicial creado:', nuevoEquipo);
+        console.log('✅ Equipo por defecto creado:', nuevoEquipo);
         return nuevoEquipo;
     }
 
@@ -278,6 +271,26 @@
         
         const equipo = this.equipos.find(e => e.id === equipoId);
         showNotification(`🏆 Cambiado a: ${equipo.nombre}`, 'success');
+    }
+
+    async editarNombreEquipo(equipoId) {
+        const equipo = this.equipos.find(e => e.id === equipoId);
+        if (!equipo) return;
+        
+        const nuevoNombre = prompt('Editar nombre del equipo:', equipo.nombre);
+        
+        if (!nuevoNombre || nuevoNombre.trim() === '') {
+            return;
+        }
+        
+        equipo.nombre = nuevoNombre.trim();
+        await this.guardarEquipos();
+        
+        // Actualizar selector y lista
+        this.actualizarSelectorEquipos();
+        this.cargarListaEquiposGestion();
+        
+        showNotification(`✅ Nombre actualizado a: ${equipo.nombre}`, 'success');
     }
 
     async eliminarEquipo(equipoId) {
@@ -728,6 +741,7 @@
                         <small class="equipo-fecha">Creado: ${new Date(equipo.fechaCreacion).toLocaleDateString()}</small>
                     </div>
                     <div class="equipo-acciones">
+                        <button onclick="app.editarNombreEquipo('${equipo.id}')" class="btn-editar-equipo" title="Editar nombre">✏️</button>
                         ${!esActual ? `<button onclick="app.cambiarEquipo('${equipo.id}'); app.cerrarModalGestionEquipos();" class="btn-seleccionar-equipo">Seleccionar</button>` : '<span class="badge-activo">Activo</span>'}
                         ${this.equipos.length > 1 ? `<button onclick="app.eliminarEquipo('${equipo.id}')" class="btn-eliminar-equipo">🗑️</button>` : ''}
                     </div>
@@ -816,7 +830,7 @@
             console.log('✅ Migración automática completada');
             
             // Sincronizar con MongoDB
-            await this.sincronizarDatos();
+            await this.sincronizarConMongoDB();
         }
     }
 
