@@ -8112,8 +8112,8 @@ function removeSystemUserRow(index) {
     renderSystemUsersEditor();
 }
 
-function saveSystemUsersLocally() {
-    console.log('💾 Guardando usuarios localmente');
+async function saveSystemUsersLocally() {
+    console.log('💾 Guardando usuarios localmente y en MongoDB...');
     
     // Validar campos
     const invalid = systemUsersConfig.find(u => !u.username || !u.password || !u.name);
@@ -8146,8 +8146,50 @@ function saveSystemUsersLocally() {
     // Guardar en localStorage
     Auth.saveUsers(usersObject);
     
-    console.log('✅ Usuarios guardados:', Object.keys(usersObject));
-    showNotification('✅ Usuarios guardados correctamente', 'success');
+    // Sincronizar con MongoDB
+    try {
+        let syncCount = 0;
+        let errorCount = 0;
+        
+        for (const user of systemUsersConfig) {
+            try {
+                const response = await fetch(`${app.API_URL}/users`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: user.username,
+                        password: user.password,
+                        name: user.name,
+                        isAdmin: user.isAdmin
+                    })
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    console.error(`❌ Error sincronizando usuario ${user.username}:`, error);
+                    errorCount++;
+                } else {
+                    const result = await response.json();
+                    console.log(`✅ Usuario ${user.username} ${result.created ? 'creado' : 'actualizado'} en MongoDB`);
+                    syncCount++;
+                }
+            } catch (err) {
+                console.error(`❌ Error de red sincronizando usuario ${user.username}:`, err);
+                errorCount++;
+            }
+        }
+        
+        console.log('✅ Usuarios guardados:', Object.keys(usersObject));
+        
+        if (errorCount === 0) {
+            showNotification(`✅ ${syncCount} usuarios guardados y sincronizados correctamente`, 'success');
+        } else {
+            showNotification(`⚠️ ${syncCount} usuarios sincronizados, ${errorCount} con errores. Revisa la consola.`, 'warning');
+        }
+    } catch (error) {
+        console.error('❌ Error sincronizando usuarios con MongoDB:', error);
+        showNotification('⚠️ Usuarios guardados localmente, pero hubo un error al sincronizar con la base de datos', 'warning');
+    }
 }
 
 function renderSystemUsersEditor() {

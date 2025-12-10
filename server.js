@@ -429,26 +429,48 @@ app.get('/api/users', async (req, res) => {
     }
 });
 
-// Crear usuario
+// Crear o actualizar usuario
 app.post('/api/users', async (req, res) => {
     try {
         const user = req.body;
         
-        // Verificar si el usuario ya existe
-        const existingUser = await db.collection('users').findOne({ username: user.username });
-        if (existingUser) {
-            return res.status(400).json({ error: 'El usuario ya existe' });
+        if (!user.username) {
+            return res.status(400).json({ error: 'El username es requerido' });
         }
         
-        const newUser = {
-            ...user,
-            createdAt: new Date().toISOString(),
-            lastLogin: null
+        // Verificar si el usuario ya existe
+        const existingUser = await db.collection('users').findOne({ username: user.username });
+        
+        const userData = {
+            username: user.username,
+            password: user.password,
+            name: user.name,
+            isAdmin: user.isAdmin || false,
+            lastLogin: existingUser?.lastLogin || null
         };
         
-        const result = await db.collection('users').insertOne(newUser);
-        res.json({ success: true, user: { ...newUser, _id: result.insertedId } });
+        // Si es nuevo, agregar createdAt
+        if (!existingUser) {
+            userData.createdAt = new Date().toISOString();
+        } else {
+            userData.createdAt = existingUser.createdAt;
+        }
+        
+        // Usar updateOne con upsert para crear o actualizar
+        const result = await db.collection('users').updateOne(
+            { username: user.username },
+            { $set: userData },
+            { upsert: true }
+        );
+        
+        console.log(`${result.upsertedCount > 0 ? '✅ Usuario creado' : '🔄 Usuario actualizado'}:`, user.username);
+        res.json({ 
+            success: true, 
+            user: userData,
+            created: result.upsertedCount > 0
+        });
     } catch (error) {
+        console.error('❌ Error en POST /api/users:', error);
         res.status(500).json({ error: error.message });
     }
 });
