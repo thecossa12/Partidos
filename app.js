@@ -1489,6 +1489,8 @@
             
             if (!userId || !equipoId) return;
             
+            let huboCambios = false;
+            
             // Cargar jugadoras desde MongoDB
             const jugadorasResponse = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
             if (jugadorasResponse.ok) {
@@ -1499,9 +1501,10 @@
                     console.log('🔄 Actualizando jugadoras desde MongoDB...');
                     this.jugadoras = jugadorasMongo;
                     localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadorasMongo));
+                    huboCambios = true;
                     
-                    // Actualizar UI solo si estamos en la pestaña de equipo
-                    if (this.currentTab === 'equipo') {
+                    // Actualizar UI si estamos en la pestaña de equipo
+                    if (this.currentTab === 'jugadoras' || this.currentTab === 'equipo') {
                         this.actualizarEquipo();
                     }
                 }
@@ -1517,16 +1520,24 @@
                     console.log('🔄 Actualizando jornadas desde MongoDB...');
                     this.jornadas = jornadasMongo;
                     localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadasMongo));
+                    huboCambios = true;
                     
-                    // Actualizar UI solo si estamos en la pestaña de historial
+                    // Actualizar UI en todas las pestañas relevantes
                     if (this.currentTab === 'historial') {
                         this.actualizarListaHistorial();
+                    } else if (this.currentTab === 'jornadas') {
+                        this.actualizarListaJornadas();
                     }
                 }
             }
+            
+            // Mostrar notificación si hubo cambios
+            if (huboCambios) {
+                showNotification('✅ Datos actualizados', 'success');
+            }
         } catch (error) {
             // Error silencioso para no molestar al usuario
-            console.debug('Sincronización automática fallida (normal si no hay conexión):', error.message);
+            console.debug('Sincronización fallida (normal si no hay conexión):', error.message);
         }
     }
 
@@ -1772,6 +1783,11 @@
         
         this.currentTab = tab;
         console.log(`🏷️ currentTab actualizado a: ${this.currentTab}`);
+        
+        // Sincronizar datos desde MongoDB al cambiar de pestaña (solo si NO estás editando)
+        if (!this.jornadaActual || this.jornadaActual.completada) {
+            this.sincronizarDesdeMongoDB();
+        }
         
         // Forzar actualización específica para la pestaña Equipo
         if (tab === 'jugadoras') {
