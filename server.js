@@ -248,7 +248,7 @@ app.delete('/api/equipos/cleanup', async (req, res) => {
 app.get('/api/jugadores', async (req, res) => {
     try {
         const userId = req.query.userId;
-        const equipoId = req.query.equipoId;
+        let equipoId = req.query.equipoId;
         
         if (!userId) {
             return res.status(400).json({ error: 'userId es requerido' });
@@ -256,12 +256,21 @@ app.get('/api/jugadores', async (req, res) => {
         
         const filter = { userId };
         if (equipoId) {
-            filter.equipoId = equipoId;
+            // Convertir a número si es numérico
+            equipoId = isNaN(equipoId) ? equipoId : parseInt(equipoId);
+            // Buscar tanto como string como número
+            filter.$or = [
+                { equipoId: equipoId },
+                { equipoId: String(equipoId) },
+                { equipoId: parseInt(equipoId) }
+            ];
         }
         
         const jugadores = await db.collection('jugadores').find(filter).toArray();
+        console.log(`📥 GET /api/jugadores - userId: ${userId}, equipoId: ${equipoId}, encontrados: ${jugadores.length}`);
         res.json(jugadores);
     } catch (error) {
+        console.error('❌ Error en GET /api/jugadores:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -326,7 +335,7 @@ app.delete('/api/jugadores/:id', async (req, res) => {
 app.get('/api/jornadas', async (req, res) => {
     try {
         const userId = req.query.userId;
-        const equipoId = req.query.equipoId;
+        let equipoId = req.query.equipoId;
         
         if (!userId) {
             return res.status(400).json({ error: 'userId es requerido' });
@@ -334,12 +343,21 @@ app.get('/api/jornadas', async (req, res) => {
         
         const filter = { userId };
         if (equipoId) {
-            filter.equipoId = equipoId;
+            // Convertir a número si es numérico
+            equipoId = isNaN(equipoId) ? equipoId : parseInt(equipoId);
+            // Buscar tanto como string como número
+            filter.$or = [
+                { equipoId: equipoId },
+                { equipoId: String(equipoId) },
+                { equipoId: parseInt(equipoId) }
+            ];
         }
         
         const jornadas = await db.collection('jornadas').find(filter).toArray();
+        console.log(`📥 GET /api/jornadas - userId: ${userId}, equipoId: ${equipoId}, encontradas: ${jornadas.length}`);
         res.json(jornadas);
     } catch (error) {
+        console.error('❌ Error en GET /api/jornadas:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -540,6 +558,11 @@ app.post('/api/sync', async (req, res) => {
                 // Eliminar _id de MongoDB si existe para evitar conflictos
                 const { _id, ...jugadorSinMongoId } = jugador;
                 
+                // Asegurar que equipoId sea número consistentemente
+                if (jugadorSinMongoId.equipoId && !isNaN(jugadorSinMongoId.equipoId)) {
+                    jugadorSinMongoId.equipoId = parseInt(jugadorSinMongoId.equipoId);
+                }
+                
                 return {
                     updateOne: {
                         filter: { id: jugador.id, userId },
@@ -551,6 +574,7 @@ app.post('/api/sync', async (req, res) => {
             
             const resultJugadores = await db.collection('jugadores').bulkWrite(jugadoresOperations);
             jugadoresCount = resultJugadores.upsertedCount + resultJugadores.modifiedCount;
+            console.log(`☁️ Jugadores sincronizados: ${jugadoresCount}`);
         }
         
         // Sincronizar jornadas usando bulkWrite con upsert
@@ -558,6 +582,11 @@ app.post('/api/sync', async (req, res) => {
             const jornadasOperations = jornadas.map(jornada => {
                 // Eliminar _id de MongoDB si existe para evitar conflictos
                 const { _id, ...jornadaSinMongoId } = jornada;
+                
+                // Asegurar que equipoId sea número consistentemente
+                if (jornadaSinMongoId.equipoId && !isNaN(jornadaSinMongoId.equipoId)) {
+                    jornadaSinMongoId.equipoId = parseInt(jornadaSinMongoId.equipoId);
+                }
                 
                 return {
                     updateOne: {
@@ -570,6 +599,7 @@ app.post('/api/sync', async (req, res) => {
             
             const resultJornadas = await db.collection('jornadas').bulkWrite(jornadasOperations);
             jornadasCount = resultJornadas.upsertedCount + resultJornadas.modifiedCount;
+            console.log(`☁️ Jornadas sincronizadas: ${jornadasCount}`);
         }
         
         res.json({ 

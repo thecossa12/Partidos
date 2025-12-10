@@ -193,10 +193,34 @@
         
         try {
             const userId = this.getUserId();
+            const equipoId = this.equipoActualId;
+            
+            if (!equipoId) {
+                console.warn('⚠️ No hay equipoId actual, saltando sincronización');
+                return;
+            }
+            
+            // Asegurar que TODOS los jugadores y jornadas tengan equipoId
+            const jugadoresConEquipo = (this.jugadoras || []).map(j => ({
+                ...j,
+                equipoId: j.equipoId || equipoId,
+                userId: userId
+            }));
+            
+            const jornadasConEquipo = (this.jornadas || []).map(jor => ({
+                ...jor,
+                equipoId: jor.equipoId || equipoId,
+                userId: userId
+            }));
             
             // Limpiar datos antes de enviar a MongoDB
-            const jugadoresLimpios = this.limpiarDatosParaMongo(this.jugadoras || []);
-            const jornadasLimpias = this.limpiarDatosParaMongo(this.jornadas || []);
+            const jugadoresLimpios = this.limpiarDatosParaMongo(jugadoresConEquipo);
+            const jornadasLimpias = this.limpiarDatosParaMongo(jornadasConEquipo);
+            
+            console.log(`☁️ Sincronizando equipo ${equipoId}:`, {
+                jugadores: jugadoresLimpios.length,
+                jornadas: jornadasLimpias.length
+            });
             
             // Sincronización completa de todos los datos
             const response = await fetch(`${this.API_URL}/sync`, {
