@@ -478,6 +478,9 @@
         // Resetear cache para forzar recarga
         this._jugadorasCargadas = false;
         
+        // Reiniciar sincronización automática para el nuevo equipo
+        this.iniciarSincronizacionAutomatica();
+        
         // Recargar datos del nuevo equipo
         this.jugadoras = await this.cargarJugadoras();
         this.jornadas = await this.cargarJornadas();
@@ -1462,8 +1465,72 @@
         // Actualizar selector de equipos
         this.actualizarSelectorEquipos();
         
+        // Iniciar sincronización automática cada 5 segundos
+        this.iniciarSincronizacionAutomatica();
+        
         // TEMPORAL: Siempre mostrar la app principal, sin setup
         this.mostrarAppPrincipal();
+    }
+    
+    iniciarSincronizacionAutomatica() {
+        // Sincronizar cada 5 segundos
+        if (this.intervaloSincronizacion) {
+            clearInterval(this.intervaloSincronizacion);
+        }
+        
+        this.intervaloSincronizacion = setInterval(async () => {
+            await this.sincronizarDesdeMongoDB();
+        }, 5000); // 5 segundos
+        
+        console.log('🔄 Sincronización automática iniciada (cada 5 segundos)');
+    }
+    
+    async sincronizarDesdeMongoDB() {
+        try {
+            const userId = this.getUserId();
+            const equipoId = this.equipoActualId;
+            
+            if (!userId || !equipoId) return;
+            
+            // Cargar jugadoras desde MongoDB
+            const jugadorasResponse = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
+            if (jugadorasResponse.ok) {
+                const jugadorasMongo = await jugadorasResponse.json();
+                
+                // Solo actualizar si hay diferencias
+                if (JSON.stringify(jugadorasMongo) !== JSON.stringify(this.jugadoras)) {
+                    console.log('🔄 Actualizando jugadoras desde MongoDB...');
+                    this.jugadoras = jugadorasMongo;
+                    localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadorasMongo));
+                    
+                    // Actualizar UI solo si estamos en la pestaña de equipo
+                    if (this.currentTab === 'equipo') {
+                        this.actualizarEquipo();
+                    }
+                }
+            }
+            
+            // Cargar jornadas desde MongoDB
+            const jornadasResponse = await fetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
+            if (jornadasResponse.ok) {
+                const jornadasMongo = await jornadasResponse.json();
+                
+                // Solo actualizar si hay diferencias
+                if (JSON.stringify(jornadasMongo) !== JSON.stringify(this.jornadas)) {
+                    console.log('🔄 Actualizando jornadas desde MongoDB...');
+                    this.jornadas = jornadasMongo;
+                    localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadasMongo));
+                    
+                    // Actualizar UI solo si estamos en la pestaña de historial
+                    if (this.currentTab === 'historial') {
+                        this.actualizarListaHistorial();
+                    }
+                }
+            }
+        } catch (error) {
+            // Error silencioso para no molestar al usuario
+            console.debug('Sincronización automática fallida (normal si no hay conexión):', error.message);
+        }
     }
 
     mostrarSetup() {
