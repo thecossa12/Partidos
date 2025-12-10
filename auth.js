@@ -94,27 +94,81 @@ window.Auth = {
         return { success: true, message: 'Usuario creado exitosamente' };
     },
 
-    login: function(username, password) {
+    login: async function(username, password) {
         console.log('🔐 Auth.login() - Intentando login:', username);
         
+        // PASO 1: Intentar autenticar con MongoDB primero
+        try {
+            const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                ? 'http://localhost:3000/api'
+                : window.location.origin + '/api';
+            
+            console.log('☁️ Consultando MongoDB para autenticación...');
+            const response = await fetch(`${API_URL}/users/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                console.log('✅ Autenticación exitosa desde MongoDB:', result.user);
+                
+                // Crear sesión
+                const session = {
+                    username: result.user.username,
+                    name: result.user.name,
+                    isAdmin: result.user.isAdmin,
+                    loginTime: new Date().toISOString()
+                };
+                
+                // Guardar sesión en múltiples lugares
+                localStorage.setItem('volleyball_auth', JSON.stringify(session));
+                localStorage.setItem('current_user', JSON.stringify(session));
+                localStorage.setItem('volleyball_session', JSON.stringify(session));
+                sessionStorage.setItem('volleyball_auth', JSON.stringify(session));
+                sessionStorage.setItem('current_user', JSON.stringify(session));
+                sessionStorage.setItem('volleyball_session', JSON.stringify(session));
+                
+                // También guardar el usuario en localStorage para uso offline
+                const users = this.getUsers();
+                users[username] = {
+                    username: result.user.username,
+                    password: password,
+                    name: result.user.name,
+                    isAdmin: result.user.isAdmin,
+                    createdAt: new Date().toISOString(),
+                    lastLogin: new Date().toISOString()
+                };
+                this.saveUsers(users);
+                
+                console.log('✅ Login exitoso desde MongoDB y sesión guardada');
+                return { success: true, message: 'Login exitoso', user: session };
+            } else {
+                console.log('⚠️ Usuario no encontrado en MongoDB, intentando con localStorage...');
+            }
+        } catch (error) {
+            console.warn('⚠️ Error conectando con MongoDB, usando localStorage como fallback:', error.message);
+        }
+        
+        // PASO 2: Fallback a localStorage si MongoDB falla o no está disponible
+        console.log('🔍 Verificando credenciales en localStorage...');
         const users = this.getUsers();
-        console.log('👥 Usuarios disponibles:', Object.keys(users));
+        console.log('👥 Usuarios disponibles en localStorage:', Object.keys(users));
         
         const user = users[username];
         if (!user) {
-            console.log('❌ Usuario no encontrado:', username);
-            console.log('📋 Todos los usuarios:', users);
-            return { success: false, message: 'Usuario no encontrado' };
+            console.log('❌ Usuario no encontrado en localStorage:', username);
+            return { success: false, message: 'Usuario o contraseña incorrectos' };
         }
         
         console.log('🔍 Comparando contraseñas:');
         console.log('   - Ingresada:', password);
         console.log('   - Almacenada:', user.password);
-        console.log('   - Son iguales?', user.password === password);
         
         if (user.password !== password) {
             console.log('❌ Contraseña incorrecta para:', username);
-            return { success: false, message: 'Contraseña incorrecta' };
+            return { success: false, message: 'Usuario o contraseña incorrectos' };
         }
         
         // Actualizar último login
@@ -138,7 +192,7 @@ window.Auth = {
             sessionStorage.setItem('current_user', JSON.stringify(session));
             sessionStorage.setItem('volleyball_session', JSON.stringify(session));
             
-            console.log('✅ Login exitoso y sesión guardada:', session);
+            console.log('✅ Login exitoso desde localStorage y sesión guardada:', session);
             return { success: true, message: 'Login exitoso', user: session };
         } catch (e) {
             console.error('❌ Error guardando sesión:', e);

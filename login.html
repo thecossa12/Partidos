@@ -53,13 +53,13 @@
     <script>
         console.log('🔐 === LOGIN FINAL CARGADO ===');
         
-        function attemptLogin(username, password) {
+        async function attemptLogin(username, password) {
             console.log('🔐 Intentando login con Auth.login():', username);
             
             try {
-                // Usar la nueva función Auth.login()
-                const result = Auth.login(username, password);
-                console.log('� Resultado de Auth.login():', result);
+                // Usar la nueva función Auth.login() (ahora es async)
+                const result = await Auth.login(username, password);
+                console.log('📊 Resultado de Auth.login():', result);
                 
                 if (result.success) {
                     console.log('✅ Login exitoso, redirigiendo...');
@@ -67,10 +67,12 @@
                     return true;
                 } else {
                     console.log('❌ Login fallido:', result.message);
+                    showError(result.message);
                     return false;
                 }
             } catch (error) {
                 console.error('❌ Error en attemptLogin:', error);
+                showError('Error al intentar iniciar sesión');
                 return false;
             }
         }
@@ -95,16 +97,27 @@
             const loginForm = document.getElementById('loginForm');
             
             if (loginForm) {
-                loginForm.addEventListener('submit', function(e) {
+                loginForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
                     
                     const username = document.getElementById('username').value.trim();
                     const password = document.getElementById('password').value;
                     
-                    if (attemptLogin(username, password)) {
-                        // Redirección manejada en attemptLogin
-                    } else {
-                        showError('Usuario o contraseña incorrectos');
+                    // Mostrar indicador de carga
+                    const submitBtn = loginForm.querySelector('button[type="submit"]');
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+                    submitBtn.disabled = true;
+                    
+                    try {
+                        await attemptLogin(username, password);
+                    } catch (error) {
+                        console.error('Error en login:', error);
+                        showError('Error al iniciar sesión');
+                    } finally {
+                        // Restaurar botón
+                        submitBtn.innerHTML = originalText;
+                        submitBtn.disabled = false;
                     }
                 });
             }
