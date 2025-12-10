@@ -275,7 +275,7 @@ app.get('/api/jugadores', async (req, res) => {
     }
 });
 
-// Crear un jugador
+// Crear o actualizar un jugador
 app.post('/api/jugadores', async (req, res) => {
     try {
         const jugador = req.body;
@@ -284,9 +284,26 @@ app.post('/api/jugadores', async (req, res) => {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        const result = await db.collection('jugadores').insertOne(jugador);
-        res.json({ ...jugador, _id: result.insertedId });
+        if (!jugador.id) {
+            return res.status(400).json({ error: 'id es requerido' });
+        }
+        
+        // Asegurar que equipoId sea número
+        if (jugador.equipoId && !isNaN(jugador.equipoId)) {
+            jugador.equipoId = parseInt(jugador.equipoId);
+        }
+        
+        // Usar updateOne con upsert para crear o actualizar
+        const result = await db.collection('jugadores').updateOne(
+            { id: jugador.id, userId: jugador.userId },
+            { $set: jugador },
+            { upsert: true }
+        );
+        
+        console.log(`${result.upsertedCount > 0 ? '✅ Jugador creado' : '🔄 Jugador actualizado'}: ${jugador.nombre}`);
+        res.json({ success: true, created: result.upsertedCount > 0, jugador });
     } catch (error) {
+        console.error('❌ Error en POST /api/jugadores:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -371,8 +388,20 @@ app.post('/api/jornadas', async (req, res) => {
             return res.status(400).json({ error: 'userId es requerido' });
         }
         
-        const result = await db.collection('jornadas').insertOne(jornada);
-        res.json({ ...jornada, _id: result.insertedId });
+        // Normalizar equipoId a número si existe
+        if (jornada.equipoId) {
+            jornada.equipoId = parseInt(jornada.equipoId);
+        }
+        
+        // Usar upsert para crear o actualizar
+        const result = await db.collection('jornadas').updateOne(
+            { id: jornada.id, userId: jornada.userId },
+            { $set: jornada },
+            { upsert: true }
+        );
+        
+        console.log(`📅 Jornada ${result.upsertedCount > 0 ? 'creada' : 'actualizada'}:`, jornada.id);
+        res.json({ ...jornada, _id: result.upsertedId });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

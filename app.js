@@ -753,7 +753,12 @@
         
         console.log('➕ Nueva jugadora creada:', nuevaJugadora);
         this.jugadoras.push(nuevaJugadora);
+        
+        // Guardar en localStorage
         this.guardarJugadoras();
+        
+        // Sincronizar inmediatamente con MongoDB
+        this.sincronizarJugadoraIndividual(nuevaJugadora);
         
         // Limpiar formulario
         document.getElementById('nombreJugadora').value = '';
@@ -763,8 +768,76 @@
         document.getElementById('formJugadora').style.display = 'none';
         this.actualizarEquipo();
         
+        showNotification(`✅ ${nuevaJugadora.nombre} agregada correctamente`, 'success');
         console.log('✅ Jugadora guardada exitosamente');
+    }
+    
+    async sincronizarJugadoraIndividual(jugadora) {
+        try {
+            const userId = this.getUserId();
+            const equipoId = this.equipoActualId;
+            
+            // Asegurar que tenga equipoId y userId
+            const jugadoraCompleta = {
+                ...jugadora,
+                equipoId: jugadora.equipoId || equipoId,
+                userId: userId
+            };
+            
+            // Limpiar _id de MongoDB si existe
+            const { _id, ...jugadoraSinMongoId } = jugadoraCompleta;
+            
+            console.log('☁️ Sincronizando jugadora con MongoDB:', jugadoraSinMongoId.nombre);
+            
+            const response = await fetch(`${this.API_URL}/jugadores`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(jugadoraSinMongoId)
+            });
+            
+            if (response.ok) {
+                console.log('✅ Jugadora sincronizada con MongoDB');
+            } else {
+                console.error('❌ Error sincronizando jugadora con MongoDB');
+            }
+        } catch (error) {
+            console.error('❌ Error en sincronización individual:', error);
+        }
 }
+    
+    async sincronizarJornadaIndividual(jornada) {
+        try {
+            const userId = this.getUserId();
+            const equipoId = this.equipoActualId;
+            
+            // Asegurar que tenga equipoId y userId
+            const jornadaCompleta = {
+                ...jornada,
+                equipoId: jornada.equipoId || equipoId,
+                userId: userId
+            };
+            
+            // Limpiar _id de MongoDB si existe
+            const { _id, ...jornadaSinMongoId } = jornadaCompleta;
+            
+            console.log('☁️ Sincronizando jornada con MongoDB:', jornadaSinMongoId.id);
+            
+            const response = await fetch(`${this.API_URL}/jornadas`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(jornadaSinMongoId)
+            });
+            
+            if (response.ok) {
+                console.log('✅ Jornada sincronizada con MongoDB');
+            } else {
+                console.error('❌ Error sincronizando jornada con MongoDB');
+            }
+        } catch (error) {
+            console.error('❌ Error en sincronización individual de jornada:', error);
+        }
+    }
+
     async cargarJornadas() {
         const userId = this.getUserId();
         const equipoId = this.equipoActualId;
@@ -1895,7 +1968,12 @@
             planificadorContainer.style.display = 'none';
         }
         
+        // Guardar en localStorage
         this.guardarJornadas();
+        
+        // Sincronizar inmediatamente con MongoDB
+        this.sincronizarJornadaIndividual(nuevaJornada);
+        
         this.mostrarJornadaActual();
         this.generarGridsAsistencia(); // Generar las grillas de jugadoras
         this.irAPaso('lunes');
@@ -4756,14 +4834,36 @@
         document.addEventListener('keydown', handleEsc);
     }
 
-    eliminarJugadora(id) {
+    async eliminarJugadora(id) {
         const jugadora = this.jugadoras.find(j => j.id === id);
         if (!jugadora) return;
         
         if (confirm(`¿Eliminar a ${jugadora.nombre}?`)) {
+            // Eliminar del array local
             this.jugadoras = this.jugadoras.filter(j => j.id !== id);
+            
+            // Guardar en localStorage
             this.guardarJugadoras();
+            
+            // Eliminar de MongoDB
+            try {
+                const userId = this.getUserId();
+                const response = await fetch(`${this.API_URL}/jugadores/${id}?userId=${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    console.log('✅ Jugadora eliminada de MongoDB:', jugadora.nombre);
+                } else {
+                    console.error('❌ Error eliminando de MongoDB');
+                }
+            } catch (error) {
+                console.error('❌ Error eliminando jugadora de MongoDB:', error);
+            }
+            
+            // Actualizar UI
             this.actualizarEquipo();
+            showNotification(`🗑️ ${jugadora.nombre} eliminada correctamente`, 'success');
         }
     }
 
