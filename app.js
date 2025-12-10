@@ -478,9 +478,6 @@
         // Resetear cache para forzar recarga
         this._jugadorasCargadas = false;
         
-        // Reiniciar sincronización automática para el nuevo equipo
-        this.iniciarSincronizacionAutomatica();
-        
         // Recargar datos del nuevo equipo
         this.jugadoras = await this.cargarJugadoras();
         this.jornadas = await this.cargarJornadas();
@@ -1465,8 +1462,8 @@
         // Actualizar selector de equipos
         this.actualizarSelectorEquipos();
         
-        // Iniciar sincronización automática cada 5 segundos
-        this.iniciarSincronizacionAutomatica();
+        // DESACTIVADO: Sincronización automática causaba pérdida de datos
+        // this.iniciarSincronizacionAutomatica();
         
         // TEMPORAL: Siempre mostrar la app principal, sin setup
         this.mostrarAppPrincipal();
@@ -4211,7 +4208,7 @@
             } else {
                 console.log('🚫 Jugadoras sin asignar encontradas:', nombresNoAsignadas);
                 alert(`⚠️ No puedes completar la jornada. Las siguientes jugadoras disponibles no están asignadas a ningún set:\n\n${nombresNoAsignadas}\n\nAsegúrate de que todas las jugadoras disponibles estén en al menos un set antes de completar.`);
-                return false;
+                return;
             }
         }
         
