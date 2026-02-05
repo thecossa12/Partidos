@@ -1,4 +1,4 @@
-/**
+    /**
  * Script de migración para datos existentes al sistema multi-equipo
  * 
  * Este script añade equipoId por defecto a:
