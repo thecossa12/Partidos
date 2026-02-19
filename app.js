@@ -2125,12 +2125,15 @@
 
     actualizarBotonTogglePartidoSabado() {
         const btnToggle = document.getElementById('togglePartidoSabado');
-        if (!btnToggle || !this.jornadaActual) return;
+        const btnToggleSabado = document.getElementById('togglePartidoSabadoDesdeSabado');
+        if (!this.jornadaActual) return;
 
         if (this.jornadaActual.sinPartido) {
-            btnToggle.textContent = '✅ Reactivar partido del sábado';
+            if (btnToggle) btnToggle.textContent = '✅ Reactivar partido del sábado';
+            if (btnToggleSabado) btnToggleSabado.textContent = '✅ Reactivar partido del sábado';
         } else {
-            btnToggle.textContent = '🚫 Marcar sábado sin partido';
+            if (btnToggle) btnToggle.textContent = '🚫 Marcar sábado sin partido';
+            if (btnToggleSabado) btnToggleSabado.textContent = '🚫 Marcar sábado sin partido';
         }
     }
 
@@ -2530,6 +2533,14 @@
         // Ocultar todos los pasos
         document.querySelectorAll('.jornada-paso').forEach(p => p.classList.remove('active'));
         document.querySelectorAll('.btn-nav').forEach(btn => btn.classList.remove('active'));
+
+        // Si salimos del sábado, ocultar el planificador de sets para evitar que aparezca fuera de su vista
+        if (paso !== 'sabado') {
+            const planificadorContainer = document.getElementById('planificadorSets');
+            if (planificadorContainer) {
+                planificadorContainer.style.display = 'none';
+            }
+        }
         
         // Mostrar paso actual
         document.getElementById(`paso${paso.charAt(0).toUpperCase() + paso.slice(1)}`).classList.add('active');
@@ -6071,6 +6082,16 @@
         // Cargar asistencias en los grids
         this.cargarAsistenciasEnGrids(jornada);
         
+        const tieneAsistenciaSabado = Array.isArray(jornada.asistenciaSabado) && jornada.asistenciaSabado.length > 0;
+        const tieneSetsGuardados = (
+            (jornada.sets?.set1?.length || 0) > 0 ||
+            (jornada.sets?.set2?.length || 0) > 0 ||
+            (jornada.sets?.set3?.length || 0) > 0 ||
+            (jornada.planificacionManual?.set1?.length || 0) > 0 ||
+            (jornada.planificacionManual?.set2?.length || 0) > 0 ||
+            (jornada.planificacionManual?.set3?.length || 0) > 0
+        );
+
         // Determinar a qué paso ir según si hay partido o no
         console.log('🔍 DEBUG - jornada.sinPartido:', jornada.sinPartido);
         if (jornada.sinPartido) {
@@ -6078,6 +6099,16 @@
             this.irAPaso('miercoles');
             alert(`Editando jornada del ${this.formatearFecha(fechaMostrar)} (sin partido)`);
         } else {
+            // Si aún no hay nada de sábado, volver a miércoles para continuar el flujo normal
+            if (!tieneAsistenciaSabado && !tieneSetsGuardados) {
+                this.irAPaso('miercoles');
+                this.actualizarBotonTogglePartidoSabado();
+                alert(`Editando jornada del ${this.formatearFecha(fechaMostrar)}. Continúa desde miércoles y decide si habrá partido el sábado.`);
+                console.log('✅ Jornada sin datos de sábado: abriendo paso miércoles');
+                this.configurarEventListeners();
+                return;
+            }
+
             // Si hay partido, ir al paso de planificación de sets
             this.irAPaso('sabado');
             
@@ -6313,6 +6344,7 @@
         document.getElementById('volverInicio')?.addEventListener('click', () => this.volverAInicioJornada());
         document.getElementById('completarJornada')?.addEventListener('click', () => this.completarJornada());
         document.getElementById('guardarBorrador')?.addEventListener('click', () => this.guardarBorrador());
+        document.getElementById('togglePartidoSabadoDesdeSabado')?.addEventListener('click', () => this.togglePartidoSabadoDesdeMiercoles());
         
         // Checkbox sin partido - mostrar/ocultar campos
         const sinPartidoCheckbox = document.getElementById('sinPartido');
