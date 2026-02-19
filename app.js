@@ -94,8 +94,31 @@
         
         this.jornadas = await this.cargarJornadas();
         console.log('📅 Jornadas cargadas:', this.jornadas.length);
+
+        await this.aplicarAjusteSilenciosoSet3();
         
         this.inicializarApp();
+    }
+
+    async aplicarAjusteSilenciosoSet3() {
+        try {
+            const userId = this.getUserId();
+            const equipoId = this.equipoActualId;
+            const marca = `volleyball_fix_set3_15pts_${userId}_${equipoId}`;
+
+            if (localStorage.getItem(marca) === 'true') {
+                return;
+            }
+
+            this.recalcularEstadisticasCompletas();
+            this.guardarJugadoras();
+            this.guardarJornadas();
+
+            localStorage.setItem(marca, 'true');
+            console.log('✅ Ajuste silencioso Set 3 (15 puntos) aplicado correctamente');
+        } catch (error) {
+            console.warn('⚠️ No se pudo aplicar ajuste silencioso Set 3:', error.message);
+        }
     }
     
     limpiarLocalStorageUndefined(userId) {
@@ -2033,6 +2056,7 @@
         
         this.jornadas.unshift(nuevaJornada);
         this.jornadaActual = nuevaJornada;
+        this.jornadaEstabaCompletada = false;
         this.pasoActual = 'lunes';
         
         // Resetear planificación de sets para nueva jornada
@@ -2090,11 +2114,73 @@
                 btnSiguienteMiercoles.className = 'btn-siguiente';
             }
         }
+
+        this.actualizarBotonTogglePartidoSabado();
         
         // Actualizar títulos de días con fechas específicas
         this.actualizarTitulosDias();
         
         this.generarGridsAsistencia();
+    }
+
+    actualizarBotonTogglePartidoSabado() {
+        const btnToggle = document.getElementById('togglePartidoSabado');
+        if (!btnToggle || !this.jornadaActual) return;
+
+        if (this.jornadaActual.sinPartido) {
+            btnToggle.textContent = '✅ Reactivar partido del sábado';
+        } else {
+            btnToggle.textContent = '🚫 Marcar sábado sin partido';
+        }
+    }
+
+    togglePartidoSabadoDesdeMiercoles() {
+        if (!this.jornadaActual) return;
+
+        if (this.jornadaActual.sinPartido) {
+            const confirmarReactivar = confirm('¿Quieres reactivar el partido del sábado para esta jornada?');
+            if (!confirmarReactivar) return;
+
+            this.jornadaActual.sinPartido = false;
+            this.guardarJornadas();
+            this.sincronizarJornadaIndividual(this.jornadaActual);
+            this.mostrarJornadaActual();
+            showNotification('✅ Partido del sábado reactivado', 'success');
+            return;
+        }
+
+        const confirmarCancelar = confirm('¿Marcar esta jornada como sábado sin partido? Se limpiará la planificación del sábado para evitar datos inconsistentes.');
+        if (!confirmarCancelar) return;
+
+        this.jornadaActual.sinPartido = true;
+        this.jornadaActual.asistenciaSabado = [];
+        this.jornadaActual.planificacionManual = {
+            set1: [],
+            set2: [],
+            set3: []
+        };
+        this.jornadaActual.sets = {
+            set1: [],
+            set2: [],
+            set3: []
+        };
+        this.jornadaActual.sustituciones = {
+            set1: [],
+            set2: [],
+            set3: []
+        };
+
+        this.planificacionSets = {
+            set1: [],
+            set2: [],
+            set3: []
+        };
+
+        this.guardarJornadas();
+        this.sincronizarJornadaIndividual(this.jornadaActual);
+        this.mostrarJornadaActual();
+        this.irAPaso('miercoles');
+        showNotification('✅ Jornada marcada sin partido en sábado', 'success');
     }
 
     generarGridsAsistencia() {
@@ -4122,6 +4208,8 @@
 
     completarJornadaSinPartido() {
         if (!this.jornadaActual) return;
+
+        const eraCompletada = !!this.jornadaEstabaCompletada;
         
         // Validar que tenga asistencia en lunes y miércoles
         if (this.jornadaActual.asistenciaLunes.length === 0 && this.jornadaActual.asistenciaMiercoles.length === 0) {
@@ -4132,12 +4220,17 @@
         // Marcar como completada
         this.jornadaActual.completada = true;
         this.jornadaActual.fechaCompletada = new Date().toISOString();
-        
+
+        if (eraCompletada) {
+            this.recalcularEstadisticasCompletas();
+        }
+
         this.guardarJornadas();
         this.actualizarListaHistorial();
         
         // Resetear estado
         this.jornadaActual = null;
+        this.jornadaEstabaCompletada = false;
         this.pasoActual = 'lunes';
         document.getElementById('jornadaActual').style.display = 'none';
         
@@ -4146,6 +4239,8 @@
 
     completarJornada() {
         if (!this.jornadaActual) return;
+
+        const eraCompletada = !!this.jornadaEstabaCompletada;
         
         // IMPORTANTE: Sincronizar referencias antes de validar y completar
         this.sincronizarReferenciasJugadoras(this.jornadaActual);
@@ -4258,13 +4353,19 @@
         
         // Marcar como completada
         this.jornadaActual.completada = true;
-        
-        // Actualizar estadísticas de jugadoras
-        this.actualizarEstadisticasJornada();
+
+        if (eraCompletada) {
+            this.recalcularEstadisticasCompletas();
+        } else {
+            // Actualizar estadísticas de jugadoras
+            this.actualizarEstadisticasJornada();
+        }
         
         // Guardar
         this.guardarJornadas();
         this.guardarJugadoras();
+
+        this.jornadaEstabaCompletada = false;
         
         // Volver al inicio y cambiar a pestaña historial
         this.volverAInicioJornada();
@@ -4323,8 +4424,8 @@
         });
         
         // Obtener planificación y sustituciones de la jornada
-        const planificacionSet1 = jornada.planificacionManual?.set1 || [];
-        const planificacionSet2 = jornada.planificacionManual?.set2 || [];
+        const planificacionSet1 = jornada.planificacionManual?.set1 || jornada.sets?.set1 || jornada.sabado?.set1 || [];
+        const planificacionSet2 = jornada.planificacionManual?.set2 || jornada.sets?.set2 || jornada.sabado?.set2 || [];
         const sustitucionesSet1 = jornada.sustituciones?.set1 || [];
         const sustitucionesSet2 = jornada.sustituciones?.set2 || [];
         
@@ -4334,10 +4435,10 @@
         // Calcular puntos Set 1
         planificacionSet1.forEach(jugadora => {
             const sustitucion = sustitucionesSet1.find(s => s.saleId === jugadora.id);
-            let puntosSet = 25;
+            let puntosSet = this.obtenerPuntosMaximosSet(1);
             
             if (sustitucion) {
-                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(1));
             }
             
             puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosSet;
@@ -4346,23 +4447,42 @@
         // Calcular puntos Set 2
         planificacionSet2.forEach(jugadora => {
             const sustitucion = sustitucionesSet2.find(s => s.saleId === jugadora.id);
-            let puntosSet = 25;
+            let puntosSet = this.obtenerPuntosMaximosSet(2);
             
             if (sustitucion) {
-                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(2));
             }
             
             puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosSet;
         });
         
+        // Calcular puntos Set 3 (opcional, a 15 puntos)
+        const planificacionSet3 = jornada.planificacionManual?.set3 || jornada.sets?.set3 || jornada.sabado?.set3 || [];
+        const sustitucionesSet3 = jornada.sustituciones?.set3 || [];
+        planificacionSet3.forEach(jugadora => {
+            const sustitucion = sustitucionesSet3.find(s => s.saleId === jugadora.id);
+            let puntosSet = this.obtenerPuntosMaximosSet(3);
+            
+            if (sustitucion) {
+                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(3));
+            }
+            
+            puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosSet;
+        });
+
         // Calcular puntos de suplentes
         sustitucionesSet1.forEach(sustitucion => {
-            const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+            const puntosJugados = this.obtenerPuntosMaximosSet(1) - this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(1));
             puntosJornada[sustitucion.entraId] = (puntosJornada[sustitucion.entraId] || 0) + puntosJugados;
         });
         
         sustitucionesSet2.forEach(sustitucion => {
-            const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+            const puntosJugados = this.obtenerPuntosMaximosSet(2) - this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(2));
+            puntosJornada[sustitucion.entraId] = (puntosJornada[sustitucion.entraId] || 0) + puntosJugados;
+        });
+
+        sustitucionesSet3.forEach(sustitucion => {
+            const puntosJugados = this.obtenerPuntosMaximosSet(3) - this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(3));
             puntosJornada[sustitucion.entraId] = (puntosJornada[sustitucion.entraId] || 0) + puntosJugados;
         });
         
@@ -4504,11 +4624,11 @@
         // Actualizar jugadoras del Set 1
         planificacionSet1.forEach(jugadora => {
             const sustitucion = sustitucionesSet1.find(s => s.saleId === jugadora.id);
-            let puntosSet = 25; // Por defecto jugó todo el set
+            let puntosSet = this.obtenerPuntosMaximosSet(1); // Por defecto jugó todo el set
             
             if (sustitucion) {
                 // Calcular puntos basado en cuándo salió
-                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(1));
                 console.log(`🔄 ${jugadora.nombre || `ID:${jugadora.id}`} sale en punto ${sustitucion.punto} -> ${puntosSet} puntos`);
             } else {
                 console.log(`✅ ${jugadora.nombre || `ID:${jugadora.id}`} jugó set completo -> 25 puntos`);
@@ -4520,11 +4640,11 @@
         // Actualizar jugadoras del Set 2
         planificacionSet2.forEach(jugadora => {
             const sustitucion = sustitucionesSet2.find(s => s.saleId === jugadora.id);
-            let puntosSet = 25; // Por defecto jugó todo el set
+            let puntosSet = this.obtenerPuntosMaximosSet(2); // Por defecto jugó todo el set
             
             if (sustitucion) {
                 // Calcular puntos basado en cuándo salió
-                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(2));
                 console.log(`🔄 SET2: ${jugadora.nombre || `ID:${jugadora.id}`} sale en punto ${sustitucion.punto} -> ${puntosSet} puntos`);
             } else {
                 console.log(`✅ SET2: ${jugadora.nombre || `ID:${jugadora.id}`} jugó set completo -> 25 puntos`);
@@ -4536,14 +4656,14 @@
         // Actualizar jugadoras del Set 3 (opcional)
         planificacionSet3.forEach(jugadora => {
             const sustitucion = sustitucionesSet3.find(s => s.saleId === jugadora.id);
-            let puntosSet = 25; // Por defecto jugó todo el set
+            let puntosSet = this.obtenerPuntosMaximosSet(3); // Por defecto jugó todo el set
             
             if (sustitucion) {
                 // Calcular puntos basado en cuándo salió
-                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                puntosSet = this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(3));
                 console.log(`🔄 SET3: ${jugadora.nombre || `ID:${jugadora.id}`} sale en punto ${sustitucion.punto} -> ${puntosSet} puntos`);
             } else {
-                console.log(`✅ SET3: ${jugadora.nombre || `ID:${jugadora.id}`} jugó set completo -> 25 puntos`);
+                console.log(`✅ SET3: ${jugadora.nombre || `ID:${jugadora.id}`} jugó set completo -> 15 puntos`);
             }
             
             puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosSet;
@@ -4616,7 +4736,11 @@
         return sustituciones;
     }
 
-    calcularPuntosPorSustitucion(puntoSustitucion) {
+    obtenerPuntosMaximosSet(numeroSet) {
+        return numeroSet === 3 ? 15 : 25;
+    }
+
+    calcularPuntosPorSustitucion(puntoSustitucion, puntosMaximos = 25) {
         // Convertir punto a número (ej: "12'5" -> 12.5)
         const puntoStr = puntoSustitucion.replace("'", ".");
         const punto = parseFloat(puntoStr);
@@ -4624,7 +4748,7 @@
         console.log(`🔢 Calculando puntos: "${puntoSustitucion}" -> "${puntoStr}" -> ${punto}`);
         
         // Validar que sea un punto válido
-        if (isNaN(punto) || punto < 0 || punto > 25) {
+        if (isNaN(punto) || punto < 0 || punto > puntosMaximos) {
             console.warn(`Punto de sustitución inválido: ${puntoSustitucion}`);
             return 0;
         }
@@ -4640,9 +4764,9 @@
         sustitucionesSet1.forEach(sustitucion => {
             const jugadora = this.jugadoras.find(j => j.id === sustitucion.entraId);
             if (jugadora) {
-                const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+                const puntosJugados = this.obtenerPuntosMaximosSet(1) - this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(1));
                 puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
-                console.log(`🔄 SET1: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos (25 - ${this.calcularPuntosPorSustitucion(sustitucion.punto)})`);
+                console.log(`🔄 SET1: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos`);
             }
         });
         
@@ -4650,9 +4774,9 @@
         sustitucionesSet2.forEach(sustitucion => {
             const jugadora = this.jugadoras.find(j => j.id === sustitucion.entraId);
             if (jugadora) {
-                const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+                const puntosJugados = this.obtenerPuntosMaximosSet(2) - this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(2));
                 puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
-                console.log(`🔄 SET2: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos (25 - ${this.calcularPuntosPorSustitucion(sustitucion.punto)})`);
+                console.log(`🔄 SET2: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos`);
             }
         });
         
@@ -4660,9 +4784,9 @@
         sustitucionesSet3.forEach(sustitucion => {
             const jugadora = this.jugadoras.find(j => j.id === sustitucion.entraId);
             if (jugadora) {
-                const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+                const puntosJugados = this.obtenerPuntosMaximosSet(3) - this.calcularPuntosPorSustitucion(sustitucion.punto, this.obtenerPuntosMaximosSet(3));
                 puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
-                console.log(`🔄 SET3: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos (25 - ${this.calcularPuntosPorSustitucion(sustitucion.punto)})`);
+                console.log(`🔄 SET3: ${jugadora.nombre} entra en punto ${sustitucion.punto} -> ${puntosJugados} puntos`);
             }
         });
     }
@@ -4671,6 +4795,7 @@
         document.getElementById('jornadaActual').style.display = 'none';
         document.getElementById('jornada-nueva').style.display = 'block'; // AGREGAR ESTA LÍNEA
         this.jornadaActual = null;
+        this.jornadaEstabaCompletada = false;
         
         // Resetear planificación de sets
         this.planificacionSets = {
@@ -5146,8 +5271,10 @@
             const puntosJornada = {};
 
             // Función para procesar jugadoras titulares de un set
-            const procesarSet = (setData, sustitucionesSet, nombreSet) => {
+            const procesarSet = (setData, sustitucionesSet, nombreSet, numeroSet) => {
                 if (!setData || setData.length === 0) return;
+
+                const puntosMaximosSet = this.obtenerPuntosMaximosSet(numeroSet);
 
                 // Filtrar null/undefined
                 const jugadorasTitulares = setData.filter(j => j !== null && j !== undefined);
@@ -5158,7 +5285,7 @@
                     
                     if (sustitucion) {
                         // Jugadora titular sustituida - puntos parciales
-                        const puntosJugados = this.calcularPuntosPorSustitucion(sustitucion.punto);
+                        const puntosJugados = this.calcularPuntosPorSustitucion(sustitucion.punto, puntosMaximosSet);
                         puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
                         if (jugadora.id === 5) {
                             console.log(`  🔵 ILINA (ID:5) ${nombreSet}: sustituida en ${sustitucion.punto}' -> ${puntosJugados} puntos (Total jornada: ${puntosJornada[jugadora.id]})`);
@@ -5166,23 +5293,24 @@
                             console.log(`  ↔️ ${nombreSet}: ${jugadora.nombre} sustituida en ${sustitucion.punto}' -> ${puntosJugados} puntos`);
                         }
                     } else {
-                        // Jugadora titular completa - 25 puntos
-                        puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + 25;
+                        // Jugadora titular completa
+                        puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosMaximosSet;
                         if (jugadora.id === 5) {
-                            console.log(`  🔵 ILINA (ID:5) ${nombreSet}: titular completo -> 25 puntos (Total jornada: ${puntosJornada[jugadora.id]})`);
+                            console.log(`  🔵 ILINA (ID:5) ${nombreSet}: titular completo -> ${puntosMaximosSet} puntos (Total jornada: ${puntosJornada[jugadora.id]})`);
                         } else {
-                            console.log(`  ✅ ${nombreSet}: ${jugadora.nombre} titular completo -> 25 puntos`);
+                            console.log(`  ✅ ${nombreSet}: ${jugadora.nombre} titular completo -> ${puntosMaximosSet} puntos`);
                         }
                     }
                 });
             };
 
             // Función para procesar suplentes de un set
-            const procesarSuplentes = (sustitucionesSet, nombreSet) => {
+            const procesarSuplentes = (sustitucionesSet, nombreSet, numeroSet) => {
+                const puntosMaximosSet = this.obtenerPuntosMaximosSet(numeroSet);
                 sustitucionesSet.forEach(sustitucion => {
                     const jugadora = this.jugadoras.find(j => j.id === sustitucion.entraId);
                     if (jugadora) {
-                        const puntosJugados = 25 - this.calcularPuntosPorSustitucion(sustitucion.punto);
+                        const puntosJugados = puntosMaximosSet - this.calcularPuntosPorSustitucion(sustitucion.punto, puntosMaximosSet);
                         puntosJornada[jugadora.id] = (puntosJornada[jugadora.id] || 0) + puntosJugados;
                         console.log(`  🔄 ${nombreSet}: ${jugadora.nombre} entra en ${sustitucion.punto}' -> ${puntosJugados} puntos`);
                     }
@@ -5198,24 +5326,24 @@
             const set1Data = jornada.planificacionManual?.set1 || jornada.sabado?.set1 || jornada.sets?.set1 || [];
             if (set1Data.length > 0) {
                 console.log(`  🏐 SET1: ${set1Data.length} jugadoras, sustituciones: ${sustitucionesSet1.length}`);
-                procesarSet(set1Data, sustitucionesSet1, 'SET1');
-                procesarSuplentes(sustitucionesSet1, 'SET1');
+                procesarSet(set1Data, sustitucionesSet1, 'SET1', 1);
+                procesarSuplentes(sustitucionesSet1, 'SET1', 1);
             }
 
             // Procesar Set 2
             const set2Data = jornada.planificacionManual?.set2 || jornada.sabado?.set2 || jornada.sets?.set2 || [];
             if (set2Data.length > 0) {
                 console.log(`  🏐 SET2: ${set2Data.length} jugadoras, sustituciones: ${sustitucionesSet2.length}`);
-                procesarSet(set2Data, sustitucionesSet2, 'SET2');
-                procesarSuplentes(sustitucionesSet2, 'SET2');
+                procesarSet(set2Data, sustitucionesSet2, 'SET2', 2);
+                procesarSuplentes(sustitucionesSet2, 'SET2', 2);
             }
 
             // Procesar Set 3
             const set3Data = jornada.planificacionManual?.set3 || jornada.sabado?.set3 || jornada.sets?.set3 || [];
             if (set3Data.length > 0) {
                 console.log(`  🏐 SET3: ${set3Data.length} jugadoras, sustituciones: ${sustitucionesSet3.length}`);
-                procesarSet(set3Data, sustitucionesSet3, 'SET3');
-                procesarSuplentes(sustitucionesSet3, 'SET3');
+                procesarSet(set3Data, sustitucionesSet3, 'SET3', 3);
+                procesarSuplentes(sustitucionesSet3, 'SET3', 3);
             }
 
             // Aplicar puntos y partido jugado
@@ -5410,8 +5538,8 @@
                             <button onclick="app.abrirModalEstadisticas(${jornada.id})" class="btn-estadisticas-partido">
                                 📊 ${jornada.estadisticas ? 'Editar' : 'Añadir'} Estadísticas
                             </button>
+                            <button onclick="app.continuarEditandoJornada(${jornada.id})" class="btn-editar-jornada">✏️ Editar</button>
                             ${!jornada.completada ? `
-                                <button onclick="app.continuarEditandoJornada(${jornada.id})" class="btn-editar-jornada">✏️ Editar</button>
                                 <button onclick="app.eliminarJornada(${jornada.id})" class="btn-eliminar-jornada">🗑️</button>
                             ` : ''}
                         </div>
@@ -5900,6 +6028,7 @@
 
         // Establecer como jornada actual
         this.jornadaActual = jornada;
+        this.jornadaEstabaCompletada = !!jornada.completada;
         
         // IMPORTANTE: Sincronizar referencias de jugadoras antes de cargar
         this.sincronizarReferenciasJugadoras(jornada);
@@ -5933,6 +6062,8 @@
         // Actualizar el título de la jornada - usar fechaSeleccionada si existe
         const fechaMostrar = jornada.fechaSeleccionada || jornada.fechaLunes;
         document.getElementById('tituloJornada').textContent = `Jornada: Semana del ${this.formatearFecha(fechaMostrar)}`;
+
+        this.mostrarJornadaActual();
         
         // Actualizar títulos de días con fechas específicas
         this.actualizarTitulosDias();
@@ -6177,6 +6308,7 @@
                 this.irAPaso('sabado');
             }
         });
+        document.getElementById('togglePartidoSabado')?.addEventListener('click', () => this.togglePartidoSabadoDesdeMiercoles());
         document.getElementById('volverMiercoles')?.addEventListener('click', () => this.irAPaso('miercoles'));
         document.getElementById('volverInicio')?.addEventListener('click', () => this.volverAInicioJornada());
         document.getElementById('completarJornada')?.addEventListener('click', () => this.completarJornada());
@@ -6528,10 +6660,8 @@
         
         // Recalcular desde todas las jornadas restantes (SOLO COMPLETADAS)
         this.jornadas.forEach(jornada => {
-            // Solo procesar jornadas completadas
             if (!jornada.completada) return;
-            
-            // Entrenamientos Lunes
+
             if (jornada.asistenciaLunes) {
                 jornada.asistenciaLunes.forEach(jugadoraId => {
                     const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
@@ -6540,8 +6670,7 @@
                     }
                 });
             }
-            
-            // Entrenamientos Miércoles
+
             if (jornada.asistenciaMiercoles) {
                 jornada.asistenciaMiercoles.forEach(jugadoraId => {
                     const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
@@ -6550,28 +6679,8 @@
                     }
                 });
             }
-            
-            // Partidos y puntos (solo jornadas completadas)
-            if (jornada.asistenciaSabado) {
-                jornada.asistenciaSabado.forEach(jugadoraId => {
-                    const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
-                    if (jugadora) {
-                        jugadora.partidosJugados = (jugadora.partidosJugados || 0) + 1;
-                        
-                        // Calcular puntos basado en sets jugados
-                        let puntos = 0;
-                        if (jornada.planificacionManual) {
-                            if (jornada.planificacionManual.set1?.some(j => j.id === jugadoraId)) {
-                                puntos += parseInt(jornada.puntosSet1) || 25;
-                            }
-                            if (jornada.planificacionManual.set2?.some(j => j.id === jugadoraId)) {
-                                puntos += parseInt(jornada.puntosSet2) || 25;
-                            }
-                        }
-                        jugadora.puntosJugados = (jugadora.puntosJugados || 0) + puntos;
-                    }
-                });
-            }
+
+            this.recalcularPuntosJornada(jornada);
         });
         
         this.guardarJugadoras();
