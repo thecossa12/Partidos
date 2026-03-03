@@ -12,6 +12,7 @@
         this.equipoActualId = null; // ID del equipo seleccionado
         this.jugadoras = [];
         this.jornadas = [];
+        this.syncChunkSize = 25;
         this.currentTab = 'jornadas';
         this.eventListenersConfigurados = false; // Prevenir duplicación de event listeners
         this.inicializarAppAsync();
@@ -221,26 +222,63 @@
                 jugadores: jugadoresLimpios.length,
                 jornadas: jornadasLimpias.length
             });
-            
-            // Sincronización completa de todos los datos
-            const response = await fetch(`${this.API_URL}/sync`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    jugadores: jugadoresLimpios,
-                    jornadas: jornadasLimpias,
-                    userId
-                })
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Error del servidor:', errorText);
-                throw new Error('Error en la sincronización');
+
+            const payload = { userId };
+
+            if (type === 'jugadores') {
+                payload.jugadores = jugadoresLimpios;
+            } else if (type === 'jornadas') {
+                payload.jornadas = jornadasLimpias;
+            } else {
+                payload.jugadores = jugadoresLimpios;
+                payload.jornadas = jornadasLimpias;
             }
-            
-            const result = await response.json();
-            console.log('☁️ Sincronizado con MongoDB:', result);
+
+            const enviarPayload = async (payloadParcial, etiqueta) => {
+                const response = await fetch(`${this.API_URL}/sync`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payloadParcial)
+                });
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error(`❌ Error del servidor (${etiqueta}):`, response.status, errorText);
+
+                    if (response.status === 413) {
+                        throw new Error('Los datos de la jornada son demasiado grandes para sincronizar (413). Se guardó en local y se reintentará en próximos cambios.');
+                    }
+
+                    throw new Error(`Error en la sincronización (${response.status})`);
+                }
+
+                return response.json();
+            };
+
+            const dividirEnLotes = (arr = [], size = this.syncChunkSize) => {
+                const lotes = [];
+                for (let i = 0; i < arr.length; i += size) {
+                    lotes.push(arr.slice(i, i + size));
+                }
+                return lotes;
+            };
+
+            if (type === 'jornadas' && Array.isArray(payload.jornadas) && payload.jornadas.length > this.syncChunkSize) {
+                const lotes = dividirEnLotes(payload.jornadas);
+                for (let i = 0; i < lotes.length; i++) {
+                    await enviarPayload({ userId, jornadas: lotes[i] }, `jornadas lote ${i + 1}/${lotes.length}`);
+                }
+                console.log(`☁️ Jornadas sincronizadas por lotes: ${payload.jornadas.length} (${lotes.length} lotes)`);
+            } else if (type === 'jugadores' && Array.isArray(payload.jugadores) && payload.jugadores.length > this.syncChunkSize) {
+                const lotes = dividirEnLotes(payload.jugadores);
+                for (let i = 0; i < lotes.length; i++) {
+                    await enviarPayload({ userId, jugadores: lotes[i] }, `jugadores lote ${i + 1}/${lotes.length}`);
+                }
+                console.log(`☁️ Jugadoras sincronizadas por lotes: ${payload.jugadores.length} (${lotes.length} lotes)`);
+            } else {
+                const result = await enviarPayload(payload, 'sync único');
+                console.log('☁️ Sincronizado con MongoDB:', result);
+            }
             
             this.showSyncIndicator('success');
         } catch (error) {
@@ -909,13 +947,20 @@
         }));
         
         localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadasConEquipo));
-        // Sincronización automática con MongoDB (no esperar, es asíncrona)
-        this.syncToMongoDB('jornadas', 'save');
+        // Sincronización automática con MongoDB:
+        // priorizar jornada actual (incremental) y usar sync por lote como fallback.
+        const jornadaParaSync = this.jornadaActual || this.jornadaEditandoEstadisticas || null;
+        if (jornadaParaSync) {
+            this.sincronizarJornadaIndividual(jornadaParaSync);
+        } else {
+            this.syncToMongoDB('jornadas', 'save');
+        }
     }
     
     async guardarJornadasSync() {
         const userId = this.getUserId();
-        localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
+        const equipoId = this.equipoActualId;
+        localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(this.jornadas));
         // Sincronización SÍNCRONA con MongoDB (esperar a que termine)
         await this.syncToMongoDB('jornadas', 'save');
     }
@@ -6493,7 +6538,8 @@
         
         // Eliminar de localStorage inmediatamente
         const userId = this.getUserId();
-        localStorage.setItem(`volleyball_jornadas_${userId}`, JSON.stringify(this.jornadas));
+        const equipoId = this.equipoActualId;
+        localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(this.jornadas));
         
         // Eliminar de MongoDB de forma explícita
         try {

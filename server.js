@@ -10,7 +10,8 @@ const PORT = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 
 // Ruta raíz - redirigir a login (ANTES de servir archivos estáticos)
 app.get('/', (req, res) => {
@@ -741,6 +742,18 @@ app.post('/api/migrate', async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+});
+
+// Manejo explícito para payload demasiado grande
+app.use((err, req, res, next) => {
+    if (err && (err.type === 'entity.too.large' || err.status === 413)) {
+        console.error('❌ Payload demasiado grande:', err.message);
+        return res.status(413).json({
+            error: 'Los datos a guardar son demasiado grandes. Reduce el tamaño de la jornada o divide el guardado.'
+        });
+    }
+
+    return next(err);
 });
 
 // Iniciar servidor
