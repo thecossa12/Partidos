@@ -6101,48 +6101,13 @@
             jornada.asistenciaSabado = jornada.asistenciaSabado.filter(id => jugadorasExistentes.has(id));
         }
         
-        // Sincronizar en planificación manual
+        // Sincronizar planificación manual y sets preservando posiciones (sin compactar)
         if (jornada.planificacionManual) {
-            ['set1', 'set2', 'set3'].forEach(setKey => {
-                if (jornada.planificacionManual[setKey]) {
-                    jornada.planificacionManual[setKey] = jornada.planificacionManual[setKey]
-                        .filter(jugadoraEnSet => jugadoraEnSet !== null && jugadoraEnSet !== undefined && jugadoraEnSet.id)
-                        .map(jugadoraEnSet => {
-                            // Buscar la jugadora actual con ese ID
-                            const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
-                            
-                            if (jugadoraActual) {
-                                // Retornar una copia actualizada de la jugadora
-                                return { ...jugadoraActual };
-                            } else {
-                                console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
-                                return null; // Marcar para eliminar
-                            }
-                        })
-                        .filter(j => j !== null); // Eliminar jugadoras no encontradas
-                }
-            });
+            jornada.planificacionManual = this.obtenerSetsNormalizados(jornada.planificacionManual);
         }
-        
-        // Sincronizar en sets (si existen)
+
         if (jornada.sets) {
-            ['set1', 'set2', 'set3'].forEach(setKey => {
-                if (jornada.sets[setKey]) {
-                    jornada.sets[setKey] = jornada.sets[setKey]
-                        .filter(jugadoraEnSet => jugadoraEnSet !== null && jugadoraEnSet !== undefined && jugadoraEnSet.id)
-                        .map(jugadoraEnSet => {
-                            const jugadoraActual = this.jugadoras.find(j => j.id === jugadoraEnSet.id);
-                            
-                            if (jugadoraActual) {
-                                return { ...jugadoraActual };
-                            } else {
-                                console.warn(`⚠️ Jugadora con ID ${jugadoraEnSet.id} no encontrada en equipo actual`);
-                                return null;
-                            }
-                        })
-                        .filter(j => j !== null);
-                }
-            });
+            jornada.sets = this.obtenerSetsNormalizados(jornada.sets);
         }
         
         console.log('✅ Referencias sincronizadas');
@@ -6165,21 +6130,18 @@
         // IMPORTANTE: Sincronizar referencias de jugadoras antes de cargar
         this.sincronizarReferenciasJugadoras(jornada);
         
-        // Cargar datos existentes si los hay
-        if (jornada.sets) {
-            this.planificacionSets = {
-                set1: jornada.sets.set1 || [],
-                set2: jornada.sets.set2 || [],
-                set3: jornada.sets.set3 || []
-            };
-        } else {
-            // Si no hay sets guardados, resetear
-            this.planificacionSets = {
-                set1: [],
-                set2: [],
-                set3: []
-            };
-        }
+        // Cargar datos existentes preservando posiciones.
+        // Prioridad: sets (borrador/edición) > planificación manual compatible > vacío
+        const planificacionManualCompatible =
+            jornada.planificacionManual &&
+            Array.isArray(jornada.planificacionManual.set1) &&
+            Array.isArray(jornada.planificacionManual.set2) &&
+            Array.isArray(jornada.planificacionManual.set3)
+                ? jornada.planificacionManual
+                : null;
+
+        const fuenteSets = jornada.sets || planificacionManualCompatible || { set1: [], set2: [], set3: [] };
+        this.planificacionSets = this.obtenerSetsNormalizados(fuenteSets);
 
         // Cambiar a la pestaña de Jornadas
         this.cambiarTab('jornadas');
