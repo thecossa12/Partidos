@@ -214,6 +214,20 @@
                 <div class="equipo-actions">
                     <button id="addJugadora" class="btn-add">+ Añadir Jugador/a</button>
                     <button id="recalcularEstadisticas" class="btn-recalcular">📊 Recalcular Estadísticas</button>
+                    <select id="filtroEquipo" class="filtro-equipo-select" title="Ordenar/filtrar jugadoras">
+                        <option value="dorsal_asc">Dorsal: menor a mayor</option>
+                        <option value="dorsal_desc">Dorsal: mayor a menor</option>
+                        <option value="puntos_desc">Puntos: mayor a menor</option>
+                        <option value="puntos_asc">Puntos: menor a mayor</option>
+                        <option value="partidos_desc">Partidos: mayor a menor</option>
+                        <option value="partidos_asc">Partidos: menor a mayor</option>
+                        <option value="entrenamientos_desc">Entrenamientos: mayor a menor</option>
+                        <option value="entrenamientos_asc">Entrenamientos: menor a mayor</option>
+                        <option value="sustituciones_desc">Sustituciones: mayor a menor</option>
+                        <option value="sustituciones_asc">Sustituciones: menor a mayor</option>
+                        <option value="nombre_asc">Nombre: A-Z</option>
+                    </select>
+                    <input type="text" id="filtroEquipoTexto" class="filtro-equipo-texto" placeholder="Buscar por nombre o dorsal...">
                 </div>
             </div>
             

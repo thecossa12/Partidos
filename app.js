@@ -147,6 +147,52 @@
         }
     }
 
+    normalizarSetPreservandoPosiciones(setOriginal) {
+        if (!Array.isArray(setOriginal)) return [];
+
+        const base = setOriginal.slice(0, 6);
+        const tieneContenido = base.some(item => item !== null && item !== undefined);
+
+        if (!tieneContenido) {
+            return [];
+        }
+
+        const setNormalizado = [];
+
+        for (let i = 0; i < 6; i++) {
+            const item = base[i];
+
+            if (item === null || item === undefined) {
+                setNormalizado.push(null);
+                continue;
+            }
+
+            if (typeof item === 'object') {
+                if (!item.id) {
+                    setNormalizado.push(null);
+                    continue;
+                }
+
+                const jugadoraActual = this.jugadoras.find(j => j.id === item.id);
+                setNormalizado.push(jugadoraActual ? { ...jugadoraActual } : item);
+                continue;
+            }
+
+            const jugadoraPorId = this.jugadoras.find(j => j.id === item);
+            setNormalizado.push(jugadoraPorId ? { ...jugadoraPorId } : null);
+        }
+
+        return setNormalizado;
+    }
+
+    obtenerSetsNormalizados(setsFuente) {
+        return {
+            set1: this.normalizarSetPreservandoPosiciones(setsFuente?.set1 || []),
+            set2: this.normalizarSetPreservandoPosiciones(setsFuente?.set2 || []),
+            set3: this.normalizarSetPreservandoPosiciones(setsFuente?.set3 || [])
+        };
+    }
+
     // ==================== SINCRONIZACIÓN MONGODB ====================
     getUserId() {
         const authData = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
@@ -942,17 +988,14 @@
         
         console.log('📅 Jornadas totales:', jornadas.length);
         
-        // Limpiar null/undefined de sets y planificación existentes
+        // Normalizar sets y planificación manual preservando posiciones 1-6 (sin compactar)
         jornadas.forEach(jornada => {
             if (jornada.sets) {
-                if (jornada.sets.set1) jornada.sets.set1 = jornada.sets.set1.filter(j => j !== null && j !== undefined);
-                if (jornada.sets.set2) jornada.sets.set2 = jornada.sets.set2.filter(j => j !== null && j !== undefined);
-                if (jornada.sets.set3) jornada.sets.set3 = jornada.sets.set3.filter(j => j !== null && j !== undefined);
+                jornada.sets = this.obtenerSetsNormalizados(jornada.sets);
             }
+
             if (jornada.planificacionManual) {
-                if (jornada.planificacionManual.set1) jornada.planificacionManual.set1 = jornada.planificacionManual.set1.filter(j => j !== null && j !== undefined);
-                if (jornada.planificacionManual.set2) jornada.planificacionManual.set2 = jornada.planificacionManual.set2.filter(j => j !== null && j !== undefined);
-                if (jornada.planificacionManual.set3) jornada.planificacionManual.set3 = jornada.planificacionManual.set3.filter(j => j !== null && j !== undefined);
+                jornada.planificacionManual = this.obtenerSetsNormalizados(jornada.planificacionManual);
             }
         });
         
@@ -2431,21 +2474,30 @@
     limpiarJugadoraDePlanificacion(jugadoraId) {
         console.log('🧹 Limpiando jugadora', jugadoraId, 'de la planificación de sets solamente');
         
-        // Remover de set 1 - USAR FILTER en lugar de splice para evitar undefined
+        // Limpiar de set 1 manteniendo posiciones (sin compactar)
         if (this.planificacionSets.set1) {
-            const antes = this.planificacionSets.set1.length;
-            this.planificacionSets.set1 = this.planificacionSets.set1.filter(j => j && j.id !== jugadoraId);
-            if (antes !== this.planificacionSets.set1.length) {
+            const existia = this.planificacionSets.set1.some(j => j && j.id === jugadoraId);
+            this.planificacionSets.set1 = this.planificacionSets.set1.map(j => (j && j.id === jugadoraId) ? null : j);
+            if (existia) {
                 console.log('🗑️ Removida del Set 1');
             }
         }
         
-        // Remover de set 2 - USAR FILTER en lugar de splice para evitar undefined
+        // Limpiar de set 2 manteniendo posiciones (sin compactar)
         if (this.planificacionSets.set2) {
-            const antes = this.planificacionSets.set2.length;
-            this.planificacionSets.set2 = this.planificacionSets.set2.filter(j => j && j.id !== jugadoraId);
-            if (antes !== this.planificacionSets.set2.length) {
+            const existia = this.planificacionSets.set2.some(j => j && j.id === jugadoraId);
+            this.planificacionSets.set2 = this.planificacionSets.set2.map(j => (j && j.id === jugadoraId) ? null : j);
+            if (existia) {
                 console.log('🗑️ Removida del Set 2');
+            }
+        }
+
+        // Limpiar de set 3 manteniendo posiciones (sin compactar)
+        if (this.planificacionSets.set3) {
+            const existia = this.planificacionSets.set3.some(j => j && j.id === jugadoraId);
+            this.planificacionSets.set3 = this.planificacionSets.set3.map(j => (j && j.id === jugadoraId) ? null : j);
+            if (existia) {
+                console.log('🗑️ Removida del Set 3');
             }
         }
         
@@ -2875,9 +2927,9 @@
         if (!jugadora) return;
         
         // Construir opciones disponibles
-        const set1Count = this.planificacionSets.set1.length;
-        const set2Count = this.planificacionSets.set2.length;
-        const set3Count = this.planificacionSets.set3.length;
+        const set1Count = this.planificacionSets.set1.filter(j => j !== null && j !== undefined).length;
+        const set2Count = this.planificacionSets.set2.filter(j => j !== null && j !== undefined).length;
+        const set3Count = this.planificacionSets.set3.filter(j => j !== null && j !== undefined).length;
         
         let opciones = '';
         let opcionesValidas = [];
@@ -2920,17 +2972,17 @@
         console.log(`Intentando añadir ${jugadora.nombre} al Set ${set}`);
         
         // Verificar límites
-        if ((set === '1' && this.planificacionSets.set1.length >= 6) ||
-            (set === '2' && this.planificacionSets.set2.length >= 6) ||
-            (set === '3' && this.planificacionSets.set3.length >= 6)) {
+        if ((set === '1' && this.planificacionSets.set1.filter(j => j !== null && j !== undefined).length >= 6) ||
+            (set === '2' && this.planificacionSets.set2.filter(j => j !== null && j !== undefined).length >= 6) ||
+            (set === '3' && this.planificacionSets.set3.filter(j => j !== null && j !== undefined).length >= 6)) {
             alert('El set ya tiene 6 jugadoras');
             return;
         }
         
         // Verificar si ya está en ese set
-        const yaEnSet1 = this.planificacionSets.set1.find(j => j.id === jugadoraId);
-        const yaEnSet2 = this.planificacionSets.set2.find(j => j.id === jugadoraId);
-        const yaEnSet3 = this.planificacionSets.set3.find(j => j.id === jugadoraId);
+        const yaEnSet1 = this.planificacionSets.set1.find(j => j && j.id === jugadoraId);
+        const yaEnSet2 = this.planificacionSets.set2.find(j => j && j.id === jugadoraId);
+        const yaEnSet3 = this.planificacionSets.set3.find(j => j && j.id === jugadoraId);
         
         if ((set === '1' && yaEnSet1) || (set === '2' && yaEnSet2) || (set === '3' && yaEnSet3)) {
             alert('La jugadora ya está en ese set');
@@ -2962,12 +3014,8 @@
     autoGuardarCambiosSets() {
         if (!this.jornadaActual) return;
         
-        // Guardar estado actual de sets (filtrar null para evitar undefined)
-        this.jornadaActual.sets = {
-            set1: this.planificacionSets.set1.filter(j => j !== null && j !== undefined),
-            set2: this.planificacionSets.set2.filter(j => j !== null && j !== undefined),
-            set3: this.planificacionSets.set3.filter(j => j !== null && j !== undefined)
-        };
+        // Guardar estado actual de sets preservando posiciones vacías
+        this.jornadaActual.sets = this.obtenerSetsNormalizados(this.planificacionSets);
         
         // Guardar sustituciones actuales
         this.jornadaActual.sustituciones = {
@@ -3350,13 +3398,13 @@
         const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
         if (!jugadora) return;
         
-        // Remover del set
+        // Remover del set preservando posiciones (sin compactar)
         if (set === 'set1') {
-            this.planificacionSets.set1 = this.planificacionSets.set1.filter(j => j.id !== jugadoraId);
+            this.planificacionSets.set1 = this.planificacionSets.set1.map(j => (j && j.id === jugadoraId) ? null : j);
         } else if (set === 'set2') {
-            this.planificacionSets.set2 = this.planificacionSets.set2.filter(j => j.id !== jugadoraId);
+            this.planificacionSets.set2 = this.planificacionSets.set2.map(j => (j && j.id === jugadoraId) ? null : j);
         } else if (set === 'set3') {
-            this.planificacionSets.set3 = this.planificacionSets.set3.filter(j => j.id !== jugadoraId);
+            this.planificacionSets.set3 = this.planificacionSets.set3.map(j => (j && j.id === jugadoraId) ? null : j);
         }
         
         // Auto-eliminar sustituciones relacionadas con esta jugadora
@@ -4236,12 +4284,8 @@
     guardarBorrador() {
         if (!this.jornadaActual) return;
         
-        // Guardar la planificación actual y sustituciones como borrador (filtrar null)
-        this.jornadaActual.sets = {
-            set1: this.planificacionSets.set1.filter(j => j !== null && j !== undefined),
-            set2: this.planificacionSets.set2.filter(j => j !== null && j !== undefined),
-            set3: this.planificacionSets.set3.filter(j => j !== null && j !== undefined)
-        };
+        // Guardar la planificación actual como borrador preservando posiciones vacías
+        this.jornadaActual.sets = this.obtenerSetsNormalizados(this.planificacionSets);
         
         // Guardar sustituciones temporales
         this.jornadaActual.sustituciones = {
@@ -4381,23 +4425,7 @@
         
         // Guardar planificación manual y sustituciones si existen
         if (this.planificacionSets && (this.planificacionSets.set1.length > 0 || this.planificacionSets.set2.length > 0 || this.planificacionSets.set3.length > 0)) {
-            // Filtrar null, undefined y jugadoras sin datos válidos antes de guardar
-            const limpiarSet = (set) => {
-                return set
-                    .filter(j => j !== null && j !== undefined)
-                    .filter(j => j.id && j.nombre) // Solo jugadoras con ID y nombre válidos
-                    .map(j => {
-                        // Sincronizar con datos actuales de la jugadora
-                        const jugadoraActual = this.jugadoras.find(jug => jug.id === j.id);
-                        return jugadoraActual ? { ...jugadoraActual } : j;
-                    });
-            };
-            
-            this.jornadaActual.planificacionManual = {
-                set1: limpiarSet(this.planificacionSets.set1),
-                set2: limpiarSet(this.planificacionSets.set2),
-                set3: limpiarSet(this.planificacionSets.set3)
-            };
+            this.jornadaActual.planificacionManual = this.obtenerSetsNormalizados(this.planificacionSets);
             
             // Guardar sustituciones
             this.jornadaActual.sustituciones = {
@@ -4901,10 +4929,63 @@
             return;
         }
 
-        console.log('✅ Generando lista de', this.jugadoras.length, 'jugadoras');
-        container.innerHTML = this.jugadoras
-            .sort((a, b) => a.dorsal - b.dorsal)
-            .map(jugadora => {
+        const textoFiltro = (document.getElementById('filtroEquipoTexto')?.value || '').trim().toLowerCase();
+        const criterioOrden = document.getElementById('filtroEquipo')?.value || 'dorsal_asc';
+
+        const jugadorasConMetricas = this.jugadoras.map(jugadora => ({
+            jugadora,
+            totalSustituciones: this.calcularTotalSustitucionesJugadora(jugadora.id)
+        }));
+
+        let jugadorasFiltradas = jugadorasConMetricas.filter(item => {
+            if (!textoFiltro) return true;
+            return item.jugadora.nombre.toLowerCase().includes(textoFiltro) || String(item.jugadora.dorsal).includes(textoFiltro);
+        });
+
+        const ordenarNumero = (valor) => Number(valor) || 0;
+        switch (criterioOrden) {
+            case 'dorsal_desc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(b.jugadora.dorsal) - ordenarNumero(a.jugadora.dorsal));
+                break;
+            case 'puntos_desc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(b.jugadora.puntosJugados) - ordenarNumero(a.jugadora.puntosJugados));
+                break;
+            case 'puntos_asc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(a.jugadora.puntosJugados) - ordenarNumero(b.jugadora.puntosJugados));
+                break;
+            case 'partidos_desc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(b.jugadora.partidosJugados) - ordenarNumero(a.jugadora.partidosJugados));
+                break;
+            case 'partidos_asc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(a.jugadora.partidosJugados) - ordenarNumero(b.jugadora.partidosJugados));
+                break;
+            case 'entrenamientos_desc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(b.jugadora.entrenamientosAsistidos) - ordenarNumero(a.jugadora.entrenamientosAsistidos));
+                break;
+            case 'entrenamientos_asc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(a.jugadora.entrenamientosAsistidos) - ordenarNumero(b.jugadora.entrenamientosAsistidos));
+                break;
+            case 'sustituciones_desc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(b.totalSustituciones) - ordenarNumero(a.totalSustituciones));
+                break;
+            case 'sustituciones_asc':
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(a.totalSustituciones) - ordenarNumero(b.totalSustituciones));
+                break;
+            case 'nombre_asc':
+                jugadorasFiltradas.sort((a, b) => a.jugadora.nombre.localeCompare(b.jugadora.nombre, 'es'));
+                break;
+            default:
+                jugadorasFiltradas.sort((a, b) => ordenarNumero(a.jugadora.dorsal) - ordenarNumero(b.jugadora.dorsal));
+        }
+
+        if (jugadorasFiltradas.length === 0) {
+            container.innerHTML = '<div class="empty-state"><h3>No hay resultados</h3><p>Prueba otro texto o criterio de filtro</p></div>';
+            return;
+        }
+
+        console.log('✅ Generando lista de', jugadorasFiltradas.length, 'jugadoras (filtradas)');
+        container.innerHTML = jugadorasFiltradas
+            .map(({ jugadora, totalSustituciones }) => {
                 const emoji = jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐');
                 
                 // Posición con formato inclusivo
@@ -4916,26 +4997,6 @@
                 } else {
                     posicion = 'Jugador/a';
                 }
-                
-                // Calcular sustituciones totales (tanto si entra como si sale) - SOLO DE JORNADAS COMPLETADAS
-                let totalSustituciones = 0;
-                this.jornadas.forEach(jornada => {
-                    // Solo contar sustituciones de jornadas completadas
-                    if (jornada.completada && jornada.sustituciones) {
-                        // Contar en set1
-                        if (jornada.sustituciones.set1) {
-                            totalSustituciones += jornada.sustituciones.set1.filter(s => 
-                                s.entraId === jugadora.id || s.saleId === jugadora.id
-                            ).length;
-                        }
-                        // Contar en set2
-                        if (jornada.sustituciones.set2) {
-                            totalSustituciones += jornada.sustituciones.set2.filter(s => 
-                                s.entraId === jugadora.id || s.saleId === jugadora.id
-                            ).length;
-                        }
-                    }
-                });
                 
                 return `
                     <div class="jugadora-item ${jugadora.lesionada ? 'lesionada' : ''}">
@@ -4965,6 +5026,21 @@
             }).join('');
         
         console.log('✅ Lista de jugadoras actualizada');
+    }
+
+    calcularTotalSustitucionesJugadora(jugadoraId) {
+        let totalSustituciones = 0;
+
+        this.jornadas.forEach(jornada => {
+            if (!jornada.completada || !jornada.sustituciones) return;
+
+            ['set1', 'set2', 'set3'].forEach(setKey => {
+                const sustitucionesSet = jornada.sustituciones[setKey] || [];
+                totalSustituciones += sustitucionesSet.filter(s => s.entraId === jugadoraId || s.saleId === jugadoraId).length;
+            });
+        });
+
+        return totalSustituciones;
     }
 
     agregarJugadora() {
@@ -6434,6 +6510,8 @@
         const btnRecalcular = document.getElementById('recalcularEstadisticas');
         const btnGuardar = document.getElementById('guardarJugadora');
         const btnCancelar = document.getElementById('cancelarJugadora');
+        const filtroEquipo = document.getElementById('filtroEquipo');
+        const filtroEquipoTexto = document.getElementById('filtroEquipoTexto');
         
         console.log('🔍 Verificando elementos del equipo:', {
             btnAdd: !!btnAdd,
@@ -6475,6 +6553,14 @@
                 this.guardarJugadora();
             });
             console.log('✅ Event listener guardarJugadora configurado');
+        }
+
+        if (filtroEquipo) {
+            filtroEquipo.addEventListener('change', () => this.actualizarEquipo());
+        }
+
+        if (filtroEquipoTexto) {
+            filtroEquipoTexto.addEventListener('input', () => this.actualizarEquipo());
         }
         
         if (btnCancelar) {

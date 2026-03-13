@@ -617,6 +617,40 @@ button:hover {
     color: white;
 }
 
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.equipo-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.filtro-equipo-select,
+.filtro-equipo-texto {
+    border: 1px solid #ced4da;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 0.95rem;
+    background: #fff;
+    color: #333;
+}
+
+.filtro-equipo-select {
+    min-width: 260px;
+}
+
+.filtro-equipo-texto {
+    min-width: 220px;
+}
+
 #guardarEntrenamiento, #guardarPartido {
     background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
     color: white;
