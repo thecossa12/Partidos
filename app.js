@@ -13,6 +13,7 @@
         this.jugadoras = [];
         this.jornadas = [];
         this.syncChunkSize = 25;
+        this.pendingJornadaSync = new Map();
         this.currentTab = 'jornadas';
         this.eventListenersConfigurados = false; // Prevenir duplicación de event listeners
         this.inicializarAppAsync();
@@ -913,36 +914,118 @@
 }
     
     async sincronizarJornadaIndividual(jornada) {
-        try {
-            const userId = this.getUserId();
-            const equipoId = this.equipoActualId;
-            
-            // Asegurar que tenga equipoId y userId
-            const jornadaCompleta = {
-                ...jornada,
-                equipoId: jornada.equipoId || equipoId,
-                userId: userId
-            };
-            
-            // Limpiar _id de MongoDB si existe
-            const { _id, ...jornadaSinMongoId } = jornadaCompleta;
-            
-            console.log('☁️ Sincronizando jornada con MongoDB:', jornadaSinMongoId.id);
-            
-            const response = await fetch(`${this.API_URL}/jornadas`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jornadaSinMongoId)
-            });
-            
-            if (response.ok) {
-                console.log('✅ Jornada sincronizada con MongoDB');
-            } else {
-                console.error('❌ Error sincronizando jornada con MongoDB');
+        if (!this.syncEnabled || !jornada) return false;
+
+        const jornadaId = String(jornada.id || '');
+        const syncPromise = (async () => {
+            try {
+                const userId = this.getUserId();
+                const equipoId = this.equipoActualId;
+                
+                // Asegurar que tenga equipoId y userId
+                const jornadaCompleta = {
+                    ...jornada,
+                    equipoId: jornada.equipoId || equipoId,
+                    userId: userId
+                };
+                
+                // Limpiar _id de MongoDB si existe
+                const { _id, ...jornadaSinMongoId } = jornadaCompleta;
+                
+                console.log('☁️ Sincronizando jornada con MongoDB:', jornadaSinMongoId.id);
+                
+                const response = await fetch(`${this.API_URL}/jornadas`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(jornadaSinMongoId)
+                });
+                
+                if (response.ok) {
+                    console.log('✅ Jornada sincronizada con MongoDB');
+                    return true;
+                }
+
+                const errorText = await response.text();
+                console.error('❌ Error sincronizando jornada con MongoDB:', response.status, errorText);
+                return false;
+            } catch (error) {
+                console.error('❌ Error en sincronización individual de jornada:', error);
+                return false;
+            } finally {
+                if (jornadaId) {
+                    this.pendingJornadaSync.delete(jornadaId);
+                }
             }
-        } catch (error) {
-            console.error('❌ Error en sincronización individual de jornada:', error);
+        })();
+
+        if (jornadaId) {
+            this.pendingJornadaSync.set(jornadaId, syncPromise);
         }
+
+        return syncPromise;
+    }
+
+    async esperarSincronizacionJornada(jornadaId) {
+        if (!jornadaId || !this.pendingJornadaSync) return true;
+
+        const syncPendiente = this.pendingJornadaSync.get(String(jornadaId));
+        if (!syncPendiente) return true;
+
+        try {
+            await syncPendiente;
+            return true;
+        } catch (error) {
+            console.warn('⚠️ No se pudo esperar la sincronización de la jornada:', error.message);
+            return false;
+        }
+    }
+
+    fusionarJornadasConPrioridadLocal(jornadasMongo = []) {
+        const jornadasLocales = Array.isArray(this.jornadas) ? this.jornadas : [];
+        const jornadasMap = new Map();
+
+        jornadasMongo.forEach(jornada => {
+            if (jornada?.id) {
+                jornadasMap.set(String(jornada.id), jornada);
+            }
+        });
+
+        jornadasLocales.forEach(jornadaLocal => {
+            if (!jornadaLocal?.id) return;
+
+            const key = String(jornadaLocal.id);
+            const jornadaMongo = jornadasMap.get(key);
+
+            if (!jornadaMongo) {
+                jornadasMap.set(key, jornadaLocal);
+                return;
+            }
+
+            const fechaLocal = new Date(jornadaLocal.fechaCompletada || jornadaLocal.fechaCreacion || 0).getTime();
+            const fechaMongo = new Date(jornadaMongo.fechaCompletada || jornadaMongo.fechaCreacion || 0).getTime();
+            const preservarLocal =
+                (!!jornadaLocal.completada && !jornadaMongo.completada) ||
+                (!!this.jornadaActual && String(this.jornadaActual.id) === key) ||
+                fechaLocal > fechaMongo;
+
+            jornadasMap.set(
+                key,
+                preservarLocal
+                    ? { ...jornadaMongo, ...jornadaLocal }
+                    : { ...jornadaLocal, ...jornadaMongo }
+            );
+        });
+
+        return Array.from(jornadasMap.values()).sort((a, b) => {
+            const fechaA = new Date(a.fechaCreacion || 0).getTime();
+            const fechaB = new Date(b.fechaCreacion || 0).getTime();
+
+            if (fechaA !== fechaB) {
+                return fechaB - fechaA;
+            }
+
+            return Number(b.id || 0) - Number(a.id || 0);
+        });
     }
 
     async cargarJornadas() {
@@ -1625,12 +1708,13 @@
             const jornadasResponse = await fetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
             if (jornadasResponse.ok) {
                 const jornadasMongo = await jornadasResponse.json();
+                const jornadasFusionadas = this.fusionarJornadasConPrioridadLocal(jornadasMongo);
                 
                 // Solo actualizar si hay diferencias
-                if (JSON.stringify(jornadasMongo) !== JSON.stringify(this.jornadas)) {
+                if (JSON.stringify(jornadasFusionadas) !== JSON.stringify(this.jornadas)) {
                     console.log('🔄 Actualizando jornadas desde MongoDB...');
-                    this.jornadas = jornadasMongo;
-                    localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadasMongo));
+                    this.jornadas = jornadasFusionadas;
+                    localStorage.setItem(`volleyball_jornadas_${userId}_${equipoId}`, JSON.stringify(jornadasFusionadas));
                     huboCambios = true;
                     
                     // Actualizar UI en todas las pestañas relevantes
@@ -1639,6 +1723,10 @@
                     } else if (this.currentTab === 'jornadas') {
                         this.actualizarListaJornadas();
                     }
+                }
+
+                if (!this.jornadaActual || this.jornadaActual.completada) {
+                    this.mostrarBannerJornadaPendiente();
                 }
             }
             
@@ -4306,7 +4394,7 @@
         this.volverAInicioJornada();
     }
 
-    completarJornadaSinPartido() {
+    async completarJornadaSinPartido() {
         if (!this.jornadaActual) return;
 
         const eraCompletada = !!this.jornadaEstabaCompletada;
@@ -4325,19 +4413,23 @@
             this.recalcularEstadisticasCompletas();
         }
 
+        const jornadaCompletadaId = this.jornadaActual.id;
         this.guardarJornadas();
+        await this.esperarSincronizacionJornada(jornadaCompletadaId);
         this.actualizarListaHistorial();
+        this.ocultarBanner();
         
         // Resetear estado
         this.jornadaActual = null;
         this.jornadaEstabaCompletada = false;
         this.pasoActual = 'lunes';
         document.getElementById('jornadaActual').style.display = 'none';
+        this.mostrarBannerJornadaPendiente();
         
         showNotification('✅ Jornada sin partido completada correctamente', 'success');
     }
 
-    completarJornada() {
+    async completarJornada() {
         if (!this.jornadaActual) return;
 
         const eraCompletada = !!this.jornadaEstabaCompletada;
@@ -4446,14 +4538,18 @@
         }
         
         // Guardar
+        const jornadaCompletadaId = this.jornadaActual.id;
         this.guardarJornadas();
         this.guardarJugadoras();
+        await this.esperarSincronizacionJornada(jornadaCompletadaId);
 
         this.jornadaEstabaCompletada = false;
+        this.ocultarBanner();
         
         // Volver al inicio y cambiar a pestaña historial
         this.volverAInicioJornada();
         this.cambiarTab('historial');
+        showNotification('✅ Jornada completada correctamente', 'success');
     }
 
     // ==================== RECÁLCULO COMPLETO DE ESTADÍSTICAS ====================
