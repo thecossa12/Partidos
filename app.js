@@ -4408,6 +4408,7 @@
         // Marcar como completada
         this.jornadaActual.completada = true;
         this.jornadaActual.fechaCompletada = new Date().toISOString();
+        this.jornadaActual.fechaCompletada = new Date().toISOString();
 
         if (eraCompletada) {
             this.recalcularEstadisticasCompletas();
@@ -6919,8 +6920,44 @@
     }
 
     // ==================== BANNER JORNADA PENDIENTE ====================
+    esJornadaPendienteValida(jornada) {
+        if (!jornada || jornada.completada) return false;
+
+        const fechaClave = jornada.fechaLunes || jornada.fechaSeleccionada;
+        if (!fechaClave) return true;
+
+        // Ignorar borradores inconsistentes si ya existe una jornada completada para la misma semana.
+        const jornadaCompletadaMismaSemana = this.jornadas.some(otraJornada => {
+            if (!otraJornada || otraJornada.id === jornada.id || !otraJornada.completada) {
+                return false;
+            }
+
+            const otraFechaClave = otraJornada.fechaLunes || otraJornada.fechaSeleccionada;
+            return otraFechaClave === fechaClave;
+        });
+
+        return !jornadaCompletadaMismaSemana;
+    }
+
+    obtenerJornadaPendientePrioritaria() {
+        const pendientesValidas = this.jornadas
+            .filter(jornada => this.esJornadaPendienteValida(jornada))
+            .sort((a, b) => {
+                const fechaA = new Date(a.fechaSeleccionada || a.fechaLunes || a.fechaCreacion || 0).getTime();
+                const fechaB = new Date(b.fechaSeleccionada || b.fechaLunes || b.fechaCreacion || 0).getTime();
+
+                if (fechaA !== fechaB) {
+                    return fechaB - fechaA;
+                }
+
+                return Number(b.id || 0) - Number(a.id || 0);
+            });
+
+        return pendientesValidas[0] || null;
+    }
+
     mostrarBannerJornadaPendiente() {
-        const jornadaPendiente = this.jornadas.find(j => !j.completada);
+        const jornadaPendiente = this.obtenerJornadaPendientePrioritaria();
         const banner = document.getElementById('bannerJornadaPendiente');
         const bannerTexto = banner.querySelector('.banner-texto');
         
