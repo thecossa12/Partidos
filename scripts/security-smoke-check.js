@@ -42,6 +42,39 @@ async function request(url, options = {}) {
   return { status: res.status, ok: res.ok, body };
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function requestWithRetry(url, options = {}, retryConfig = {}) {
+  const attempts = Number(retryConfig.attempts || 5);
+  const delayMs = Number(retryConfig.delayMs || 1200);
+
+  let lastError = null;
+
+  for (let i = 1; i <= attempts; i++) {
+    try {
+      const result = await request(url, options);
+
+      // Reintentar en errores transitorios de gateway/servicio.
+      if ([429, 502, 503, 504].includes(result.status) && i < attempts) {
+        await sleep(delayMs);
+        continue;
+      }
+
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (i < attempts) {
+        await sleep(delayMs);
+        continue;
+      }
+    }
+  }
+
+  throw lastError || new Error("Fallo de red sin detalle");
+}
+
 (async () => {
   const baseUrl = ensureEnv("CHECK_BASE_URL").replace(/\/$/, "");
   const username = ensureEnv("CHECK_USER");
@@ -50,13 +83,13 @@ async function request(url, options = {}) {
   console.log("Security smoke check against:", baseUrl);
 
   // 1) Protected endpoint without token should be unauthorized in strict mode.
-  const noToken = await request(`${baseUrl}/api/equipos`);
+  const noToken = await requestWithRetry(`${baseUrl}/api/equipos`);
   if (noToken.status !== 401) {
     fail(`Esperaba 401 sin token, recibi ${noToken.status}`);
   }
 
   // 2) Login should succeed and return JWT token.
-  const login = await request(`${baseUrl}/api/users/login`, {
+  const login = await requestWithRetry(`${baseUrl}/api/users/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username, password })
@@ -72,7 +105,7 @@ async function request(url, options = {}) {
   }
 
   // 3) Token cannot impersonate another user id.
-  const wrongUserId = await request(`${baseUrl}/api/equipos?userId=otro_usuario`, {
+  const wrongUserId = await requestWithRetry(`${baseUrl}/api/equipos?userId=otro_usuario`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 
@@ -81,7 +114,7 @@ async function request(url, options = {}) {
   }
 
   // 4) Same endpoint with valid token and no userId should work.
-  const withToken = await request(`${baseUrl}/api/equipos`, {
+  const withToken = await requestWithRetry(`${baseUrl}/api/equipos`, {
     headers: { Authorization: `Bearer ${token}` }
   });
 
