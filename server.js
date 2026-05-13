@@ -613,15 +613,20 @@ app.post('/api/users', async (req, res) => {
         
         // Verificar si el usuario ya existe
         const existingUser = await db.collection('users').findOne({ username: user.username });
-        
-        if (!existingUser && !user.password) {
+
+        // Normalizar contraseña para soportar entradas numéricas desde el panel admin.
+        const normalizedPassword = user.password === undefined || user.password === null
+            ? ''
+            : String(user.password);
+
+        if (!existingUser && !normalizedPassword) {
             return res.status(400).json({ error: 'La contraseña es requerida para crear el usuario' });
         }
 
         // Hash de contraseña (compatibilidad: si no se envía nueva, conserva la existente)
         let passwordToStore = existingUser?.password || null;
-        if (typeof user.password === 'string' && user.password.length > 0) {
-            passwordToStore = await bcrypt.hash(user.password, 12);
+        if (normalizedPassword.length > 0) {
+            passwordToStore = await bcrypt.hash(normalizedPassword, 12);
         }
 
         const userData = {

@@ -8687,10 +8687,11 @@ function removeSystemUserRow(index) {
 async function saveSystemUsersLocally() {
     console.log('💾 Guardando usuarios localmente y en MongoDB...');
     
-    // Validar campos
-    const invalid = systemUsersConfig.find(u => !u.username || !u.password || !u.name);
+    // Validar campos mínimos. La contraseña puede ir vacía si no quieres cambiarla
+    // en usuarios existentes de MongoDB.
+    const invalid = systemUsersConfig.find(u => !u.username || !u.name);
     if (invalid) {
-        showNotification('❌ Todos los campos son obligatorios', 'error');
+        showNotification('❌ Usuario y nombre son obligatorios', 'error');
         return;
     }
     
@@ -8730,18 +8731,30 @@ async function saveSystemUsersLocally() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         username: user.username,
-                        password: user.password,
+                        password: user.password === undefined || user.password === null ? '' : String(user.password),
                         name: user.name,
                         isAdmin: user.isAdmin
                     })
                 });
                 
                 if (!response.ok) {
-                    const error = await response.json();
-                    console.error(`❌ Error sincronizando usuario ${user.username}:`, error);
+                    const errorText = await response.text();
+                    let errorPayload;
+                    try {
+                        errorPayload = JSON.parse(errorText);
+                    } catch (e) {
+                        errorPayload = { error: errorText || `HTTP ${response.status}` };
+                    }
+                    console.error(`❌ Error sincronizando usuario ${user.username}:`, errorPayload);
                     errorCount++;
                 } else {
-                    const result = await response.json();
+                    const resultText = await response.text();
+                    let result = {};
+                    try {
+                        result = resultText ? JSON.parse(resultText) : {};
+                    } catch (e) {
+                        result = {};
+                    }
                     console.log(`✅ Usuario ${user.username} ${result.created ? 'creado' : 'actualizado'} en MongoDB`);
                     syncCount++;
                 }
