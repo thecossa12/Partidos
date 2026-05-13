@@ -20,6 +20,19 @@ const ALLOW_BOOTSTRAP = typeof process.env.ALLOW_BOOTSTRAP !== 'undefined'
     : !IS_PRODUCTION;
 const BOOTSTRAP_TOKEN = process.env.BOOTSTRAP_TOKEN || '';
 
+if (IS_PRODUCTION) {
+    const hasJwtSecret = typeof process.env.JWT_SECRET === 'string' && process.env.JWT_SECRET.trim().length >= 32;
+    if (!hasJwtSecret || process.env.JWT_SECRET.includes('change-me')) {
+        console.error('❌ Configuración insegura: JWT_SECRET es obligatorio en producción y debe tener al menos 32 caracteres.');
+        process.exit(1);
+    }
+
+    if (AUTH_MODE !== 'strict') {
+        console.error('❌ Configuración insegura: AUTH_MODE debe ser strict en producción.');
+        process.exit(1);
+    }
+}
+
 // Railway/proxies: necesario para que express-rate-limit use X-Forwarded-For correctamente.
 // Valores válidos por env: TRUST_PROXY=true | false | <número de saltos>
 if (typeof process.env.TRUST_PROXY !== 'undefined') {

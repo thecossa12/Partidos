@@ -97,6 +97,8 @@
         this.jornadas = await this.cargarJornadas();
         console.log('📅 Jornadas cargadas:', this.jornadas.length);
 
+        await this.sanitizarDatosCargados();
+
         await this.aplicarAjusteSilenciosoSet3();
         
         this.inicializarApp();
@@ -201,6 +203,98 @@
 
     obtenerJugadoraPorId(id) {
         return this.jugadoras.find(j => this.idsIguales(j.id, id));
+    }
+
+    sanitizarTexto(value, maxLength = 200) {
+        if (value === undefined || value === null) return '';
+        const cleaned = String(value)
+            .replace(/[<>"'`]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+        return cleaned.slice(0, maxLength);
+    }
+
+    sanitizarTextoMultilinea(value, maxLength = 1000) {
+        if (value === undefined || value === null) return '';
+        const cleaned = String(value)
+            .replace(/[<>"'`]/g, '')
+            .replace(/\r\n/g, '\n')
+            .replace(/\r/g, '\n')
+            .trim();
+
+        return cleaned.slice(0, maxLength);
+    }
+
+    escapeHtmlSeguro(value) {
+        return escapeHtml(String(value ?? ''));
+    }
+
+    async sanitizarDatosCargados() {
+        let huboCambiosEquipos = false;
+        let huboCambiosJugadoras = false;
+        let huboCambiosJornadas = false;
+
+        this.equipos = (this.equipos || []).map(equipo => {
+            if (!equipo) return equipo;
+            const nombreSeguro = this.sanitizarTexto(equipo.nombre, 120);
+            if (nombreSeguro !== (equipo.nombre || '')) {
+                huboCambiosEquipos = true;
+            }
+            return { ...equipo, nombre: nombreSeguro || 'Equipo' };
+        });
+
+        this.jugadoras = (this.jugadoras || []).map(jugadora => {
+            if (!jugadora) return jugadora;
+            const nombreSeguro = this.sanitizarTexto(jugadora.nombre, 120);
+            const notasSeguras = this.sanitizarTextoMultilinea(jugadora.notasLesion || '', 1000);
+            if (nombreSeguro !== (jugadora.nombre || '') || notasSeguras !== (jugadora.notasLesion || '')) {
+                huboCambiosJugadoras = true;
+            }
+            return {
+                ...jugadora,
+                nombre: nombreSeguro,
+                notasLesion: notasSeguras
+            };
+        });
+
+        this.jornadas = (this.jornadas || []).map(jornada => {
+            if (!jornada) return jornada;
+            const ubicacionSegura = this.sanitizarTexto(jornada.ubicacion || '', 200);
+            const rivalSeguro = this.sanitizarTexto(jornada.rival || '', 120);
+            const nombreEquipoSeguro = this.sanitizarTexto(jornada.nombreEquipo || '', 120);
+            const notasPartidoSeguras = this.sanitizarTextoMultilinea(jornada.estadisticas?.notas || '', 1500);
+
+            const hayCambioJornada =
+                ubicacionSegura !== (jornada.ubicacion || '') ||
+                rivalSeguro !== (jornada.rival || '') ||
+                nombreEquipoSeguro !== (jornada.nombreEquipo || '') ||
+                notasPartidoSeguras !== (jornada.estadisticas?.notas || '');
+
+            if (hayCambioJornada) {
+                huboCambiosJornadas = true;
+            }
+
+            return {
+                ...jornada,
+                ubicacion: ubicacionSegura,
+                rival: rivalSeguro,
+                nombreEquipo: nombreEquipoSeguro,
+                estadisticas: jornada.estadisticas
+                    ? { ...jornada.estadisticas, notas: notasPartidoSeguras }
+                    : jornada.estadisticas
+            };
+        });
+
+        if (huboCambiosEquipos) {
+            await this.guardarEquipos();
+        }
+        if (huboCambiosJugadoras) {
+            this.guardarJugadoras();
+        }
+        if (huboCambiosJornadas) {
+            this.guardarJornadas();
+        }
     }
 
     // ==================== SINCRONIZACIÓN MONGODB ====================
@@ -2205,8 +2299,8 @@
         
         // Solo pedir ubicación y rival si HAY partido
         if (!sinPartido) {
-            ubicacionInput = document.getElementById('ubicacionPartido').value.trim();
-            rivalInput = document.getElementById('equipoRival').value.trim();
+            ubicacionInput = this.sanitizarTexto(document.getElementById('ubicacionPartido').value, 200);
+            rivalInput = this.sanitizarTexto(document.getElementById('equipoRival').value, 120);
             tipoUbicacion = document.querySelector('input[name="tipoUbicacion"]:checked').value;
             
             if (!ubicacionInput) {
@@ -5164,6 +5258,8 @@
         container.innerHTML = jugadorasFiltradas
             .map(({ jugadora, totalSustituciones }) => {
                 const emoji = jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐');
+                const nombreSeguro = this.escapeHtmlSeguro(jugadora.nombre);
+                const notasLesionSeguras = this.escapeHtmlSeguro(jugadora.notasLesion || '');
                 
                 // Posición con formato inclusivo
                 let posicion;
@@ -5179,10 +5275,10 @@
                     <div class="jugadora-item ${jugadora.lesionada ? 'lesionada' : ''}">
                         <div>
                             <div class="jugadora-nombre">
-                                ${jugadora.lesionada ? '🩹 ' : ''}${emoji} #${jugadora.dorsal} ${jugadora.nombre}
+                                ${jugadora.lesionada ? '🩹 ' : ''}${emoji} #${jugadora.dorsal} ${nombreSeguro}
                                 ${jugadora.lesionada ? '<span class="badge-lesion">LESIONADA</span>' : ''}
                             </div>
-                            ${jugadora.lesionada && jugadora.notasLesion ? `<div class="notas-lesion">📝 ${jugadora.notasLesion}</div>` : ''}
+                            ${jugadora.lesionada && jugadora.notasLesion ? `<div class="notas-lesion">📝 ${notasLesionSeguras}</div>` : ''}
                             <div class="jugadora-stats">
                                 Posición: ${emoji} ${posicion} | 
                                 Partidos Jugados: ${jugadora.partidosJugados || 0} | 
@@ -5223,6 +5319,8 @@
     agregarJugadora() {
         const nombre = prompt('Nombre de la jugadora:');
         if (!nombre || !nombre.trim()) return;
+        const nombreSeguro = this.sanitizarTexto(nombre, 120);
+        if (!nombreSeguro) return;
         
         const dorsalesUsados = this.jugadoras.map(j => j.dorsal);
         let dorsal = 1;
@@ -5232,7 +5330,7 @@
         
         const nuevaJugadora = {
             id: Date.now(),
-            nombre: nombre.trim(),
+            nombre: nombreSeguro,
             dorsal: dorsal,
             posicion: 'jugadora',
             puntosJugados: 0,
@@ -5243,7 +5341,7 @@
         this.jugadoras.push(nuevaJugadora);
         this.guardarJugadoras();
         this.actualizarEquipo();
-        alert(`Jugadora ${nombre} agregada correctamente`);
+        alert(`Jugadora ${nombreSeguro} agregada correctamente`);
     }
 
     editarJugadora(id) {
@@ -5274,7 +5372,7 @@
         
         // Nuevo listener para confirmar
         newBtnConfirmar.addEventListener('click', () => {
-            const nuevoNombre = nombreInput.value.trim();
+            const nuevoNombre = this.sanitizarTexto(nombreInput.value, 120);
             const nuevoDorsal = parseInt(dorsalInput.value);
             const nuevaPosicion = posicionSelect.value;
             
@@ -5392,11 +5490,13 @@
         console.log('✅ Jugadora encontrada:', jugadora.nombre);
 
         // Crear modal dinámicamente
+        const nombreJugadoraSeguro = this.escapeHtmlSeguro(jugadora.nombre);
+        const notasLesionSeguras = this.escapeHtmlSeguro(jugadora.notasLesion || '');
         const modalHTML = `
             <div id="modalLesion" class="modal" style="display: flex;">
                 <div class="modal-content modal-lesion">
                     <span class="close" onclick="document.getElementById('modalLesion').remove()">&times;</span>
-                    <h2>🩹 Gestionar Lesión - ${jugadora.nombre}</h2>
+                    <h2>🩹 Gestionar Lesión - ${nombreJugadoraSeguro}</h2>
                     
                     <div class="form-lesion">
                         <div class="estado-lesion">
@@ -5413,7 +5513,7 @@
                         
                         <div class="notas-container" style="display: ${jugadora.lesionada ? 'block' : 'none'}">
                             <label for="notasLesion">📝 Notas sobre la lesión:</label>
-                            <textarea id="notasLesion" rows="4" placeholder="Ej: Esguince de tobillo, reposo 2 semanas...">${jugadora.notasLesion || ''}</textarea>
+                            <textarea id="notasLesion" rows="4" placeholder="Ej: Esguince de tobillo, reposo 2 semanas...">${notasLesionSeguras}</textarea>
                         </div>
                         
                         <div class="modal-actions">
@@ -5459,7 +5559,7 @@
         if (!jugadora) return;
 
         const toggle = document.getElementById('toggleLesion');
-        const notas = document.getElementById('notasLesion').value.trim();
+        const notas = this.sanitizarTextoMultilinea(document.getElementById('notasLesion').value, 1000);
 
         const estadoAnterior = jugadora.lesionada;
         const estadoNuevo = toggle.checked;
@@ -5890,8 +5990,8 @@
         if (!jornada.estadisticas) return '';
         
         const est = jornada.estadisticas;
-        const nombreLocal = this.nombreEquipoLocal || 'Tu equipo';
-        const nombreVisitante = jornada.rival || 'Equipo rival';
+        const nombreLocal = this.escapeHtmlSeguro(this.nombreEquipoLocal || 'Tu equipo');
+        const nombreVisitante = this.escapeHtmlSeguro(jornada.rival || 'Equipo rival');
         
         let html = '<div class="resultado-partido-preview">';
         html += '<h5>🏐 Resultado del Partido</h5>';
@@ -5937,7 +6037,7 @@
         if (est.notas && est.notas.trim()) {
             html += '<div class="notas-partido-display">';
             html += '<h5>📝 Notas del Partido</h5>';
-            html += `<p>${est.notas}</p>`;
+            html += `<p>${this.escapeHtmlSeguro(est.notas)}</p>`;
             html += '</div>';
         }
         
@@ -7813,7 +7913,7 @@ VolleyballManager.prototype.guardarEstadisticasPartido = function() {
         puntosVisitante3 = input3Local;
     }
     
-    const notas = document.getElementById('notasPartido').value.trim();
+    const notas = this.sanitizarTextoMultilinea(document.getElementById('notasPartido').value, 1500);
     
     // Calcular ganador (ahora con los puntos correctamente asignados)
     let setsLocal = 0;
