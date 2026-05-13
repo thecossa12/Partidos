@@ -1,4 +1,4 @@
-    /**
+/**
  * Script de migración para datos existentes al sistema multi-equipo
  * 
  * Este script añade equipoId por defecto a:
@@ -58,19 +58,14 @@ async function migrarDatos() {
             }).toArray();
             
             if (jugadoresSinEquipo.length > 0) {
-                console.log(`  🔄 Migrando ${jugadoresSinEquipo.length} jugadores...`);
-                
-                const resultJugadores = await db.collection('jugadores').updateMany(
-                    { 
-                        userId: username,
-                        equipoId: { $exists: false }
-                    },
-                    { 
-                        $set: { equipoId: equipoDefaultId }
-                    }
-                );
-                
-                console.log(`  ✅ ${resultJugadores.modifiedCount} jugadores actualizados`);
+                console.log(`  ➡️ Migrando ${jugadoresSinEquipo.length} jugador/a(s) sin equipoId...`);
+                for (const jugador/a of jugadoresSinEquipo) {
+                    await db.collection('jugadores').updateOne(
+                        { _id: jugador/a._id },
+                        { $set: { equipoId: equipoDefaultId } }
+                    );
+                }
+                console.log(`  ✅ Jugador/a(s) migrados: ${jugadoresSinEquipo.length}`);
             } else {
                 console.log(`  ℹ️  No hay jugadores sin equipoId`);
             }

@@ -78,7 +78,7 @@ Aplicación web local para gestionar de manera equitativa la rotación de jugado
 1. Ve a **"Historial"** (tercera pestaña)
 2. **Filtros disponibles**:
    - Por mes específico
-   - Por jugadora específica
+   - Por jugador/a específico/a
    - Combinación de ambos
 3. **Ve estadísticas automáticas** en la parte superior
 4. **Revisa jornadas completas**: Entrenamientos + partido juntos

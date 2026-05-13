@@ -52,30 +52,30 @@ const api = {
         }
     },
     
-    async createJugador(jugador) {
+    async createJugador(jugador/a) {
         try {
             const response = await apiFetch(`${API_URL}/jugadores`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jugador)
+                body: JSON.stringify(jugador/a)
             });
             return await response.json();
         } catch (error) {
-            console.error('Error creando jugador:', error);
+            console.error('Error creando jugador/a:', error);
             throw error;
         }
     },
     
-    async updateJugador(id, jugador) {
+    async updateJugador(id, jugador/a) {
         try {
             const response = await apiFetch(`${API_URL}/jugadores/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jugador)
+                body: JSON.stringify(jugador/a)
             });
             return await response.json();
         } catch (error) {
-            console.error('Error actualizando jugador:', error);
+            console.error('Error actualizando jugador/a:', error);
             throw error;
         }
     },

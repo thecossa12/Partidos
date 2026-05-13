@@ -420,11 +420,11 @@ app.get('/api/jugadores', async (req, res) => {
     try {
         const userId = req.query.userId;
         let equipoId = req.query.equipoId;
-        
+
         if (!userId) {
             return res.status(400).json({ error: 'userId es requerido' });
         }
-        
+
         const filter = { userId };
         if (equipoId) {
             // Convertir a número si es numérico
@@ -436,7 +436,7 @@ app.get('/api/jugadores', async (req, res) => {
                 { equipoId: parseInt(equipoId) }
             ];
         }
-        
+
         const jugadores = await db.collection('jugadores').find(filter).toArray();
         console.log(`📥 GET /api/jugadores - userId: ${userId}, equipoId: ${equipoId}, encontrados: ${jugadores.length}`);
         res.json(jugadores);
@@ -446,44 +446,44 @@ app.get('/api/jugadores', async (req, res) => {
     }
 });
 
-// Crear o actualizar un jugador
+// Crear o actualizar un jugador/a
 app.post('/api/jugadores', async (req, res) => {
     try {
-        const jugador = req.body;
-        
-        if (!jugador.userId) {
+        const jugador/a = req.body;
+
+        if (!jugador/a.userId) {
             return res.status(400).json({ error: 'userId es requerido' });
         }
-        
-        if (!jugador.id) {
+
+        if (!jugador/a.id) {
             return res.status(400).json({ error: 'id es requerido' });
         }
         
         // Asegurar que equipoId sea número
-        if (jugador.equipoId && !isNaN(jugador.equipoId)) {
-            jugador.equipoId = parseInt(jugador.equipoId);
+        if (jugador/a.equipoId && !isNaN(jugador/a.equipoId)) {
+            jugador/a.equipoId = parseInt(jugador/a.equipoId);
         }
         
         // Usar updateOne con upsert para crear o actualizar
         const result = await db.collection('jugadores').updateOne(
-            { id: jugador.id, userId: jugador.userId },
-            { $set: jugador },
+            { id: jugador/a.id, userId: jugador/a.userId },
+            { $set: jugador/a },
             { upsert: true }
         );
         
-        console.log(`${result.upsertedCount > 0 ? '✅ Jugador creado' : '🔄 Jugador actualizado'}: ${jugador.nombre}`);
-        res.json({ success: true, created: result.upsertedCount > 0, jugador });
+        console.log(`${result.upsertedCount > 0 ? '✅ Jugador/a creado' : '🔄 Jugador/a actualizado'}: ${jugador/a.nombre}`);
+        res.json({ success: true, created: result.upsertedCount > 0, jugador: jugador/a });
     } catch (error) {
         console.error('❌ Error en POST /api/jugadores:', error);
         handleInternalError(res, error);
     }
 });
 
-// Actualizar un jugador
+// Actualizar un jugador/a
 app.put('/api/jugadores/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const jugador = req.body;
+        const jugador/a = req.body;
         const userId = req.query.userId;
         
         if (!userId) {
@@ -492,7 +492,7 @@ app.put('/api/jugadores/:id', async (req, res) => {
         
         await db.collection('jugadores').updateOne(
             { id: parseInt(id), userId },
-            { $set: jugador }
+            { $set: jugador/a }
         );
         res.json({ success: true });
     } catch (error) {
@@ -500,7 +500,7 @@ app.put('/api/jugadores/:id', async (req, res) => {
     }
 });
 
-// Eliminar un jugador
+// Eliminar un jugador/a
 app.delete('/api/jugadores/:id', async (req, res) => {
     try {
         const { id } = req.params;
