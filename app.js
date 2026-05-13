@@ -6613,6 +6613,8 @@
         document.getElementById('togglePartidoSabado')?.addEventListener('click', () => this.togglePartidoSabadoDesdeMiercoles());
         document.getElementById('volverMiercoles')?.addEventListener('click', () => this.irAPaso('miercoles'));
         document.getElementById('volverInicio')?.addEventListener('click', () => this.volverAInicioJornada());
+        document.getElementById('guardarBorradorLunes')?.addEventListener('click', () => this.guardarBorrador());
+        document.getElementById('guardarBorradorMiercoles')?.addEventListener('click', () => this.guardarBorrador());
         document.getElementById('completarJornada')?.addEventListener('click', () => this.completarJornada());
         document.getElementById('guardarBorrador')?.addEventListener('click', () => this.guardarBorrador());
         document.getElementById('togglePartidoSabadoDesdeSabado')?.addEventListener('click', () => this.togglePartidoSabadoDesdeMiercoles());
