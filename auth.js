@@ -188,7 +188,13 @@ window.Auth = {
             console.warn('⚠️ Error conectando con MongoDB, usando localStorage como fallback:', error.message);
         }
         
-        // PASO 2: Fallback a localStorage si MongoDB falla o no está disponible
+        // PASO 2: Fallback local SOLO en entorno local/desarrollo.
+        const isLocalEnvironment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        if (!isLocalEnvironment) {
+            return { success: false, message: 'No se pudo iniciar sesión. Inténtalo de nuevo en unos segundos.' };
+        }
+
+        // Fallback a localStorage si MongoDB falla o no está disponible
         const users = this.getUsers();
         
         const user = users[username];

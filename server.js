@@ -14,6 +14,11 @@ const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-jwt-secret-change-me';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const AUTH_MODE = process.env.AUTH_MODE || 'compat';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+const ALLOW_BOOTSTRAP = typeof process.env.ALLOW_BOOTSTRAP !== 'undefined'
+    ? String(process.env.ALLOW_BOOTSTRAP).toLowerCase() === 'true'
+    : !IS_PRODUCTION;
+const BOOTSTRAP_TOKEN = process.env.BOOTSTRAP_TOKEN || '';
 
 // Railway/proxies: necesario para que express-rate-limit use X-Forwarded-For correctamente.
 // Valores válidos por env: TRUST_PROXY=true | false | <número de saltos>
@@ -50,6 +55,13 @@ function signUserToken(user) {
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
     );
+}
+
+function handleInternalError(res, error, context = 'server') {
+    if (error) {
+        console.error(`❌ Error interno [${context}]:`, error);
+    }
+    return res.status(500).json({ error: 'Error interno del servidor' });
 }
 
 // ==================== SEGURIDAD ====================
@@ -189,7 +201,7 @@ app.get('/api/equipos', async (req, res) => {
         const equipos = await db.collection('equipos').find({ userId }).toArray();
         res.json(equipos);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -256,7 +268,7 @@ app.put('/api/equipos/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -327,7 +339,7 @@ app.delete('/api/equipos/:id', async (req, res) => {
         });
     } catch (error) {
         console.error('Error eliminando equipo:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -362,7 +374,7 @@ app.delete('/api/equipos/cleanup-invalid', async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Error limpiando equipos inválidos:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -384,7 +396,7 @@ app.delete('/api/equipos/cleanup', async (req, res) => {
         res.json({ success: true, deletedCount: result.deletedCount });
     } catch (error) {
         console.error('Error limpiando equipos:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -417,7 +429,7 @@ app.get('/api/jugadores', async (req, res) => {
         res.json(jugadores);
     } catch (error) {
         console.error('❌ Error en GET /api/jugadores:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -450,7 +462,7 @@ app.post('/api/jugadores', async (req, res) => {
         res.json({ success: true, created: result.upsertedCount > 0, jugador });
     } catch (error) {
         console.error('❌ Error en POST /api/jugadores:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -471,7 +483,7 @@ app.put('/api/jugadores/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -488,7 +500,7 @@ app.delete('/api/jugadores/:id', async (req, res) => {
         await db.collection('jugadores').deleteOne({ id: parseInt(id), userId });
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -521,7 +533,7 @@ app.get('/api/jornadas', async (req, res) => {
         res.json(jornadas);
     } catch (error) {
         console.error('❌ Error en GET /api/jornadas:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -549,7 +561,7 @@ app.post('/api/jornadas', async (req, res) => {
         console.log(`📅 Jornada ${result.upsertedCount > 0 ? 'creada' : 'actualizada'}:`, jornada.id);
         res.json({ ...jornada, _id: result.upsertedId });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -570,7 +582,7 @@ app.put('/api/jornadas/:id', async (req, res) => {
         );
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -587,7 +599,7 @@ app.delete('/api/jornadas/:id', async (req, res) => {
         await db.collection('jornadas').deleteOne({ id: parseInt(id), userId });
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -606,7 +618,7 @@ app.post('/api/jornadas/delete-multiple', async (req, res) => {
         });
         res.json({ success: true });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -632,11 +644,15 @@ app.post('/api/users', async (req, res) => {
         const user = req.body;
 
         // Solo admin autenticado puede crear/editar usuarios,
-        // excepto bootstrap inicial cuando aún no existe ningún usuario.
+        // excepto bootstrap inicial cuando aún no existe ningún usuario y está permitido.
         const usersCount = await db.collection('users').countDocuments();
-        const isBootstrap = usersCount === 0;
+        const isBootstrapCandidate = usersCount === 0;
         const isAdminRequest = !!(req.authUser && req.authUser.isAdmin);
-        if (!isBootstrap && !isAdminRequest) {
+        const bootstrapHeader = String(req.headers['x-bootstrap-token'] || '');
+        const bootstrapByToken = !!(BOOTSTRAP_TOKEN && bootstrapHeader && bootstrapHeader === BOOTSTRAP_TOKEN);
+        const canBootstrap = isBootstrapCandidate && (ALLOW_BOOTSTRAP || bootstrapByToken);
+
+        if (!canBootstrap && !isAdminRequest) {
             return res.status(403).json({ error: 'Acceso denegado' });
         }
         
@@ -666,7 +682,7 @@ app.post('/api/users', async (req, res) => {
             username: user.username,
             password: passwordToStore,
             name: user.name,
-            isAdmin: isBootstrap ? true : !!user.isAdmin,
+            isAdmin: canBootstrap ? true : !!user.isAdmin,
             lastLogin: existingUser?.lastLogin || null
         };
         
@@ -848,7 +864,7 @@ app.post('/api/sync', async (req, res) => {
         });
     } catch (error) {
         console.error('Error en sync:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -879,7 +895,7 @@ app.get('/api/config', async (req, res) => {
             rivalesGuardados: config.rivalesGuardados || []
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -910,7 +926,7 @@ app.post('/api/config', async (req, res) => {
         res.json({ success: true, config: configData });
     } catch (error) {
         console.error('Error guardando config:', error);
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -948,7 +964,7 @@ app.post('/api/migrate', async (req, res) => {
             userId
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleInternalError(res, error);
     }
 });
 
@@ -969,3 +985,4 @@ app.listen(PORT, () => {
     console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
     console.log(`📱 Abrir en: http://localhost:${PORT}`);
 });
+
