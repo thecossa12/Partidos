@@ -792,21 +792,14 @@
             }
         }
         
+        // Deduplicar y normalizar para evitar casos id number/string duplicados.
+        jugadoras = this.fusionarJugadorasConPrioridadLocal([], jugadoras);
+
         console.log('👥 Jugadoras totales:', jugadoras.length);
         
         this._jugadorasCargadas = true;
         
-        return jugadoras.map(j => ({
-            ...j,
-            equipoId: j.equipoId || this.equipoActualId, // Asegurar que tenga equipoId
-            puntosJugados: j.puntosJugados || 0,
-            partidosJugados: j.partidosJugados || 0,
-            entrenamientosAsistidos: j.entrenamientosAsistidos || 0,
-            posicion: j.posicion || 'jugadora',
-            lesionada: j.lesionada || false,
-            notasLesion: j.notasLesion || '',
-            totalLesiones: j.totalLesiones || 0
-        }));
+        return jugadoras;
     }
 
     guardarJugadoras() {
@@ -816,7 +809,8 @@
         // Asegurar que todas las jugadoras tengan equipoId
         const jugadorasConEquipo = this.jugadoras.map(j => ({
             ...j,
-            equipoId: j.equipoId || equipoId
+            equipoId: j.equipoId || equipoId,
+            updatedAt: j.updatedAt || new Date().toISOString()
         }));
         
         localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadorasConEquipo));
@@ -856,7 +850,9 @@
             entrenamientosAsistidos: 0,
             lesionada: false,
             notasLesion: '',
-            totalLesiones: 0
+            totalLesiones: 0,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
         };
         
         console.log('➕ Nueva jugadora creada:', nuevaJugadora);
@@ -1025,6 +1021,80 @@
             }
 
             return Number(b.id || 0) - Number(a.id || 0);
+        });
+    }
+
+    obtenerClaveJugadora(jugadora) {
+        if (jugadora && jugadora.id !== undefined && jugadora.id !== null && String(jugadora.id) !== '') {
+            return `id:${String(jugadora.id)}`;
+        }
+
+        const nombre = String(jugadora?.nombre || '').trim().toLowerCase();
+        const dorsal = String(jugadora?.dorsal || '').trim();
+        return `nd:${nombre}|${dorsal}`;
+    }
+
+    normalizarJugadora(jugadora, equipoIdFallback) {
+        return {
+            ...jugadora,
+            equipoId: jugadora?.equipoId || equipoIdFallback,
+            puntosJugados: jugadora?.puntosJugados || 0,
+            partidosJugados: jugadora?.partidosJugados || 0,
+            entrenamientosAsistidos: jugadora?.entrenamientosAsistidos || 0,
+            posicion: jugadora?.posicion || 'jugadora',
+            lesionada: !!jugadora?.lesionada,
+            notasLesion: jugadora?.notasLesion || '',
+            totalLesiones: jugadora?.totalLesiones || 0,
+            updatedAt: jugadora?.updatedAt || jugadora?.fechaActualizacion || null
+        };
+    }
+
+    fusionarJugadorasConPrioridadLocal(jugadorasMongo = [], jugadorasLocalesInput = null) {
+        const jugadorasLocales = Array.isArray(jugadorasLocalesInput)
+            ? jugadorasLocalesInput
+            : (Array.isArray(this.jugadoras) ? this.jugadoras : []);
+
+        const equipoId = this.equipoActualId;
+        const jugadorasMap = new Map();
+
+        jugadorasMongo.forEach(jugadora => {
+            if (!jugadora) return;
+            const normalizada = this.normalizarJugadora(jugadora, equipoId);
+            jugadorasMap.set(this.obtenerClaveJugadora(normalizada), normalizada);
+        });
+
+        jugadorasLocales.forEach(jugadoraLocal => {
+            if (!jugadoraLocal) return;
+
+            const local = this.normalizarJugadora(jugadoraLocal, equipoId);
+            const key = this.obtenerClaveJugadora(local);
+            const mongo = jugadorasMap.get(key);
+
+            if (!mongo) {
+                jugadorasMap.set(key, local);
+                return;
+            }
+
+            const fechaLocal = new Date(local.updatedAt || local.fechaCreacion || 0).getTime();
+            const fechaMongo = new Date(mongo.updatedAt || mongo.fechaCreacion || 0).getTime();
+            const preservarLocal = (!!local.lesionada && !mongo.lesionada) || fechaLocal > fechaMongo;
+
+            const fusion = preservarLocal
+                ? { ...mongo, ...local }
+                : { ...local, ...mongo };
+
+            if (!fusion.notasLesion) {
+                fusion.notasLesion = local.notasLesion || mongo.notasLesion || '';
+            }
+
+            jugadorasMap.set(key, this.normalizarJugadora(fusion, equipoId));
+        });
+
+        return Array.from(jugadorasMap.values()).sort((a, b) => {
+            const dorsalA = Number(a.dorsal || 0);
+            const dorsalB = Number(b.dorsal || 0);
+            if (dorsalA !== dorsalB) return dorsalA - dorsalB;
+            return String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es');
         });
     }
 
@@ -1689,12 +1759,13 @@
             const jugadorasResponse = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
             if (jugadorasResponse.ok) {
                 const jugadorasMongo = await jugadorasResponse.json();
+                const jugadorasFusionadas = this.fusionarJugadorasConPrioridadLocal(jugadorasMongo);
                 
                 // Solo actualizar si hay diferencias
-                if (JSON.stringify(jugadorasMongo) !== JSON.stringify(this.jugadoras)) {
+                if (JSON.stringify(jugadorasFusionadas) !== JSON.stringify(this.jugadoras)) {
                     console.log('🔄 Actualizando jugadoras desde MongoDB...');
-                    this.jugadoras = jugadorasMongo;
-                    localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadorasMongo));
+                    this.jugadoras = jugadorasFusionadas;
+                    localStorage.setItem(`volleyball_jugadoras_${userId}_${equipoId}`, JSON.stringify(jugadorasFusionadas));
                     huboCambios = true;
                     
                     // Actualizar UI si estamos en la pestaña de equipo
@@ -5303,7 +5374,7 @@
 
     gestionarLesion(jugadoraId) {
         console.log('🩹 Abriendo modal de lesión para jugadora ID:', jugadoraId);
-        const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
+        const jugadora = this.jugadoras.find(j => String(j.id) === String(jugadoraId));
         if (!jugadora) {
             console.error('❌ Jugadora no encontrada:', jugadoraId);
             return;
@@ -5375,7 +5446,7 @@
     }
 
     guardarLesion(jugadoraId) {
-        const jugadora = this.jugadoras.find(j => j.id === jugadoraId);
+        const jugadora = this.jugadoras.find(j => String(j.id) === String(jugadoraId));
         if (!jugadora) return;
 
         const toggle = document.getElementById('toggleLesion');
@@ -5392,6 +5463,7 @@
 
         jugadora.lesionada = estadoNuevo;
         jugadora.notasLesion = estadoNuevo ? notas : '';
+        jugadora.updatedAt = new Date().toISOString();
 
         this.guardarJugadoras();
         this.actualizarEquipo();
