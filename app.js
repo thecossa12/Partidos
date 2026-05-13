@@ -174,12 +174,12 @@
                     continue;
                 }
 
-                const jugadoraActual = this.jugadoras.find(j => j.id === item.id);
+                const jugadoraActual = this.obtenerJugadoraPorId(item.id);
                 setNormalizado.push(jugadoraActual ? { ...jugadoraActual } : item);
                 continue;
             }
 
-            const jugadoraPorId = this.jugadoras.find(j => j.id === item);
+            const jugadoraPorId = this.obtenerJugadoraPorId(item);
             setNormalizado.push(jugadoraPorId ? { ...jugadoraPorId } : null);
         }
 
@@ -192,6 +192,15 @@
             set2: this.normalizarSetPreservandoPosiciones(setsFuente?.set2 || []),
             set3: this.normalizarSetPreservandoPosiciones(setsFuente?.set3 || [])
         };
+    }
+
+    idsIguales(a, b) {
+        if (a === undefined || a === null || b === undefined || b === null) return false;
+        return String(a) === String(b);
+    }
+
+    obtenerJugadoraPorId(id) {
+        return this.jugadoras.find(j => this.idsIguales(j.id, id));
     }
 
     // ==================== SINCRONIZACIÓN MONGODB ====================
@@ -5775,15 +5784,15 @@
         
         container.innerHTML = jornadasOrdenadas.map(jornada => {
             const jugadorasLunes = jornada.asistenciaLunes?.map(id => 
-                this.jugadoras.find(j => j.id === id)
+                this.obtenerJugadoraPorId(id)
             ).filter(j => j) || [];
             
             const jugadorasMiercoles = jornada.asistenciaMiercoles?.map(id => 
-                this.jugadoras.find(j => j.id === id)
+                this.obtenerJugadoraPorId(id)
             ).filter(j => j) || [];
             
             const jugadorasSabado = jornada.asistenciaSabado?.map(id => 
-                this.jugadoras.find(j => j.id === id)
+                this.obtenerJugadoraPorId(id)
             ).filter(j => j) || [];
             
             // Determinar qué fecha mostrar: si existe fechaSabado, usarla; si no, calcular desde fechaLunes
@@ -5954,7 +5963,7 @@
 
     generarVistaPartidoHistorial(jornada, jugadoraFiltrada) {
         const jugadorasSabado = jornada.asistenciaSabado?.map(id => 
-            this.jugadoras.find(j => j.id === id)
+            this.obtenerJugadoraPorId(id)
         ).filter(j => j) || [];
 
         if (jugadorasSabado.length === 0) {
@@ -5988,7 +5997,7 @@
                     const j = set1Data[posIndex - 1]; // Array es 0-based
                     if (!j) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
-                    const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
+                    const jugadora = typeof j === 'object' ? (this.obtenerJugadoraPorId(j.id) || j) : this.obtenerJugadoraPorId(j);
                     if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
                     // Obtener emoji del rol
@@ -6019,7 +6028,7 @@
                     const j = set2Data[posIndex - 1];
                     if (!j) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
-                    const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
+                    const jugadora = typeof j === 'object' ? (this.obtenerJugadoraPorId(j.id) || j) : this.obtenerJugadoraPorId(j);
                     if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
                     let emojiRol = '🏐';
@@ -6049,7 +6058,7 @@
                     const j = set3Data[posIndex - 1];
                     if (!j) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
-                    const jugadora = typeof j === 'object' ? j : this.jugadoras.find(jug => jug.id === j);
+                    const jugadora = typeof j === 'object' ? (this.obtenerJugadoraPorId(j.id) || j) : this.obtenerJugadoraPorId(j);
                     if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
                     let emojiRol = '🏐';
@@ -6258,16 +6267,26 @@
         console.log('🔄 Sincronizando referencias de jugadoras en jornada...');
         
         // Limpiar asistencias de jugadoras que ya no existen
-        const jugadorasExistentes = new Set(this.jugadoras.map(j => j.id));
+        const jugadorasExistentes = new Set(this.jugadoras.map(j => String(j.id)));
+        const normalizarIdsAsistencia = (ids = []) => {
+            if (!Array.isArray(ids)) return [];
+            return ids
+                .map(id => this.obtenerJugadoraPorId(id))
+                .filter(Boolean)
+                .map(j => j.id);
+        };
         
         if (jornada.asistenciaLunes) {
-            jornada.asistenciaLunes = jornada.asistenciaLunes.filter(id => jugadorasExistentes.has(id));
+            jornada.asistenciaLunes = normalizarIdsAsistencia(jornada.asistenciaLunes)
+                .filter(id => jugadorasExistentes.has(String(id)));
         }
         if (jornada.asistenciaMiercoles) {
-            jornada.asistenciaMiercoles = jornada.asistenciaMiercoles.filter(id => jugadorasExistentes.has(id));
+            jornada.asistenciaMiercoles = normalizarIdsAsistencia(jornada.asistenciaMiercoles)
+                .filter(id => jugadorasExistentes.has(String(id)));
         }
         if (jornada.asistenciaSabado) {
-            jornada.asistenciaSabado = jornada.asistenciaSabado.filter(id => jugadorasExistentes.has(id));
+            jornada.asistenciaSabado = normalizarIdsAsistencia(jornada.asistenciaSabado)
+                .filter(id => jugadorasExistentes.has(String(id)));
         }
         
         // Sincronizar planificación manual y sets preservando posiciones (sin compactar)
@@ -6286,7 +6305,7 @@
         console.log('🔄 Continuando edición de jornada:', jornadaId);
         
         // Buscar la jornada a editar
-        const jornada = this.jornadas.find(j => j.id === jornadaId);
+        const jornada = this.jornadas.find(j => this.idsIguales(j.id, jornadaId));
         if (!jornada) {
             alert('Jornada no encontrada');
             return;
@@ -6880,7 +6899,7 @@
         }
         
         // Si es la jornada actual en edición, limpiar completamente
-        if (this.jornadaActual && this.jornadaActual.id === jornadaId) {
+        if (this.jornadaActual && this.idsIguales(this.jornadaActual.id, jornadaId)) {
             this.jornadaActual = null;
             this.planificacionSets = {
                 set1: [],
@@ -6906,7 +6925,7 @@
         }
         
         // Si es la jornada pendiente del banner, limpiar el banner
-        if (this.jornadaPendienteId === jornadaId) {
+        if (this.idsIguales(this.jornadaPendienteId, jornadaId)) {
             this.jornadaPendienteId = null;
             const banner = document.getElementById('bannerJornadaPendiente');
             if (banner) {
@@ -6915,7 +6934,7 @@
         }
         
         // Eliminar la jornada del array local
-        this.jornadas = this.jornadas.filter(j => j.id !== jornadaId);
+        this.jornadas = this.jornadas.filter(j => !this.idsIguales(j.id, jornadaId));
         
         // Eliminar de localStorage inmediatamente
         const userId = this.getUserId();
