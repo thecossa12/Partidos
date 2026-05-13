@@ -2344,8 +2344,8 @@
         
         document.getElementById('jornadaActual').style.display = 'block';
         
-        // Usar fechaSeleccionada si existe, sino usar fechaLunes (para compatibilidad con jornadas antiguas)
-        const fechaMostrar = this.jornadaActual.fechaSeleccionada || this.jornadaActual.fechaLunes;
+        // Mostrar siempre la fecha oficial de jornada (sábado de esa semana)
+        const fechaMostrar = this.obtenerFechaSabadoJornada(this.jornadaActual);
         document.getElementById('tituloJornada').textContent = 
             `Jornada: Semana del ${this.formatearFecha(fechaMostrar)}`;
         
@@ -5795,24 +5795,7 @@
                 this.obtenerJugadoraPorId(id)
             ).filter(j => j) || [];
             
-            // Determinar qué fecha mostrar: si existe fechaSabado, usarla; si no, calcular desde fechaLunes
-            let fechaMostrar;
-            if (jornada.fechaSabado) {
-                fechaMostrar = jornada.fechaSabado;
-            } else {
-                // Jornada antigua, calcular sábado desde lunes
-                const [y, m, d] = jornada.fechaLunes.split('-').map(Number);
-                const sabadoObj = new Date(y, m - 1, d + 5);
-                const ys = sabadoObj.getFullYear();
-                const ms = String(sabadoObj.getMonth() + 1).padStart(2, '0');
-                const ds = String(sabadoObj.getDate()).padStart(2, '0');
-                fechaMostrar = `${ys}-${ms}-${ds}`;
-            }
-
-            // Si existe fechaSeleccionada, usarla en lugar de fechaMostrar calculada
-            if (jornada.fechaSeleccionada) {
-                fechaMostrar = jornada.fechaSeleccionada;
-            }
+            const fechaMostrar = this.obtenerFechaSabadoJornada(jornada);
 
             // Generar texto de partido info
             let partidoInfo = '';
@@ -6341,8 +6324,8 @@
         document.getElementById('jornada-nueva').style.display = 'none';
         document.getElementById('jornadaActual').style.display = 'block';
         
-        // Actualizar el título de la jornada - usar fechaSeleccionada si existe
-        const fechaMostrar = jornada.fechaSeleccionada || jornada.fechaLunes;
+        // Actualizar el título de la jornada usando siempre el sábado de la jornada
+        const fechaMostrar = this.obtenerFechaSabadoJornada(jornada);
         document.getElementById('tituloJornada').textContent = `Jornada: Semana del ${this.formatearFecha(fechaMostrar)}`;
 
         this.mostrarJornadaActual();
@@ -6425,8 +6408,51 @@
         this.configurarEventListeners();
     }
 
+    obtenerFechaSabadoJornada(jornada) {
+        if (!jornada) return '';
+
+        if (jornada.fechaSabado) {
+            return jornada.fechaSabado;
+        }
+
+        const parseYMD = (ymd) => {
+            if (!ymd || typeof ymd !== 'string') return null;
+            const partes = ymd.split('-').map(Number);
+            if (partes.length !== 3 || partes.some(Number.isNaN)) return null;
+            return { y: partes[0], m: partes[1], d: partes[2] };
+        };
+
+        const toISO = (fecha) => {
+            const y = fecha.getFullYear();
+            const m = String(fecha.getMonth() + 1).padStart(2, '0');
+            const d = String(fecha.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        };
+
+        const baseLunes = parseYMD(jornada.fechaLunes);
+        if (baseLunes) {
+            const sabado = new Date(baseLunes.y, baseLunes.m - 1, baseLunes.d + 5);
+            return toISO(sabado);
+        }
+
+        const baseSeleccionada = parseYMD(jornada.fechaSeleccionada);
+        if (baseSeleccionada) {
+            const fechaObj = new Date(baseSeleccionada.y, baseSeleccionada.m - 1, baseSeleccionada.d);
+            const diaSemana = fechaObj.getDay();
+            const diasHastaLunes = diaSemana === 0 ? -6 : -(diaSemana - 1);
+            const sabado = new Date(baseSeleccionada.y, baseSeleccionada.m - 1, baseSeleccionada.d + diasHastaLunes + 5);
+            return toISO(sabado);
+        }
+
+        return jornada.fechaSeleccionada || jornada.fechaLunes || '';
+    }
+
     formatearFecha(fechaString) {
+        if (!fechaString) return 'Fecha no disponible';
         const fecha = new Date(fechaString + 'T00:00:00');
+        if (Number.isNaN(fecha.getTime())) {
+            return fechaString;
+        }
         return fecha.toLocaleDateString('es-ES', { 
             day: '2-digit', 
             month: '2-digit', 
@@ -6864,7 +6890,7 @@
         const jornadasAEliminar = Array.from(checkboxes).map(cb => parseInt(cb.value));
         const nombresFechas = jornadasAEliminar.map(id => {
             const jornada = this.jornadas.find(j => j.id === id);
-            return this.formatearFecha(jornada.fechaLunes);
+            return `Sábado ${this.formatearFecha(this.obtenerFechaSabadoJornada(jornada))}`;
         });
         
         const confirmacion = confirm(
@@ -6893,7 +6919,7 @@
             if (!jornada) return;
             
             const confirmacion = confirm(
-                `¿Eliminar la jornada del ${this.formatearFecha(jornada.fechaLunes)}?\n\n` +
+                `¿Eliminar la jornada del sábado ${this.formatearFecha(this.obtenerFechaSabadoJornada(jornada))}?\n\n` +
                 `Se actualizarán las estadísticas de las jugadoras.`
             );
             
@@ -7036,8 +7062,8 @@
         const pendientesValidas = this.jornadas
             .filter(jornada => this.esJornadaPendienteValida(jornada))
             .sort((a, b) => {
-                const fechaA = new Date(a.fechaSeleccionada || a.fechaLunes || a.fechaCreacion || 0).getTime();
-                const fechaB = new Date(b.fechaSeleccionada || b.fechaLunes || b.fechaCreacion || 0).getTime();
+                const fechaA = new Date(this.obtenerFechaSabadoJornada(a) || a.fechaCreacion || 0).getTime();
+                const fechaB = new Date(this.obtenerFechaSabadoJornada(b) || b.fechaCreacion || 0).getTime();
 
                 if (fechaA !== fechaB) {
                     return fechaB - fechaA;
@@ -7055,7 +7081,7 @@
         const bannerTexto = banner.querySelector('.banner-texto');
         
         if (jornadaPendiente) {
-            const fechaMostrar = jornadaPendiente.fechaSeleccionada || jornadaPendiente.fechaLunes;
+            const fechaMostrar = this.obtenerFechaSabadoJornada(jornadaPendiente);
             bannerTexto.textContent = `Tienes una jornada pendiente: Semana del ${this.formatearFecha(fechaMostrar)}`;
             banner.style.display = 'block';
             document.body.classList.add('banner-activo');
@@ -7569,7 +7595,7 @@ VolleyballManager.prototype.abrirModalEstadisticas = function(jornadaId) {
         const esPartidoCasa = jornada.tipoUbicacion !== 'fuera'; // true si es en casa, false si es fuera
         
         // Llenar información de la jornada
-        const fechaMostrar = jornada.fechaSeleccionada || jornada.fechaSabado || jornada.fechaLunes;
+        const fechaMostrar = this.obtenerFechaSabadoJornada(jornada);
         document.getElementById('estadJornadaFecha').textContent = this.formatearFecha(fechaMostrar);
         document.getElementById('estadUbicacion').textContent = `${jornada.tipoUbicacion === 'fuera' ? 'Fuera' : 'Casa'} - ${jornada.ubicacion || 'Sin ubicación'}`;
         document.getElementById('estadRival').textContent = nombreRival;
