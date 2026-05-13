@@ -2,16 +2,58 @@ const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { connectDB } = require('./db');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// ==================== SEGURIDAD ====================
+
+// Headers de seguridad HTTP
+app.use(helmet({
+    contentSecurityPolicy: false // Desactivado para no romper los assets inline existentes
+}));
+
+// CORS restringido al propio origen
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',')
+    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Permitir peticiones sin origen (mismo servidor / curl en desarrollo)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error('Bloqueado por CORS'));
+    },
+    credentials: true
+}));
+
+// Rate limiting para el endpoint de login (máx 10 intentos por 15 min)
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { error: 'Demasiados intentos de login. Inténtalo de nuevo en 15 minutos.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Rate limiting general para toda la API
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000,
+    max: 200,
+    message: { error: 'Demasiadas peticiones. Inténtalo más tarde.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
 // Middleware
-app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(bodyParser.json({ limit: '2mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '2mb' }));
+app.use('/api', apiLimiter);
 
 // Ruta raíz - redirigir a login (ANTES de servir archivos estáticos)
 app.get('/', (req, res) => {
@@ -90,7 +132,7 @@ app.post('/api/equipos', async (req, res) => {
         res.json({ success: true, equipo: equipoSinId });
     } catch (error) {
         console.error('❌ Error guardando equipo:', error);
-        res.status(500).json({ error: error.message, details: error.stack });
+        res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
@@ -467,13 +509,13 @@ app.post('/api/jornadas/delete-multiple', async (req, res) => {
 
 // ==================== ENDPOINTS DE USUARIOS ====================
 
-// Obtener todos los usuarios
+// Obtener todos los usuarios (sin exponer contraseñas)
 app.get('/api/users', async (req, res) => {
     try {
-        const users = await db.collection('users').find({}).toArray();
+        const users = await db.collection('users').find({}, { projection: { password: 0 } }).toArray();
         res.json(users);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
@@ -512,29 +554,33 @@ app.post('/api/users', async (req, res) => {
         );
         
         console.log(`${result.upsertedCount > 0 ? '✅ Usuario creado' : '🔄 Usuario actualizado'}:`, user.username);
+        // No devolver la contraseña en la respuesta
+        const { password: _pw, ...userSinPassword } = userData;
         res.json({ 
             success: true, 
-            user: userData,
+            user: userSinPassword,
             created: result.upsertedCount > 0
         });
     } catch (error) {
         console.error('❌ Error en POST /api/users:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 
-// Login (verificar credenciales)
-app.post('/api/users/login', async (req, res) => {
+// Login (verificar credenciales) — con rate limiting
+app.post('/api/users/login', loginLimiter, async (req, res) => {
     try {
         const { username, password } = req.body;
-        
-        const user = await db.collection('users').findOne({ username });
-        if (!user) {
-            return res.status(404).json({ error: 'Usuario no encontrado' });
+
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
         }
         
-        if (user.password !== password) {
-            return res.status(401).json({ error: 'Contraseña incorrecta' });
+        const user = await db.collection('users').findOne({ username });
+
+        // Mensaje genérico para no revelar si el usuario existe
+        if (!user || user.password !== password) {
+            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
         
         // Actualizar último login
@@ -545,7 +591,8 @@ app.post('/api/users/login', async (req, res) => {
         
         res.json({ success: true, user: { username: user.username, name: user.name, isAdmin: user.isAdmin } });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('❌ Error en login:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
     }
 });
 

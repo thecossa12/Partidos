@@ -25,15 +25,6 @@ window.Auth = {
         return session ? session.isAdmin : false;
     },
     
-    getCurrentUser: function() {
-        const session = getSessionFromMultipleSources();
-        return session ? {
-            username: session.username,
-            name: session.name,
-            isAdmin: session.isAdmin
-        } : null;
-    },
-    
     logout: function() {
         logout();
     },
@@ -52,7 +43,7 @@ window.Auth = {
         
         const newUser = {
             username: username,
-            password: password, // En producción debería estar hasheado
+            password: password, // PENDIENTE: migrar a bcrypt en producción
             name: name,
             isAdmin: isAdmin,
             createdAt: new Date().toISOString(),
@@ -130,11 +121,10 @@ window.Auth = {
                 sessionStorage.setItem('current_user', JSON.stringify(session));
                 sessionStorage.setItem('volleyball_session', JSON.stringify(session));
                 
-                // También guardar el usuario en localStorage para uso offline
+                // También guardar el usuario en localStorage para uso offline (sin contraseña)
                 const users = this.getUsers();
                 users[username] = {
                     username: result.user.username,
-                    password: password,
                     name: result.user.name,
                     isAdmin: result.user.isAdmin,
                     createdAt: new Date().toISOString(),
@@ -152,22 +142,14 @@ window.Auth = {
         }
         
         // PASO 2: Fallback a localStorage si MongoDB falla o no está disponible
-        console.log('🔍 Verificando credenciales en localStorage...');
         const users = this.getUsers();
-        console.log('👥 Usuarios disponibles en localStorage:', Object.keys(users));
         
         const user = users[username];
         if (!user) {
-            console.log('❌ Usuario no encontrado en localStorage:', username);
             return { success: false, message: 'Usuario o contraseña incorrectos' };
         }
         
-        console.log('🔍 Comparando contraseñas:');
-        console.log('   - Ingresada:', password);
-        console.log('   - Almacenada:', user.password);
-        
         if (user.password !== password) {
-            console.log('❌ Contraseña incorrecta para:', username);
             return { success: false, message: 'Usuario o contraseña incorrectos' };
         }
         
@@ -275,11 +257,13 @@ window.Auth = {
         console.log('🔍 getUsers() - Obteniendo usuarios del localStorage');
         
         // Usuarios predefinidos del sistema
-        // EDITA ESTA LISTA para agregar o modificar usuarios antes de subir a GitHub
+        // AVISO DE SEGURIDAD: Las contraseñas deben gestionarse desde MongoDB.
+        // Este fallback offline solo tiene el admin con contraseña vacía para forzar
+        // el uso de MongoDB en producción.
 const systemUsers = {
     admin: {
         username: 'admin',
-        password: 'admin',
+        password: '',
         name: 'Administrador',
         isAdmin: true,
         createdAt: '2025-11-11T11:29:42.538Z',
@@ -287,7 +271,7 @@ const systemUsers = {
     },
     Christian: {
         username: 'Christian',
-        password: '16614',
+        password: '',
         name: 'Christian Cosa Coronado',
         isAdmin: false,
         createdAt: '2025-11-11T11:29:42.538Z',
@@ -295,7 +279,7 @@ const systemUsers = {
     },
     Elena: {
         username: 'Elena',
-        password: '12612',
+        password: '',
         name: 'Perez-Herrera Cuadrillero',
         isAdmin: false,
         createdAt: '2025-11-11T11:29:42.538Z',
