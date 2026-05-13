@@ -15,6 +15,27 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-jwt-secret-change-me'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const AUTH_MODE = process.env.AUTH_MODE || 'compat';
 
+// Railway/proxies: necesario para que express-rate-limit use X-Forwarded-For correctamente.
+// Valores válidos por env: TRUST_PROXY=true | false | <número de saltos>
+if (typeof process.env.TRUST_PROXY !== 'undefined') {
+    const raw = String(process.env.TRUST_PROXY).trim().toLowerCase();
+    if (raw === 'true') {
+        app.set('trust proxy', 1);
+    } else if (raw === 'false') {
+        app.set('trust proxy', false);
+    } else {
+        const hops = Number(raw);
+        app.set('trust proxy', Number.isFinite(hops) ? hops : 1);
+    }
+} else if (process.env.RAILWAY_ENVIRONMENT || process.env.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+}
+
+function normalizeOrigin(value) {
+    if (!value) return '';
+    return String(value).trim().replace(/\/$/, '').toLowerCase();
+}
+
 function isBcryptHash(value) {
     return typeof value === 'string' && /^\$2[aby]\$\d{2}\$/.test(value);
 }
@@ -43,7 +64,7 @@ app.use(helmet({
 // - Si no está definido, se permite el origen recibido para evitar bloqueos
 //   en despliegues cloud con mismo dominio.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',').map(item => item.trim()).filter(Boolean)
+    ? process.env.ALLOWED_ORIGINS.split(',').map(item => normalizeOrigin(item)).filter(Boolean)
     : null;
 
 app.use(cors({
@@ -51,11 +72,16 @@ app.use(cors({
         // Permitir peticiones sin origen (mismo servidor / curl en desarrollo)
         if (!origin) return callback(null, true);
 
+        const normalizedOrigin = normalizeOrigin(origin);
+
         // Sin lista blanca explícita, permitir origen recibido (modo flexible).
         if (!allowedOrigins) return callback(null, true);
 
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('Bloqueado por CORS'));
+        if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
+
+        // No lanzar excepción aquí para evitar respuesta HTML 500.
+        console.warn('⚠️ Origen bloqueado por CORS:', origin);
+        return callback(null, false);
     },
     credentials: true
 }));
