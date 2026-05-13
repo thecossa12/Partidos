@@ -8630,7 +8630,29 @@ function loadCurrentSystemUsers() {
         : window.location.origin + '/api';
     
     fetch(`${API_URL}/users`)
-        .then(response => response.json())
+        .then(async response => {
+            const text = await response.text();
+            let payload;
+
+            try {
+                payload = text ? JSON.parse(text) : null;
+            } catch (error) {
+                payload = null;
+            }
+
+            if (!response.ok) {
+                const message = payload && payload.error
+                    ? payload.error
+                    : `HTTP ${response.status}`;
+                throw new Error(message);
+            }
+
+            if (!Array.isArray(payload)) {
+                throw new Error('Respuesta inválida de /api/users');
+            }
+
+            return payload;
+        })
         .then(usersArray => {
             console.log('☁️ Usuarios cargados desde MongoDB:', usersArray.length);
             systemUsersConfig = [];
@@ -8638,7 +8660,8 @@ function loadCurrentSystemUsers() {
             usersArray.forEach(user => {
                 systemUsersConfig.push({
                     username: user.username,
-                    password: user.password,
+                    // El backend no devuelve password por seguridad.
+                    password: '',
                     name: user.name,
                     isAdmin: user.isAdmin || false
                 });

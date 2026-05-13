@@ -38,17 +38,24 @@ app.use(helmet({
     contentSecurityPolicy: false // Desactivado para no romper los assets inline existentes
 }));
 
-// CORS restringido al propio origen
+// CORS:
+// - Si ALLOWED_ORIGINS está definido, se aplica lista blanca.
+// - Si no está definido, se permite el origen recibido para evitar bloqueos
+//   en despliegues cloud con mismo dominio.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-    ? process.env.ALLOWED_ORIGINS.split(',')
-    : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+    ? process.env.ALLOWED_ORIGINS.split(',').map(item => item.trim()).filter(Boolean)
+    : null;
 
 app.use(cors({
     origin: function (origin, callback) {
         // Permitir peticiones sin origen (mismo servidor / curl en desarrollo)
         if (!origin) return callback(null, true);
+
+        // Sin lista blanca explícita, permitir origen recibido (modo flexible).
+        if (!allowedOrigins) return callback(null, true);
+
         if (allowedOrigins.includes(origin)) return callback(null, true);
-        callback(new Error('Bloqueado por CORS'));
+        return callback(new Error('Bloqueado por CORS'));
     },
     credentials: true
 }));
