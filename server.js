@@ -4,11 +4,32 @@ const bodyParser = require('body-parser');
 const path = require('path');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { connectDB } = require('./db');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-jwt-secret-change-me';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
+const AUTH_MODE = process.env.AUTH_MODE || 'compat';
+
+function isBcryptHash(value) {
+    return typeof value === 'string' && /^\$2[aby]\$\d{2}\$/.test(value);
+}
+
+function signUserToken(user) {
+    return jwt.sign(
+        {
+            sub: user.username,
+            name: user.name,
+            isAdmin: !!user.isAdmin
+        },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+    );
+}
 
 // ==================== SEGURIDAD ====================
 
@@ -54,6 +75,55 @@ const apiLimiter = rateLimit({
 app.use(bodyParser.json({ limit: '2mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '2mb' }));
 app.use('/api', apiLimiter);
+
+// Auth de API:
+// - compat: acepta cliente legacy sin token, pero si hay token lo valida y fuerza userId
+// - strict: exige token JWT en todas las rutas /api excepto login
+app.use('/api', (req, res, next) => {
+    const publicPaths = new Set(['/users/login']);
+    if (publicPaths.has(req.path)) {
+        return next();
+    }
+
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
+    const strictMode = AUTH_MODE === 'strict';
+
+    if (!token) {
+        if (strictMode) {
+            return res.status(401).json({ error: 'Token de autenticación requerido' });
+        }
+        return next();
+    }
+
+    try {
+        const payload = jwt.verify(token, JWT_SECRET);
+        if (!payload || !payload.sub) {
+            return res.status(401).json({ error: 'Token inválido' });
+        }
+
+        req.authUser = payload;
+        const tokenUserId = String(payload.sub);
+
+        const queryUserId = req.query && req.query.userId ? String(req.query.userId) : null;
+        const bodyUserId = req.body && req.body.userId ? String(req.body.userId) : null;
+
+        if ((queryUserId && queryUserId !== tokenUserId) || (bodyUserId && bodyUserId !== tokenUserId)) {
+            return res.status(403).json({ error: 'No autorizado para operar sobre otro usuario' });
+        }
+
+        if (req.query) {
+            req.query.userId = tokenUserId;
+        }
+        if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
+            req.body.userId = tokenUserId;
+        }
+
+        return next();
+    } catch (error) {
+        return res.status(401).json({ error: 'Token inválido o expirado' });
+    }
+});
 
 // Ruta raíz - redirigir a login (ANTES de servir archivos estáticos)
 app.get('/', (req, res) => {
@@ -512,6 +582,10 @@ app.post('/api/jornadas/delete-multiple', async (req, res) => {
 // Obtener todos los usuarios (sin exponer contraseñas)
 app.get('/api/users', async (req, res) => {
     try {
+        if (!req.authUser || !req.authUser.isAdmin) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
         const users = await db.collection('users').find({}, { projection: { password: 0 } }).toArray();
         res.json(users);
     } catch (error) {
@@ -523,6 +597,15 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users', async (req, res) => {
     try {
         const user = req.body;
+
+        // Solo admin autenticado puede crear/editar usuarios,
+        // excepto bootstrap inicial cuando aún no existe ningún usuario.
+        const usersCount = await db.collection('users').countDocuments();
+        const isBootstrap = usersCount === 0;
+        const isAdminRequest = !!(req.authUser && req.authUser.isAdmin);
+        if (!isBootstrap && !isAdminRequest) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
         
         if (!user.username) {
             return res.status(400).json({ error: 'El username es requerido' });
@@ -531,11 +614,21 @@ app.post('/api/users', async (req, res) => {
         // Verificar si el usuario ya existe
         const existingUser = await db.collection('users').findOne({ username: user.username });
         
+        if (!existingUser && !user.password) {
+            return res.status(400).json({ error: 'La contraseña es requerida para crear el usuario' });
+        }
+
+        // Hash de contraseña (compatibilidad: si no se envía nueva, conserva la existente)
+        let passwordToStore = existingUser?.password || null;
+        if (typeof user.password === 'string' && user.password.length > 0) {
+            passwordToStore = await bcrypt.hash(user.password, 12);
+        }
+
         const userData = {
             username: user.username,
-            password: user.password,
+            password: passwordToStore,
             name: user.name,
-            isAdmin: user.isAdmin || false,
+            isAdmin: isBootstrap ? true : !!user.isAdmin,
             lastLogin: existingUser?.lastLogin || null
         };
         
@@ -579,7 +672,30 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
         const user = await db.collection('users').findOne({ username });
 
         // Mensaje genérico para no revelar si el usuario existe
-        if (!user || user.password !== password) {
+        if (!user || !user.password) {
+            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+        }
+
+        let isValidPassword = false;
+
+        // Compatibilidad hacia atrás: soportar contraseñas legacy en texto plano
+        if (isBcryptHash(user.password)) {
+            isValidPassword = await bcrypt.compare(password, user.password);
+        } else {
+            isValidPassword = user.password === password;
+
+            // Migración automática a hash al primer login correcto
+            if (isValidPassword) {
+                const hashedPassword = await bcrypt.hash(password, 12);
+                await db.collection('users').updateOne(
+                    { username },
+                    { $set: { password: hashedPassword } }
+                );
+                user.password = hashedPassword;
+            }
+        }
+
+        if (!isValidPassword) {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
         
@@ -588,8 +704,15 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
             { username },
             { $set: { lastLogin: new Date().toISOString() } }
         );
+
+        const token = signUserToken(user);
         
-        res.json({ success: true, user: { username: user.username, name: user.name, isAdmin: user.isAdmin } });
+        res.json({
+            success: true,
+            token,
+            expiresIn: JWT_EXPIRES_IN,
+            user: { username: user.username, name: user.name, isAdmin: user.isAdmin }
+        });
     } catch (error) {
         console.error('❌ Error en login:', error);
         res.status(500).json({ error: 'Error interno del servidor' });

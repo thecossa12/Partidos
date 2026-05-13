@@ -7,12 +7,44 @@ const API_URL = window.location.hostname === 'localhost'
 
 console.log('🌐 API_URL configurada:', API_URL);
 
+function getAuthToken() {
+    const directToken = localStorage.getItem('volleyball_token');
+    if (directToken) return directToken;
+
+    try {
+        const session = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
+        return session.token || null;
+    } catch (error) {
+        return null;
+    }
+}
+
+function buildHeaders(extraHeaders = {}) {
+    const token = getAuthToken();
+    const headers = { ...extraHeaders };
+
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+
+    return headers;
+}
+
+async function apiFetch(url, options = {}) {
+    const finalOptions = {
+        ...options,
+        headers: buildHeaders(options.headers || {})
+    };
+
+    return fetch(url, finalOptions);
+}
+
 const api = {
     // ==================== JUGADORES ====================
     
     async getJugadores() {
         try {
-            const response = await fetch(`${API_URL}/jugadores`);
+            const response = await apiFetch(`${API_URL}/jugadores`);
             return await response.json();
         } catch (error) {
             console.error('Error obteniendo jugadores:', error);
@@ -22,7 +54,7 @@ const api = {
     
     async createJugador(jugador) {
         try {
-            const response = await fetch(`${API_URL}/jugadores`, {
+            const response = await apiFetch(`${API_URL}/jugadores`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jugador)
@@ -36,7 +68,7 @@ const api = {
     
     async updateJugador(id, jugador) {
         try {
-            const response = await fetch(`${API_URL}/jugadores/${id}`, {
+            const response = await apiFetch(`${API_URL}/jugadores/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jugador)
@@ -50,7 +82,7 @@ const api = {
     
     async deleteJugador(id) {
         try {
-            const response = await fetch(`${API_URL}/jugadores/${id}`, {
+            const response = await apiFetch(`${API_URL}/jugadores/${id}`, {
                 method: 'DELETE'
             });
             return await response.json();
@@ -64,7 +96,7 @@ const api = {
     
     async getJornadas() {
         try {
-            const response = await fetch(`${API_URL}/jornadas`);
+            const response = await apiFetch(`${API_URL}/jornadas`);
             return await response.json();
         } catch (error) {
             console.error('Error obteniendo jornadas:', error);
@@ -74,7 +106,7 @@ const api = {
     
     async createJornada(jornada) {
         try {
-            const response = await fetch(`${API_URL}/jornadas`, {
+            const response = await apiFetch(`${API_URL}/jornadas`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jornada)
@@ -88,7 +120,7 @@ const api = {
     
     async updateJornada(id, jornada) {
         try {
-            const response = await fetch(`${API_URL}/jornadas/${id}`, {
+            const response = await apiFetch(`${API_URL}/jornadas/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jornada)
@@ -102,7 +134,7 @@ const api = {
     
     async deleteJornada(id) {
         try {
-            const response = await fetch(`${API_URL}/jornadas/${id}`, {
+            const response = await apiFetch(`${API_URL}/jornadas/${id}`, {
                 method: 'DELETE'
             });
             return await response.json();
@@ -114,7 +146,7 @@ const api = {
     
     async deleteMultipleJornadas(ids) {
         try {
-            const response = await fetch(`${API_URL}/jornadas/delete-multiple`, {
+            const response = await apiFetch(`${API_URL}/jornadas/delete-multiple`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ids })
@@ -130,7 +162,7 @@ const api = {
     
     async migrate(jugadoras, jornadas) {
         try {
-            const response = await fetch(`${API_URL}/migrate`, {
+            const response = await apiFetch(`${API_URL}/migrate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ jugadoras, jornadas })
@@ -146,7 +178,7 @@ const api = {
     
     async getConfig(userId) {
         try {
-            const response = await fetch(`${API_URL}/config?userId=${userId}`);
+            const response = await apiFetch(`${API_URL}/config?userId=${userId}`);
             if (!response.ok) {
                 throw new Error('Error obteniendo configuración');
             }
@@ -163,7 +195,7 @@ const api = {
 
     async saveConfig(userId, config) {
         try {
-            const response = await fetch(`${API_URL}/config`, {
+            const response = await apiFetch(`${API_URL}/config`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, ...config })

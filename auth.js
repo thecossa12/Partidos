@@ -1,5 +1,48 @@
 // ===== NUEVO SISTEMA DE AUTENTICACIÓN =====
 
+// Interceptor global de fetch para adjuntar JWT en llamadas a /api
+// sin tener que modificar cada fetch del proyecto.
+(function installAuthFetchInterceptor() {
+    if (typeof window === 'undefined' || typeof window.fetch !== 'function') return;
+    if (window.__volleyballFetchPatched) return;
+
+    const originalFetch = window.fetch.bind(window);
+
+    function getStoredToken() {
+        const directToken = localStorage.getItem('volleyball_token');
+        if (directToken) return directToken;
+
+        try {
+            const session = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
+            return session.token || null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function shouldAttachToken(url) {
+        return typeof url === 'string' && url.includes('/api/');
+    }
+
+    window.fetch = function(resource, init = {}) {
+        const url = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
+        const token = getStoredToken();
+
+        if (!token || !shouldAttachToken(url)) {
+            return originalFetch(resource, init);
+        }
+
+        const headers = new Headers((init && init.headers) || {});
+        if (!headers.has('Authorization')) {
+            headers.set('Authorization', `Bearer ${token}`);
+        }
+
+        return originalFetch(resource, { ...init, headers });
+    };
+
+    window.__volleyballFetchPatched = true;
+})();
+
 // Objeto Auth compatible con el sistema anterior
 window.Auth = {
     requireAuth: function() {
@@ -32,7 +75,7 @@ window.Auth = {
     // Funciones para gestión de usuarios
     createUser: async function(username, password, name, isAdmin = false) {
         console.log('🆕 Creando usuario:', username);
-        console.log('📋 Datos:', {username, password, name, isAdmin});
+        console.log('📋 Datos:', {username, name, isAdmin});
         
         const users = this.getUsers();
         console.log('👥 Usuarios antes de crear:', Object.keys(users));
@@ -110,6 +153,7 @@ window.Auth = {
                     username: result.user.username,
                     name: result.user.name,
                     isAdmin: result.user.isAdmin,
+                    token: result.token || null,
                     loginTime: new Date().toISOString()
                 };
                 
@@ -117,6 +161,9 @@ window.Auth = {
                 localStorage.setItem('volleyball_auth', JSON.stringify(session));
                 localStorage.setItem('current_user', JSON.stringify(session));
                 localStorage.setItem('volleyball_session', JSON.stringify(session));
+                if (session.token) {
+                    localStorage.setItem('volleyball_token', session.token);
+                }
                 sessionStorage.setItem('volleyball_auth', JSON.stringify(session));
                 sessionStorage.setItem('current_user', JSON.stringify(session));
                 sessionStorage.setItem('volleyball_session', JSON.stringify(session));
@@ -162,6 +209,7 @@ window.Auth = {
             username: user.username,
             name: user.name,
             isAdmin: user.isAdmin,
+            token: null,
             loginTime: new Date().toISOString()
         };
         
@@ -170,6 +218,7 @@ window.Auth = {
             localStorage.setItem('volleyball_auth', JSON.stringify(session));
             localStorage.setItem('current_user', JSON.stringify(session));
             localStorage.setItem('volleyball_session', JSON.stringify(session));
+            localStorage.removeItem('volleyball_token');
             sessionStorage.setItem('volleyball_auth', JSON.stringify(session));
             sessionStorage.setItem('current_user', JSON.stringify(session));
             sessionStorage.setItem('volleyball_session', JSON.stringify(session));
@@ -604,6 +653,7 @@ function logout() {
         localStorage.removeItem('voleibol_session');
         localStorage.removeItem('currentUser');
         localStorage.removeItem('voleibol_users');
+        localStorage.removeItem('volleyball_token');
         
         // IMPORTANTE: Limpiar datos específicos del usuario (jugadoras y jornadas)
         if (userId) {
