@@ -449,7 +449,7 @@ app.get('/api/jugadores', async (req, res) => {
 // Crear o actualizar un jugador/a
 app.post('/api/jugadores', async (req, res) => {
     try {
-        const jugador = req.body; // jugador/a
+        const jugador = req.body; // jugador/as
 
         if (!jugador.userId) {
             return res.status(400).json({ error: 'userId es requerido' });
