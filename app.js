@@ -1739,12 +1739,16 @@
                 listaUbicaciones.innerHTML = '<div class="lista-vacia">No hay ubicaciones guardadas</div>';
             } else {
                 listaUbicaciones.innerHTML = config.ubicacionesGuardadas
-                    .map(ubicacion => `
+                    .map(ubicacion => {
+                        const ubicacionSegura = this.escapeHtmlSeguro(ubicacion);
+                        const ubicacionCodificada = encodeURIComponent(String(ubicacion));
+                        return `
                         <div class="item-gestion">
-                            <span class="item-gestion-texto">${ubicacion}</span>
-                            <button class="btn-eliminar-item" data-tipo="ubicacion" data-valor="${ubicacion}">❌ Eliminar</button>
+                            <span class="item-gestion-texto">${ubicacionSegura}</span>
+                            <button class="btn-eliminar-item" data-tipo="ubicacion" data-valor="${ubicacionCodificada}">❌ Eliminar</button>
                         </div>
-                    `).join('');
+                    `;
+                    }).join('');
             }
         }
         
@@ -1755,12 +1759,16 @@
                 listaRivales.innerHTML = '<div class="lista-vacia">No hay rivales guardados</div>';
             } else {
                 listaRivales.innerHTML = config.rivalesGuardados
-                    .map(rival => `
+                    .map(rival => {
+                        const rivalSeguro = this.escapeHtmlSeguro(rival);
+                        const rivalCodificado = encodeURIComponent(String(rival));
+                        return `
                         <div class="item-gestion">
-                            <span class="item-gestion-texto">${rival}</span>
-                            <button class="btn-eliminar-item" data-tipo="rival" data-valor="${rival}">❌ Eliminar</button>
+                            <span class="item-gestion-texto">${rivalSeguro}</span>
+                            <button class="btn-eliminar-item" data-tipo="rival" data-valor="${rivalCodificado}">❌ Eliminar</button>
                         </div>
-                    `).join('');
+                    `;
+                    }).join('');
             }
         }
     }
@@ -2949,9 +2957,9 @@
         // Generar info del partido
         let partidoInfoHTML = '';
         if (this.jornadaActual.ubicacion || this.jornadaActual.rival) {
-            const ubicacion = this.jornadaActual.ubicacion || 'Sin ubicación';
+            const ubicacion = this.escapeHtmlSeguro(this.jornadaActual.ubicacion || 'Sin ubicación');
             const tipoUbic = this.jornadaActual.tipoUbicacion === 'fuera' ? '🏠 Fuera' : '🏡 Casa';
-            const rival = this.jornadaActual.rival || 'Sin rival';
+            const rival = this.escapeHtmlSeguro(this.jornadaActual.rival || 'Sin rival');
             partidoInfoHTML = `
                 <div class="partido-info-banner">
                     <strong>${tipoUbic}:</strong> ${ubicacion} <strong>VS</strong> ${rival}
@@ -5900,9 +5908,9 @@
             // Generar texto de partido info
             let partidoInfo = '';
             if (jornada.ubicacion || jornada.rival) {
-                const ubicacion = jornada.ubicacion || 'Sin ubicación';
+                const ubicacion = this.escapeHtmlSeguro(jornada.ubicacion || 'Sin ubicación');
                 const tipoUbic = jornada.tipoUbicacion === 'fuera' ? 'Fuera' : 'Casa';
-                const rival = jornada.rival || 'Sin rival';
+                const rival = this.escapeHtmlSeguro(jornada.rival || 'Sin rival');
                 partidoInfo = ` - ${tipoUbic}: ${ubicacion} VS ${rival}`;
             }
 
@@ -8053,7 +8061,13 @@ document.addEventListener('DOMContentLoaded', () => {
             modalGestionDatos.addEventListener('click', async (e) => {
                 if (e.target.classList.contains('btn-eliminar-item')) {
                     const tipo = e.target.dataset.tipo;
-                    const valor = e.target.dataset.valor;
+                    const valorCrudo = e.target.dataset.valor || '';
+                    let valor = valorCrudo;
+                    try {
+                        valor = decodeURIComponent(valorCrudo);
+                    } catch (error) {
+                        valor = valorCrudo;
+                    }
                     
                     if (tipo === 'ubicacion') {
                         await app.eliminarUbicacion(valor);
