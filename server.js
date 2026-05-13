@@ -449,30 +449,30 @@ app.get('/api/jugadores', async (req, res) => {
 // Crear o actualizar un jugador/a
 app.post('/api/jugadores', async (req, res) => {
     try {
-        const jugador/a = req.body;
+        const jugador = req.body; // jugador/a
 
-        if (!jugador/a.userId) {
+        if (!jugador.userId) {
             return res.status(400).json({ error: 'userId es requerido' });
         }
 
-        if (!jugador/a.id) {
+        if (!jugador.id) {
             return res.status(400).json({ error: 'id es requerido' });
         }
         
         // Asegurar que equipoId sea número
-        if (jugador/a.equipoId && !isNaN(jugador/a.equipoId)) {
-            jugador/a.equipoId = parseInt(jugador/a.equipoId);
+        if (jugador.equipoId && !isNaN(jugador.equipoId)) {
+            jugador.equipoId = parseInt(jugador.equipoId);
         }
         
         // Usar updateOne con upsert para crear o actualizar
         const result = await db.collection('jugadores').updateOne(
-            { id: jugador/a.id, userId: jugador/a.userId },
-            { $set: jugador/a },
+            { id: jugador.id, userId: jugador.userId },
+            { $set: jugador },
             { upsert: true }
         );
         
-        console.log(`${result.upsertedCount > 0 ? '✅ Jugador/a creado' : '🔄 Jugador/a actualizado'}: ${jugador/a.nombre}`);
-        res.json({ success: true, created: result.upsertedCount > 0, jugador: jugador/a });
+        console.log(`${result.upsertedCount > 0 ? '✅ Jugador/a creado' : '🔄 Jugador/a actualizado'}: ${jugador.nombre}`);
+        res.json({ success: true, created: result.upsertedCount > 0, jugador: jugador });
     } catch (error) {
         console.error('❌ Error en POST /api/jugadores:', error);
         handleInternalError(res, error);
@@ -483,7 +483,7 @@ app.post('/api/jugadores', async (req, res) => {
 app.put('/api/jugadores/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const jugador/a = req.body;
+        const jugador = req.body;
         const userId = req.query.userId;
         
         if (!userId) {
@@ -492,7 +492,7 @@ app.put('/api/jugadores/:id', async (req, res) => {
         
         await db.collection('jugadores').updateOne(
             { id: parseInt(id), userId },
-            { $set: jugador/a }
+            { $set: jugador }
         );
         res.json({ success: true });
     } catch (error) {

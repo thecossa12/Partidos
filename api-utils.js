@@ -52,12 +52,12 @@ const api = {
         }
     },
     
-    async createJugador(jugador/a) {
+    async createJugador(jugador) { // jugador/a
         try {
             const response = await apiFetch(`${API_URL}/jugadores`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jugador/a)
+                body: JSON.stringify(jugador) // jugador/a
             });
             return await response.json();
         } catch (error) {
@@ -66,12 +66,12 @@ const api = {
         }
     },
     
-    async updateJugador(id, jugador/a) {
+    async updateJugador(id, jugador) { // jugador/a
         try {
             const response = await apiFetch(`${API_URL}/jugadores/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(jugador/a)
+                body: JSON.stringify(jugador) // jugador/a
             });
             return await response.json();
         } catch (error) {

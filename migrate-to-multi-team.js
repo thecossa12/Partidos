@@ -59,9 +59,9 @@ async function migrarDatos() {
             
             if (jugadoresSinEquipo.length > 0) {
                 console.log(`  ➡️ Migrando ${jugadoresSinEquipo.length} jugador/a(s) sin equipoId...`);
-                for (const jugador/a of jugadoresSinEquipo) {
+                for (const jugador of jugadoresSinEquipo) {
                     await db.collection('jugadores').updateOne(
-                        { _id: jugador/a._id },
+                        { _id: jugador._id },
                         { $set: { equipoId: equipoDefaultId } }
                     );
                 }
