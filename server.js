@@ -469,19 +469,21 @@ app.use('/api', (req, res, next) => {
 
         req.authUser = payload;
         const tokenUserId = String(payload.sub);
+        const isAdminRequest = !!payload.isAdmin;
 
         const queryUserId = req.query && req.query.userId ? String(req.query.userId) : null;
         const bodyUserId = req.body && req.body.userId ? String(req.body.userId) : null;
 
-        if ((queryUserId && queryUserId !== tokenUserId) || (bodyUserId && bodyUserId !== tokenUserId)) {
+        if (!isAdminRequest && ((queryUserId && queryUserId !== tokenUserId) || (bodyUserId && bodyUserId !== tokenUserId))) {
             return res.status(403).json({ error: 'No autorizado para operar sobre otro usuario' });
         }
 
-        if (req.query) {
-            req.query.userId = tokenUserId;
+        if (req.query && (!isAdminRequest || queryUserId)) {
+            // Los admins pueden conservar un userId explícito para flujos de soporte.
+            req.query.userId = isAdminRequest ? queryUserId : tokenUserId;
         }
-        if (req.body && typeof req.body === 'object' && !Array.isArray(req.body)) {
-            req.body.userId = tokenUserId;
+        if (req.body && typeof req.body === 'object' && !Array.isArray(req.body) && (!isAdminRequest || bodyUserId)) {
+            req.body.userId = isAdminRequest ? bodyUserId : tokenUserId;
         }
 
         return next();
