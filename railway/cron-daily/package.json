@@ -1,0 +1,13 @@
+{
+  "name": "partidos-cron-daily",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node ../../scripts/backup-data.js ; node ../../scripts/rotate-backups.js ; node ../../scripts/cleanup-backup-archive.js ; node ../../scripts/cleanup-audit-logs.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "mongodb": "^7.0.0"
+  }
+}

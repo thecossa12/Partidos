@@ -184,6 +184,65 @@ Si vienen **14 jugadoras** y el partido es **2-0 (25-25 = 50 puntos totales)**:
 - Nombre sugerido del archivo descargado: `volleyball_gdpr_export_<usuario>_<fecha>.json`.
 - El archivo está pensado para trazabilidad y portabilidad de datos del interesado.
 
+## Operacion Comercial (Produccion)
+
+### Healthchecks
+- Liveness: `/api/health`
+- Readiness (incluye ping a DB): `/api/health/ready`
+
+### Auditoria y trazabilidad
+- Se registran eventos de acceso y actividad en logs de servidor.
+- Se guarda auditoria en MongoDB (coleccion `audit_logs`).
+- Endpoint admin para consulta de auditoria: `/api/admin/audit-logs`.
+
+### Backups
+- Generar backup manual:
+   - `npm run backup:data`
+- Salida en carpeta `backups/` con timestamp.
+
+### Rotacion automatica y retencion
+- Rotar backups locales por antiguedad:
+   - `npm run backup:rotate`
+- Limpiar backups archivados en MongoDB:
+   - `npm run backup:archive:cleanup`
+- Limpiar auditoria por retencion:
+   - `npm run audit:cleanup`
+- Ejecutar mantenimiento completo:
+   - `npm run ops:maintenance`
+- Variables de retencion:
+   - `BACKUP_RETENTION_DAYS` (default 30)
+   - `BACKUP_MIN_KEEP` (default 7)
+   - `BACKUP_STORE_MODE` (`file`, `mongo`, `both`; recomendado en Railway: `mongo`)
+   - `BACKUP_ARCHIVE_RETENTION_DAYS` (default 120)
+   - `AUDIT_RETENTION_DAYS` (default 90)
+- Frecuencia recomendada:
+   - `backup:data` diario
+   - `ops:maintenance` diario o semanal (segun volumen)
+
+### Railway: cron jobs sin intervencion manual
+Configuracion as-code incluida en:
+- `railway/cron-daily/railway.json`
+- `railway/cron-weekly-checks/railway.json`
+
+Pasos una sola vez en Railway:
+1. Crear servicio `cron-daily` desde este repo con Root Directory `railway/cron-daily`.
+2. Crear servicio `cron-weekly-checks` desde este repo con Root Directory `railway/cron-weekly-checks`.
+3. Definir variables de entorno necesarias en ambos servicios:
+    - `MONGO_URI`, `DB_NAME`
+    - `CHECK_BASE_URL`, `CHECK_USER`, `CHECK_PASS` (solo weekly checks)
+    - Variables de retencion si quieres personalizar.
+
+Con eso, Railway ejecuta automáticamente los cron según el schedule en cada `railway.json`.
+
+### Verificacion pre go-live
+- Ejecutar check rapido de despliegue:
+   - `npm run go-live:check`
+- Ejecutar smoke check de seguridad:
+   - `npm run test:security`
+
+### Checklist de salida comercial
+- Ver `GO-LIVE-CHECKLIST.md` para validacion completa de salida a clientes.
+
 ## Solución de Problemas
 
 ### "No se guardan los datos"

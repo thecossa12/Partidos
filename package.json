@@ -8,7 +8,13 @@
     "build": "echo 'No build required'",
     "dev": "nodemon server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "test:security": "node scripts/security-smoke-check.js"
+    "test:security": "node scripts/security-smoke-check.js",
+    "backup:data": "node scripts/backup-data.js",
+    "backup:rotate": "node scripts/rotate-backups.js",
+    "backup:archive:cleanup": "node scripts/cleanup-backup-archive.js",
+    "audit:cleanup": "node scripts/cleanup-audit-logs.js",
+    "ops:maintenance": "npm run backup:rotate && npm run backup:archive:cleanup && npm run audit:cleanup",
+    "go-live:check": "node scripts/go-live-check.js"
   },
   "engines": {
     "node": ">=18.0.0",

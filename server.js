@@ -221,7 +221,7 @@ app.use('/api', (req, res, next) => {
 // - compat: acepta cliente legacy sin token, pero si hay token lo valida y fuerza userId
 // - strict: exige token JWT en todas las rutas /api excepto login
 app.use('/api', (req, res, next) => {
-    const publicPaths = new Set(['/users/login']);
+    const publicPaths = new Set(['/users/login', '/health', '/health/ready']);
     if (publicPaths.has(req.path)) {
         return next();
     }
@@ -282,6 +282,46 @@ connectDB().then(database => {
 }).catch(err => {
     console.error('❌ Error conectando a la base de datos:', err);
     process.exit(1);
+});
+
+// ==================== HEALTHCHECKS ====================
+
+// Liveness: proceso vivo
+app.get('/api/health', (req, res) => {
+    res.json({
+        status: 'ok',
+        service: 'partidos-api',
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Readiness: proceso + acceso a DB
+app.get('/api/health/ready', async (req, res) => {
+    try {
+        if (!db) {
+            return res.status(503).json({
+                status: 'error',
+                ready: false,
+                reason: 'db_not_initialized',
+                timestamp: new Date().toISOString()
+            });
+        }
+
+        await db.command({ ping: 1 });
+        return res.json({
+            status: 'ok',
+            ready: true,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        return res.status(503).json({
+            status: 'error',
+            ready: false,
+            reason: 'db_unreachable',
+            timestamp: new Date().toISOString()
+        });
+    }
 });
 
 // ==================== ENDPOINTS DE EQUIPOS ====================
@@ -909,6 +949,33 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
     } catch (error) {
         console.error('❌ Error en login:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Consulta de auditoría para soporte/compliance (solo admin)
+app.get('/api/admin/audit-logs', async (req, res) => {
+    try {
+        if (!req.authUser || !req.authUser.isAdmin) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const limit = Math.min(Math.max(parseInt(req.query.limit || '100', 10), 1), 500);
+        const eventType = sanitizeText(req.query.eventType || '', 80);
+        const targetUserId = sanitizeText(req.query.userId || '', 80);
+
+        const filter = {};
+        if (eventType) filter.eventType = eventType;
+        if (targetUserId) filter.userId = targetUserId;
+
+        const logs = await db.collection('audit_logs')
+            .find(filter)
+            .sort({ timestamp: -1 })
+            .limit(limit)
+            .toArray();
+
+        res.json(stripMongoInternalFields(logs));
+    } catch (error) {
+        return handleInternalError(res, error, 'audit-logs-list');
     }
 });
 

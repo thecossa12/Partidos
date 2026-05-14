@@ -1,0 +1,12 @@
+{
+  "name": "partidos-cron-weekly-checks",
+  "version": "1.0.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "start": "node ../../scripts/go-live-check.js ; node ../../scripts/security-smoke-check.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.2.3"
+  }
+}
