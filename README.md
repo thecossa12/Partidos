@@ -1,7 +1,7 @@
 # 🏐 Gestor de Rotaciones - Volleyball
 
 ## Descripción
-Aplicación web local para gestionar de manera equitativa la rotación de jugadoras de volleyball, considerando la asistencia a entrenamientos y el historial de participación. **Completamente rediseñada** para máxima facilidad de uso.
+Aplicación web para gestionar de manera equitativa la rotación de jugadoras de volleyball, considerando asistencia a entrenamientos e historial de participación. Incluye backend Node.js/Express, persistencia en MongoDB, autenticación y medidas de seguridad para uso real.
 
 ## 🆕 Nuevas Características Principales
 
@@ -37,10 +37,10 @@ Aplicación web local para gestionar de manera equitativa la rotación de jugado
 - **Vista completa**: Entrenamientos + partido en una sola pantalla
 - **Búsqueda rápida**: Encuentra cualquier jornada fácilmente
 
-### ✅ Base de Datos Local Mejorada
-- **Almacenamiento inteligente**: Todo en localStorage del navegador
-- **Portabilidad 100%**: Mueve la carpeta completa y conserva datos
-- **Backup automático**: Los datos nunca se pierden
+### ✅ Persistencia y Sincronización
+- **Persistencia principal en MongoDB** por usuario
+- **Sincronización con API** para jugadoras, jornadas, equipos y configuración
+- **Soporte local en desarrollo** para continuidad si no hay conectividad puntual
 
 ## 🚀 Cómo Usar la Nueva Aplicación
 
@@ -125,34 +125,72 @@ Si vienen **14 jugadoras** y el partido es **2-0 (25-25 = 50 puntos totales)**:
 - Totalmente offline, sin internet requerido
 
 ### ✅ Portabilidad Total
-- Mueve la carpeta completa a cualquier PC
-- Todos los datos se conservan
-- No depende de servidores externos
+- Acceso a los datos desde cualquier dispositivo con tus credenciales
+- Exportación JSON completa para portabilidad y cumplimiento de derechos
+- Operación centralizada con respaldo en base de datos
 
 ## Instalación y Portabilidad
 
 ### Instalación
-1. Descarga todos los archivos (`index.html`, `styles.css`, `app.js`)
-2. Colócalos en una carpeta
-3. Abre `index.html` con cualquier navegador moderno
+1. Instala dependencias del proyecto con `npm install`
+2. Configura variables de entorno (`.env`) para base de datos y seguridad (JWT)
+3. Inicia el servidor con `npm start` (o script equivalente)
+4. Abre la aplicación en el navegador desde la URL del servidor
 
 ### Para Mover a Otro PC
-1. Copia la carpeta completa
-2. Abre `index.html` en el nuevo PC
-3. Todos los datos se mantendrán intactos
+1. Despliega la misma versión de la aplicación y su backend
+2. Conecta al mismo entorno de datos o migra la base de datos
+3. Los usuarios conservan sus datos al iniciar sesión
 
 ## Requerimientos Técnicos
 - Navegador web moderno (Chrome, Firefox, Safari, Edge)
 - JavaScript habilitado
-- No requiere conexión a internet
+- Conectividad con el backend para funcionamiento completo
 - Compatible con Windows, Mac, Linux
+
+## Cumplimiento Legal y Seguridad
+
+### GDPR/LOPDGDD: derecho de acceso y portabilidad
+- La aplicación incluye un flujo de **exportación completa de datos personales** desde la UI.
+- El botón de exportación genera un único archivo JSON con:
+   - Perfil del usuario (sin contraseña)
+   - Configuración personal
+   - Equipos
+   - Jugadoras
+   - Jornadas
+- El endpoint de backend es `GET /api/users/:username/export` y solo permite:
+   - Exportación del propio usuario autenticado
+   - Exportación por administrador
+
+### GDPR/LOPDGDD: derecho de supresión (borrado de cuenta)
+- La aplicación incluye borrado de cuenta con eliminación de datos asociados.
+- Endpoint de backend: `DELETE /api/users/:username`.
+- Permisos:
+   - El propio usuario puede borrar su cuenta
+   - Un administrador puede borrar cualquier usuario
+- Al borrar una cuenta, se eliminan también equipos, jugadoras y jornadas asociadas.
+
+### Cookies y sesión
+- Se usa almacenamiento local/sesión para mantener estado de autenticación y sesión de usuario.
+- Se muestra aviso de consentimiento de cookies en la interfaz.
+
+### Seguridad operativa
+- Autenticación basada en JWT para rutas de API.
+- Protección de cabeceras con Helmet.
+- Rate limiting en login y API.
+- En producción, el servidor fuerza HTTPS y rechaza configuración insegura.
+
+### Archivos de exportación
+- Nombre sugerido del archivo descargado: `volleyball_gdpr_export_<usuario>_<fecha>.json`.
+- El archivo está pensado para trazabilidad y portabilidad de datos del interesado.
 
 ## Solución de Problemas
 
 ### "No se guardan los datos"
 - Verifica que JavaScript esté habilitado
 - Usa un navegador moderno
-- No uses modo incógnito/privado
+- Verifica conectividad con la API y estado del servidor
+- Revisa configuración de base de datos y variables de entorno
 
 ### "La distribución no parece justa"
 - Revisa el historial de entrenamientos
@@ -175,7 +213,7 @@ Si vienen **14 jugadoras** y el partido es **2-0 (25-25 = 50 puntos totales)**:
 Si tienes problemas o sugerencias:
 - Revisa que todos los archivos estén en la misma carpeta
 - Verifica que uses un navegador actualizado
-- Los datos se almacenan localmente, no se pierden al cerrar el navegador
+- Verifica logs del servidor y conectividad con MongoDB
 
 ---
 

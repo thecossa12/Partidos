@@ -7309,104 +7309,25 @@ function verInfoJugadoraGlobal(jugadoraId) {
 }
 
 // ==================== EXPORTACIÓN DE DATOS ====================
-VolleyballManager.prototype.exportarDatos = function() {
+VolleyballManager.prototype.exportarDatos = async function() {
     try {
         console.log('📥 Iniciando exportación de datos...');
-        
-        // Preparar datos de jugadoras con estadísticas
-        const jugadorasData = this.jugadoras.map(jugadora => {
-            // Calcular estadísticas solo de jornadas completadas
-            const jornadasCompletadas = this.jornadas.filter(j => j.completada);
-            
-            let partidosJugados = 0;
-            let entrenamientosAsistidos = 0;
-            let totalSustituciones = 0;
-            
-            jornadasCompletadas.forEach(jornada => {
-                // Contar partidos jugados (si estuvo en el sábado)
-                if (jornada.asistenciaSabado && jornada.asistenciaSabado.includes(jugadora.id)) {
-                    partidosJugados++;
-                }
-                
-                // Contar entrenamientos
-                if (jornada.asistenciaLunes && jornada.asistenciaLunes.includes(jugadora.id)) {
-                    entrenamientosAsistidos++;
-                }
-                if (jornada.asistenciaMiercoles && jornada.asistenciaMiercoles.includes(jugadora.id)) {
-                    entrenamientosAsistidos++;
-                }
-                
-                // Contar sustituciones
-                if (jornada.sustituciones) {
-                    if (jornada.sustituciones.set1) {
-                        totalSustituciones += jornada.sustituciones.set1.filter(s => 
-                            s.entraId === jugadora.id || s.saleId === jugadora.id
-                        ).length;
-                    }
-                    if (jornada.sustituciones.set2) {
-                        totalSustituciones += jornada.sustituciones.set2.filter(s => 
-                            s.entraId === jugadora.id || s.saleId === jugadora.id
-                        ).length;
-                    }
-                }
-            });
-            
-            return {
-                id: jugadora.id,
-                nombre: jugadora.nombre,
-                dorsal: jugadora.dorsal,
-                posicion: jugadora.posicion,
-                partidosJugados: partidosJugados,
-                entrenamientosAsistidos: entrenamientosAsistidos,
-                totalSustituciones: totalSustituciones,
-                puntosJugados: jugadora.puntosJugados || 0,
-                porcentajeAsistenciaPartidos: jornadasCompletadas.length > 0 ? ((partidosJugados / jornadasCompletadas.length) * 100).toFixed(1) : 0
-            };
-        });
-        
-        // Preparar datos de jornadas completadas
-        const jornadasData = this.jornadas.filter(j => j.completada).map(jornada => {
-            return {
-                id: jornada.id,
-                fechaLunes: jornada.fechaLunes,
-                asistenciaLunes: jornada.asistenciaLunes?.map(id => {
-                    const jugadora = this.jugadoras.find(j => j.id === id);
-                    return jugadora ? `${jugadora.nombre} (#${jugadora.dorsal})` : `ID: ${id}`;
-                }) || [],
-                asistenciaMiercoles: jornada.asistenciaMiercoles?.map(id => {
-                    const jugadora = this.jugadoras.find(j => j.id === id);
-                    return jugadora ? `${jugadora.nombre} (#${jugadora.dorsal})` : `ID: ${id}`;
-                }) || [],
-                asistenciaSabado: jornada.asistenciaSabado?.map(id => {
-                    const jugadora = this.jugadoras.find(j => j.id === id);
-                    return jugadora ? `${jugadora.nombre} (#${jugadora.dorsal})` : `ID: ${id}`;
-                }) || [],
-                sets: jornada.sets || {},
-                sustituciones: jornada.sustituciones || {},
-                resultado: jornada.resultado || 'No registrado'
-            };
-        });
-        
-        // Crear objeto final de exportación
-        const dataExportacion = {
-            fechaExportacion: new Date().toISOString(),
-            version: '1.0',
-            equipo: {
-                jugadoras: jugadorasData,
-                totalJugadoras: jugadorasData.length
-            },
-            jornadas: {
-                completadas: jornadasData,
-                totalCompletadas: jornadasData.length,
-                totalEnSistema: this.jornadas.length
-            },
-            resumen: {
-                jornadasCompletadas: jornadasData.length,
-                jornadasPendientes: this.jornadas.filter(j => !j.completada).length,
-                jugadorasActivas: jugadorasData.length,
-                fechaUltimaJornada: jornadasData.length > 0 ? jornadasData[jornadasData.length - 1].fechaLunes : null
+
+        const userId = this.getUserId();
+        const response = await fetch(`${this.API_URL}/users/${encodeURIComponent(userId)}/export`);
+
+        if (!response.ok) {
+            let message = `Error al exportar datos (${response.status})`;
+            try {
+                const errorData = await response.json();
+                message = errorData.error || message;
+            } catch (jsonError) {
+                // Ignorar parseo de error y mantener mensaje por defecto
             }
-        };
+            throw new Error(message);
+        }
+
+        const dataExportacion = await response.json();
         
         // Mostrar modal de confirmación antes de descargar
         this.mostrarModalExportacion(dataExportacion, () => {
@@ -7416,7 +7337,8 @@ VolleyballManager.prototype.exportarDatos = function() {
             
             const link = document.createElement('a');
             link.href = URL.createObjectURL(dataBlob);
-            link.download = `volleyball_data_${new Date().toISOString().split('T')[0]}.json`;
+            const fecha = new Date().toISOString().split('T')[0];
+            link.download = `volleyball_gdpr_export_${userId}_${fecha}.json`;
             
             document.body.appendChild(link);
             link.click();
@@ -7434,6 +7356,11 @@ VolleyballManager.prototype.exportarDatos = function() {
 };
 
 VolleyballManager.prototype.mostrarModalExportacion = function(data, onConfirm) {
+    const resumen = data?.resumen || {};
+    const titular = data?.titular || {};
+    const fechaExportacion = data?.fechaExportacion ? new Date(data.fechaExportacion).toLocaleString() : new Date().toLocaleString();
+    const usernameSeguro = this.escapeHtmlSeguro(titular.username || this.getUserId());
+
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -7450,18 +7377,19 @@ VolleyballManager.prototype.mostrarModalExportacion = function(data, onConfirm) 
             <div style="margin-bottom: 20px;">
                 <h4>📊 Resumen de datos a exportar:</h4>
                 <ul style="line-height: 1.6;">
-                    <li><strong>Jugadoras:</strong> ${data.equipo.totalJugadoras} (con estadísticas completas)</li>
-                    <li><strong>Jornadas completadas:</strong> ${data.jornadas.totalCompletadas}</li>
-                    <li><strong>Fecha de exportación:</strong> ${new Date(data.fechaExportacion).toLocaleString()}</li>
-                    <li><strong>Última jornada:</strong> ${data.resumen.fechaUltimaJornada ? this.formatearFecha(data.resumen.fechaUltimaJornada) : 'Ninguna'}</li>
+                    <li><strong>Usuario:</strong> ${usernameSeguro}</li>
+                    <li><strong>Equipos:</strong> ${resumen.totalEquipos || 0}</li>
+                    <li><strong>Jugadoras:</strong> ${resumen.totalJugadoras || 0}</li>
+                    <li><strong>Jornadas:</strong> ${resumen.totalJornadas || 0} (${resumen.totalJornadasCompletadas || 0} completadas)</li>
+                    <li><strong>Fecha de exportación:</strong> ${fechaExportacion}</li>
                 </ul>
                 
                 <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0;">
                     <h5 style="margin: 0 0 10px 0; color: #495057;">💡 Información importante:</h5>
                     <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">
                         • Los datos se exportarán en formato JSON<br>
-                        • Solo se incluyen jornadas completadas<br>
-                        • Las estadísticas se calculan automáticamente<br>
+                        • Incluye perfil, configuración, equipos, jugadoras y jornadas<br>
+                        • Incluye datos completos para cumplimiento GDPR/LOPDGDD<br>
                         • El archivo será compatible para futuras importaciones
                     </p>
                 </div>

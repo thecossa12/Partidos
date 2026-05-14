@@ -8,6 +8,13 @@
     <link rel="stylesheet" href="styles.css?v=2025102029">
 </head>
 <body>
+
+    <!-- Banner de cookies -->
+    <div id="cookie-banner" style="display:none; position:fixed; bottom:0; left:0; width:100%; background:#222; color:#fff; padding:18px 10px 18px 10px; text-align:center; z-index:10001; font-size:1rem; box-shadow:0 -2px 8px rgba(0,0,0,0.15);">
+        Utilizamos cookies técnicas para el funcionamiento de la web. <a href="privacidad.html" style="color:#4eaaff; text-decoration:underline;">Más información</a>.
+        <button id="aceptar-cookies" style="margin-left:20px; background:#4eaaff; color:#fff; border:none; border-radius:5px; padding:8px 18px; font-weight:600; cursor:pointer;">Aceptar</button>
+    </div>
+
     <!-- Contenedor para notificaciones -->
     <div id="notifications-container" style="position: fixed; top: 20px; right: 20px; z-index: 10000;"></div>
 
@@ -79,6 +86,7 @@
                 <button onclick="logout()" style="margin-left: 5px; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     🚪 Logout
                 </button>
+                <button id="btn-borrar-cuenta" style="margin-left: 5px; padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Borrar Cuenta</button>
             </div>
             <div class="tabs">
                 <button class="tab-button active" data-tab="jornadas">📅 Jornadas</button>
@@ -315,6 +323,7 @@
                             <button id="add-system-user-btn" class="btn-create-user">➕ Agregar Usuario</button>
                             <button id="save-system-users-btn" class="btn-system" style="background: #28a745; color: white;">💾 Guardar Cambios</button>
                             <button id="load-current-users-btn" class="btn-system" style="background: #17a2b8; color: white;">🔄 Recargar</button>
+                            <button id="admin-borrar-usuario-btn" class="btn-system btn-danger" style="background: #dc3545; color: white;">🗑️ Borrar Usuario Seleccionado</button>
                         </div>
                     </div>
 
@@ -598,8 +607,75 @@
         </div>
     </div>
 
+
+    <!-- Footer legal -->
+    <footer style="text-align:center; margin-top:40px; padding:20px 0; background:#f8f9fa; color:#555; font-size:0.95rem; border-top:1px solid #eee;">
+        <a href="privacidad.html" style="margin:0 15px; color:#007bff; text-decoration:underline;">Política de Privacidad</a>
+        |
+        <a href="aviso-legal.html" style="margin:0 15px; color:#007bff; text-decoration:underline;">Aviso Legal</a>
+    </footer>
+
     <script src="auth.js"></script>
     <script src="api-utils.js"></script>
     <script src="app.js?v=2025102044"></script>
+    <script>
+    // Borrar cuenta propia
+    document.addEventListener('DOMContentLoaded', function() {
+        var btnBorrar = document.getElementById('btn-borrar-cuenta');
+        if (btnBorrar) {
+            btnBorrar.onclick = async function() {
+                if (confirm('¿Seguro que quieres borrar tu cuenta y todos tus datos? Esta acción es irreversible.')) {
+                    const user = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
+                    if (!user || !user.username) return alert('No se pudo identificar el usuario.');
+                    const token = localStorage.getItem('volleyball_token');
+                    const res = await fetch(`/api/users/${user.username}`, {
+                        method: 'DELETE',
+                        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+                    });
+                    if (res.ok) {
+                        alert('Cuenta eliminada correctamente.');
+                        localStorage.clear();
+                        window.location.href = 'login.html';
+                    } else {
+                        alert('Error al borrar la cuenta.');
+                    }
+                }
+            };
+        }
+        // Admin: borrar usuario seleccionado (debes adaptar la selección de usuario en tu panel)
+        var btnAdminBorrar = document.getElementById('admin-borrar-usuario-btn');
+        if (btnAdminBorrar) {
+            btnAdminBorrar.onclick = async function() {
+                var username = prompt('Introduce el nombre de usuario a borrar:');
+                if (!username) return;
+                if (!confirm('¿Seguro que quieres borrar el usuario ' + username + ' y todos sus datos?')) return;
+                const token = localStorage.getItem('volleyball_token');
+                const res = await fetch(`/api/users/${username}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
+                });
+                if (res.ok) {
+                    alert('Usuario eliminado correctamente.');
+                    window.location.reload();
+                } else {
+                    alert('Error al borrar el usuario.');
+                }
+            };
+        }
+    });
+    </script>
+
+    <script>
+    // Banner de cookies
+    (function() {
+        if (!localStorage.getItem('cookies_accepted')) {
+            document.getElementById('cookie-banner').style.display = 'block';
+            document.getElementById('aceptar-cookies').onclick = function() {
+                localStorage.setItem('cookies_accepted', 'true');
+                document.getElementById('cookie-banner').style.display = 'none';
+            };
+        }
+    })();
+    </script>
 </body>
 </html>

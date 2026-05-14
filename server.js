@@ -77,6 +77,78 @@ function handleInternalError(res, error, context = 'server') {
     return res.status(500).json({ error: 'Error interno del servidor' });
 }
 
+function stripMongoInternalFields(value) {
+    if (Array.isArray(value)) {
+        return value.map(item => stripMongoInternalFields(item));
+    }
+
+    if (!value || typeof value !== 'object') {
+        return value;
+    }
+
+    const cleaned = {};
+    for (const [key, fieldValue] of Object.entries(value)) {
+        if (key === '_id') continue;
+        cleaned[key] = stripMongoInternalFields(fieldValue);
+    }
+    return cleaned;
+}
+
+function sanitizeText(value, maxLength = 120) {
+    if (value === undefined || value === null) return '';
+    return String(value).trim().replace(/\s+/g, ' ').slice(0, maxLength);
+}
+
+function isValidUsername(username) {
+    return /^[a-zA-Z0-9._-]{3,40}$/.test(String(username || ''));
+}
+
+function isStrongPassword(password) {
+    return typeof password === 'string' && password.length >= 8 && password.length <= 128;
+}
+
+function getClientIp(req) {
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+}
+
+async function writeAuditLog(eventType, req, details = {}) {
+    const entry = {
+        eventType,
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        path: req.originalUrl,
+        userId: req.authUser?.sub || req.body?.userId || req.query?.userId || null,
+        ip: getClientIp(req),
+        userAgent: req.headers['user-agent'] || null,
+        details
+    };
+
+    console.log('📘 AUDIT', JSON.stringify(entry));
+
+    if (!db) return;
+
+    try {
+        await db.collection('audit_logs').insertOne(entry);
+    } catch (error) {
+        console.warn('⚠️ No se pudo guardar audit log en MongoDB:', error.message);
+    }
+}
+
+
+// ==================== HTTPS OBLIGATORIO EN PRODUCCIÓN ====================
+if (IS_PRODUCTION) {
+    app.use((req, res, next) => {
+        if (req.headers['x-forwarded-proto'] && req.headers['x-forwarded-proto'] !== 'https') {
+            // Redirigir a HTTPS
+            return res.redirect(301, 'https://' + req.headers.host + req.originalUrl);
+        }
+        if (!req.secure && (!req.headers['x-forwarded-proto'] || req.headers['x-forwarded-proto'] !== 'https')) {
+            // Mostrar advertencia si no es seguro
+            return res.status(400).send('⚠️ El acceso a este servicio debe realizarse siempre por HTTPS.');
+        }
+        next();
+    });
+}
 // ==================== SEGURIDAD ====================
 
 // Headers de seguridad HTTP
@@ -133,6 +205,17 @@ const apiLimiter = rateLimit({
 app.use(bodyParser.json({ limit: '2mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '2mb' }));
 app.use('/api', apiLimiter);
+
+app.use('/api', (req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+        writeAuditLog('api_access', req, {
+            statusCode: res.statusCode,
+            durationMs: Date.now() - start
+        });
+    });
+    next();
+});
 
 // Auth de API:
 // - compat: acepta cliente legacy sin token, pero si hay token lo valida y fuerza userId
@@ -222,6 +305,8 @@ app.get('/api/equipos', async (req, res) => {
 app.post('/api/equipos', async (req, res) => {
     try {
         const equipo = req.body;
+
+        equipo.nombre = sanitizeText(equipo.nombre, 120);
         
         console.log('📥 POST /api/equipos - Recibiendo:', JSON.stringify(equipo));
         
@@ -451,12 +536,19 @@ app.post('/api/jugadores', async (req, res) => {
     try {
         const jugador = req.body; // jugador/a
 
+        jugador.nombre = sanitizeText(jugador.nombre, 120);
+        jugador.posicion = sanitizeText(jugador.posicion, 60);
+
         if (!jugador.userId) {
             return res.status(400).json({ error: 'userId es requerido' });
         }
 
         if (!jugador.id) {
             return res.status(400).json({ error: 'id es requerido' });
+        }
+
+        if (!jugador.nombre) {
+            return res.status(400).json({ error: 'nombre es requerido' });
         }
         
         // Asegurar que equipoId sea número
@@ -554,9 +646,17 @@ app.get('/api/jornadas', async (req, res) => {
 app.post('/api/jornadas', async (req, res) => {
     try {
         const jornada = req.body;
+
+        jornada.rival = sanitizeText(jornada.rival, 120);
+        jornada.ubicacion = sanitizeText(jornada.ubicacion, 200);
+        jornada.nombreEquipo = sanitizeText(jornada.nombreEquipo, 120);
         
         if (!jornada.userId) {
             return res.status(400).json({ error: 'userId es requerido' });
+        }
+
+        if (!jornada.id) {
+            return res.status(400).json({ error: 'id es requerido' });
         }
         
         // Normalizar equipoId a número si existe
@@ -655,6 +755,8 @@ app.get('/api/users', async (req, res) => {
 app.post('/api/users', async (req, res) => {
     try {
         const user = req.body;
+        user.username = sanitizeText(user.username, 40);
+        user.name = sanitizeText(user.name, 120);
 
         // Solo admin autenticado puede crear/editar usuarios,
         // excepto bootstrap inicial cuando aún no existe ningún usuario y está permitido.
@@ -672,6 +774,10 @@ app.post('/api/users', async (req, res) => {
         if (!user.username) {
             return res.status(400).json({ error: 'El username es requerido' });
         }
+
+        if (!isValidUsername(user.username)) {
+            return res.status(400).json({ error: 'Username inválido. Usa 3-40 caracteres: letras, números, punto, guion o guion bajo.' });
+        }
         
         // Verificar si el usuario ya existe
         const existingUser = await db.collection('users').findOne({ username: user.username });
@@ -683,6 +789,10 @@ app.post('/api/users', async (req, res) => {
 
         if (!existingUser && !normalizedPassword) {
             return res.status(400).json({ error: 'La contraseña es requerida para crear el usuario' });
+        }
+
+        if (normalizedPassword && !isStrongPassword(normalizedPassword)) {
+            return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 128 caracteres.' });
         }
 
         // Hash de contraseña (compatibilidad: si no se envía nueva, conserva la existente)
@@ -714,6 +824,11 @@ app.post('/api/users', async (req, res) => {
         );
         
         console.log(`${result.upsertedCount > 0 ? '✅ Usuario creado' : '🔄 Usuario actualizado'}:`, user.username);
+        await writeAuditLog('user_upsert', req, {
+            targetUsername: user.username,
+            created: result.upsertedCount > 0,
+            byAdmin: !!req.authUser?.isAdmin
+        });
         // No devolver la contraseña en la respuesta
         const { password: _pw, ...userSinPassword } = userData;
         res.json({ 
@@ -730,10 +845,19 @@ app.post('/api/users', async (req, res) => {
 // Login (verificar credenciales) — con rate limiting
 app.post('/api/users/login', loginLimiter, async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const username = sanitizeText(req.body?.username, 40);
+        const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
         if (!username || !password) {
             return res.status(400).json({ error: 'Usuario y contraseña son requeridos' });
+        }
+
+        if (!isValidUsername(username)) {
+            return res.status(400).json({ error: 'Formato de usuario inválido' });
+        }
+
+        if (password.length > 128) {
+            return res.status(400).json({ error: 'Contraseña inválida' });
         }
         
         const user = await db.collection('users').findOne({ username });
@@ -763,6 +887,7 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
         }
 
         if (!isValidPassword) {
+            await writeAuditLog('login_failed', req, { username });
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
         
@@ -773,6 +898,7 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
         );
 
         const token = signUserToken(user);
+        await writeAuditLog('login_success', req, { username, isAdmin: !!user.isAdmin });
         
         res.json({
             success: true,
@@ -782,6 +908,114 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
         });
     } catch (error) {
         console.error('❌ Error en login:', error);
+        res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Exportación GDPR completa de datos de un usuario.
+app.get('/api/users/:username/export', async (req, res) => {
+    try {
+        const { username } = req.params;
+
+        if (!req.authUser) {
+            return res.status(401).json({ error: 'No autenticado' });
+        }
+
+        const isSelf = req.authUser.sub === username;
+        const isAdmin = !!req.authUser.isAdmin;
+        if (!isSelf && !isAdmin) {
+            return res.status(403).json({ error: 'No autorizado para exportar los datos de este usuario' });
+        }
+
+        await writeAuditLog('user_export_requested', req, {
+            targetUsername: username,
+            requestedBy: req.authUser.sub
+        });
+
+        const [userDoc, equipos, jugadoras, jornadas, configDoc] = await Promise.all([
+            db.collection('users').findOne(
+                { username },
+                { projection: { _id: 0, password: 0 } }
+            ),
+            db.collection('equipos').find({ userId: username }).toArray(),
+            db.collection('jugadores').find({ userId: username }).toArray(),
+            db.collection('jornadas').find({ userId: username }).toArray(),
+            db.collection('config').findOne({ userId: username })
+        ]);
+
+        if (!userDoc) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const payload = {
+            fechaExportacion: new Date().toISOString(),
+            version: '2.0-gdpr',
+            formato: 'application/json',
+            titular: {
+                username: userDoc.username,
+                name: userDoc.name || '',
+                isAdmin: !!userDoc.isAdmin,
+                createdAt: userDoc.createdAt || null,
+                lastLogin: userDoc.lastLogin || null
+            },
+            datos: {
+                configuracion: stripMongoInternalFields(configDoc || {
+                    userId: username,
+                    polideportivoCasa: '',
+                    ubicacionesGuardadas: [],
+                    rivalesGuardados: []
+                }),
+                equipos: stripMongoInternalFields(equipos || []),
+                jugadoras: stripMongoInternalFields(jugadoras || []),
+                jornadas: stripMongoInternalFields(jornadas || [])
+            },
+            resumen: {
+                totalEquipos: Array.isArray(equipos) ? equipos.length : 0,
+                totalJugadoras: Array.isArray(jugadoras) ? jugadoras.length : 0,
+                totalJornadas: Array.isArray(jornadas) ? jornadas.length : 0,
+                totalJornadasCompletadas: Array.isArray(jornadas) ? jornadas.filter(j => !!j.completada).length : 0
+            }
+        };
+
+        res.json(payload);
+    } catch (error) {
+        return handleInternalError(res, error, 'users-export');
+    }
+});
+
+// El usuario autenticado puede borrar su propia cuenta. Un admin puede borrar cualquier usuario.
+app.delete('/api/users/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        if (!req.authUser) {
+            return res.status(401).json({ error: 'No autenticado' });
+        }
+
+        const isSelf = req.authUser.sub === username;
+        const isAdmin = !!req.authUser.isAdmin;
+        if (!isSelf && !isAdmin) {
+            return res.status(403).json({ error: 'No autorizado para borrar este usuario' });
+        }
+
+        await writeAuditLog('user_delete_requested', req, {
+            targetUsername: username,
+            requestedBy: req.authUser.sub
+        });
+
+        const userResult = await db.collection('users').deleteOne({ username });
+        const equiposResult = await db.collection('equipos').deleteMany({ userId: username });
+        const jugadoresResult = await db.collection('jugadores').deleteMany({ userId: username });
+        const jornadasResult = await db.collection('jornadas').deleteMany({ userId: username });
+
+        res.json({
+            success: true,
+            deletedUser: userResult.deletedCount,
+            deletedEquipos: equiposResult.deletedCount,
+            deletedJugadores: jugadoresResult.deletedCount,
+            deletedJornadas: jornadasResult.deletedCount
+        });
+    } catch (error) {
+        console.error('❌ Error al borrar usuario:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
     }
 });

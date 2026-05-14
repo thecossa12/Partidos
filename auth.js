@@ -168,72 +168,15 @@ window.Auth = {
                 sessionStorage.setItem('current_user', JSON.stringify(session));
                 sessionStorage.setItem('volleyball_session', JSON.stringify(session));
                 
-                // También guardar el usuario en localStorage para uso offline (sin contraseña)
-                const users = this.getUsers();
-                users[username] = {
-                    username: result.user.username,
-                    name: result.user.name,
-                    isAdmin: result.user.isAdmin,
-                    createdAt: new Date().toISOString(),
-                    lastLogin: new Date().toISOString()
-                };
-                this.saveUsers(users);
-                
                 console.log('✅ Login exitoso desde MongoDB y sesión guardada');
                 return { success: true, message: 'Login exitoso', user: session };
-            } else {
-                console.log('⚠️ Usuario no encontrado en MongoDB, intentando con localStorage...');
             }
-        } catch (error) {
-            console.warn('⚠️ Error conectando con MongoDB, usando localStorage como fallback:', error.message);
-        }
-        
-        // PASO 2: Fallback local SOLO en entorno local/desarrollo.
-        const isLocalEnvironment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        if (!isLocalEnvironment) {
-            return { success: false, message: 'No se pudo iniciar sesión. Inténtalo de nuevo en unos segundos.' };
-        }
 
-        // Fallback a localStorage si MongoDB falla o no está disponible
-        const users = this.getUsers();
-        
-        const user = users[username];
-        if (!user) {
-            return { success: false, message: 'Usuario o contraseña incorrectos' };
-        }
-        
-        if (user.password !== password) {
-            return { success: false, message: 'Usuario o contraseña incorrectos' };
-        }
-        
-        // Actualizar último login
-        user.lastLogin = new Date().toISOString();
-        this.saveUsers(users);
-        
-        // Crear sesión
-        const session = {
-            username: user.username,
-            name: user.name,
-            isAdmin: user.isAdmin,
-            token: null,
-            loginTime: new Date().toISOString()
-        };
-        
-        // Guardar sesión en múltiples lugares
-        try {
-            localStorage.setItem('volleyball_auth', JSON.stringify(session));
-            localStorage.setItem('current_user', JSON.stringify(session));
-            localStorage.setItem('volleyball_session', JSON.stringify(session));
-            localStorage.removeItem('volleyball_token');
-            sessionStorage.setItem('volleyball_auth', JSON.stringify(session));
-            sessionStorage.setItem('current_user', JSON.stringify(session));
-            sessionStorage.setItem('volleyball_session', JSON.stringify(session));
-            
-            console.log('✅ Login exitoso desde localStorage y sesión guardada:', session);
-            return { success: true, message: 'Login exitoso', user: session };
-        } catch (e) {
-            console.error('❌ Error guardando sesión:', e);
-            return { success: false, message: 'Error al crear la sesión' };
+            const errorData = await response.json().catch(() => ({}));
+            return { success: false, message: errorData.error || 'Usuario o contraseña incorrectos' };
+        } catch (error) {
+            console.warn('⚠️ Error conectando con MongoDB:', error.message);
+            return { success: false, message: 'No se pudo iniciar sesión. Inténtalo de nuevo en unos segundos.' };
         }
     },
     
@@ -309,65 +252,8 @@ window.Auth = {
     },
     
     getUsers: function() {
-        console.log('🔍 getUsers() - Obteniendo usuarios del localStorage');
-        
-        // Usuarios predefinidos del sistema
-        // AVISO DE SEGURIDAD: Las contraseñas deben gestionarse desde MongoDB.
-        // Este fallback offline solo tiene el admin con contraseña vacía para forzar
-        // el uso de MongoDB en producción.
-const systemUsers = {
-    admin: {
-        username: 'admin',
-        password: '',
-        name: 'Administrador',
-        isAdmin: true,
-        createdAt: '2025-11-11T11:29:42.538Z',
-        lastLogin: null
-    },
-    Christian: {
-        username: 'Christian',
-        password: '',
-        name: 'Christian Cosa Coronado',
-        isAdmin: false,
-        createdAt: '2025-11-11T11:29:42.538Z',
-        lastLogin: null
-    },
-    Elena: {
-        username: 'Elena',
-        password: '',
-        name: 'Perez-Herrera Cuadrillero',
-        isAdmin: false,
-        createdAt: '2025-11-11T11:29:42.538Z',
-        lastLogin: null
-    }
-};
-        
-        // Intentar obtener usuarios de localStorage
-        const stored = localStorage.getItem('system_users');
-        console.log('📦 Datos crudos de system_users:', stored);
-        
-        if (stored) {
-            try {
-                const parsed = JSON.parse(stored);
-                console.log('✅ Usuarios de localStorage:', Object.keys(parsed));
-                
-                // Combinar usuarios del sistema con usuarios de localStorage
-                // Los usuarios del código siempre están disponibles, más los agregados dinámicamente
-                const merged = { ...systemUsers, ...parsed };
-                console.log('✅ Usuarios finales (código + localStorage):', Object.keys(merged));
-                return merged;
-            } catch (e) {
-                console.warn('❌ Error parsing users data, usando usuarios del código:', e);
-                return systemUsers;
-            }
-        }
-        
-        console.log('⚠️ No hay usuarios en localStorage, usando usuarios del código');
-        console.log('👥 Usuarios del código:', Object.keys(systemUsers));
-        
-        // Guardar usuarios del sistema en localStorage (solo la primera vez)
-        this.saveUsers(systemUsers);
-        return systemUsers;
+        // Fallback local deshabilitado por seguridad.
+        return {};
     },
 
     // Nueva función para obtener usuarios como array
@@ -531,53 +417,6 @@ function checkAuthentication() {
         const adminTab = document.getElementById('admin-tab');
         if (adminTab) {
             adminTab.style.display = 'block';
-            
-            // Reconfigurar tabs para incluir el admin
-            setTimeout(() => {
-                if (window.app && typeof window.app.configurarTabs === 'function') {
-                    console.log('🔄 Reconfigurando tabs para incluir Admin');
-                    window.app.configurarTabs();
-                }
-                
-                // Asegurar que el event listener del admin esté configurado
-                const adminTabButton = document.getElementById('admin-tab');
-                if (adminTabButton && !adminTabButton.hasAttribute('data-listener-configured')) {
-                    console.log('⚙️ Configurando event listener para tab Admin');
-                    adminTabButton.addEventListener('click', (e) => {
-                        console.log('🖱️ Click en tab Admin detectado');
-                        console.log('🔍 window.app existe:', !!window.app);
-                        console.log('🔍 window.app.cambiarTab existe:', !!(window.app && window.app.cambiarTab));
-                        
-                        if (window.app && typeof window.app.cambiarTab === 'function') {
-                            console.log('🎯 Usando función cambiarTab de VolleyballManager');
-                            window.app.cambiarTab('admin');
-                        } else {
-                            // Manejo manual si no existe la función
-                            console.log('🔧 Ejecutando cambio de tab manual');
-                            document.querySelectorAll('.tab-button').forEach(btn => {
-                                btn.classList.remove('active');
-                                console.log('❌ Removido active de:', btn.textContent);
-                            });
-                            document.querySelectorAll('.tab-content').forEach(content => {
-                                content.classList.remove('active');
-                                console.log('❌ Removido active de tab-content:', content.id);
-                            });
-                            adminTabButton.classList.add('active');
-                            console.log('✅ Agregado active al botón Admin');
-                            
-                            const adminContent = document.getElementById('admin');
-                            if (adminContent) {
-                                adminContent.classList.add('active');
-                                console.log('✅ Agregado active al contenido Admin');
-                                console.log('📏 Display del contenido Admin:', getComputedStyle(adminContent).display);
-                            } else {
-                                console.error('❌ No se encontró elemento con id="admin"');
-                            }
-                        }
-                    });
-                    adminTabButton.setAttribute('data-listener-configured', 'true');
-                }
-            }, 100);
         }
     }
     
