@@ -12,6 +12,7 @@
     "backup:data": "node scripts/backup-data.js",
     "backup:rotate": "node scripts/rotate-backups.js",
     "backup:archive:cleanup": "node scripts/cleanup-backup-archive.js",
+    "backup:restore": "node scripts/restore-backup.js",
     "audit:cleanup": "node scripts/cleanup-audit-logs.js",
     "ops:maintenance": "npm run backup:rotate && npm run backup:archive:cleanup && npm run audit:cleanup",
     "go-live:check": "node scripts/go-live-check.js"

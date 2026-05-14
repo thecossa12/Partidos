@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SLA y Politica de Soporte</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="legal-container">
+        <h1>SLA y Politica de Soporte</h1>
+        <p>Ultima actualizacion: 14/05/2026</p>
+
+        <h2>1. Alcance</h2>
+        <p>Este documento define objetivos orientativos de disponibilidad, tiempos de respuesta y canal de soporte para clientes del servicio.</p>
+
+        <h2>2. Horario y canal</h2>
+        <ul>
+            <li>Canal principal: christiancosacoronado@hotmail.com</li>
+            <li>Horario de soporte: Lunes a Viernes, 10:00 a 18:00 (hora peninsular de Espana)</li>
+            <li>Idioma de soporte: Espanol</li>
+        </ul>
+
+        <h2>3. Objetivo de disponibilidad</h2>
+        <ul>
+            <li>Objetivo mensual orientativo: 99.0% para esta fase del proyecto.</li>
+            <li>Ventanas de mantenimiento programado: preferentemente fuera de horario laboral.</li>
+        </ul>
+
+        <p>Este SLA tiene caracter orientativo y no implica penalizaciones economicas automaticas salvo pacto expreso por escrito.</p>
+
+        <h2>4. Severidades y respuesta</h2>
+
+        <h3>Sev 1 - Servicio caido para todos</h3>
+        <ul>
+            <li>Ejemplo: login inutilizable o API no disponible.</li>
+            <li>Primera respuesta: <= 1 hora (horario laboral) o <= 4 horas (fuera de horario).</li>
+            <li>Actualizaciones: cada 2 horas hasta mitigacion.</li>
+        </ul>
+
+        <h3>Sev 2 - Funcion critica degradada</h3>
+        <ul>
+            <li>Ejemplo: errores persistentes en guardado/exportacion.</li>
+            <li>Primera respuesta: <= 4 horas laborables.</li>
+            <li>Actualizaciones: cada dia laborable.</li>
+        </ul>
+
+        <h3>Sev 3 - Incidencia menor o consulta</h3>
+        <ul>
+            <li>Ejemplo: duda funcional, bug con workaround.</li>
+            <li>Primera respuesta: <= 1 dia laborable.</li>
+        </ul>
+
+        <h2>5. Exclusiones</h2>
+        <p>No se incluyen en SLA:</p>
+        <ul>
+            <li>Caidas de internet del cliente.</li>
+            <li>Fallos de terceros fuera de control razonable.</li>
+            <li>Uso contrario a terminos de servicio.</li>
+        </ul>
+
+        <h2>6. Backup y continuidad</h2>
+        <ul>
+            <li>Frecuencia de backup: diaria.</li>
+            <li>Pruebas de restauracion: periodicas.</li>
+            <li>Retencion: segun configuracion vigente.</li>
+        </ul>
+
+        <h2>7. Proceso de incidentes</h2>
+        <ul>
+            <li>Responsable tecnico: Christian Cosa Coronado</li>
+            <li>Escalado interno: gestion directa por el titular del proyecto.</li>
+            <li>Postmortem para Sev 1/2: recomendado en 72h.</li>
+        </ul>
+
+        <h2>8. Comunicacion al cliente</h2>
+        <p>Las incidencias relevantes se comunican por email, incluyendo estado, impacto y estimacion de recuperacion.</p>
+
+        <a href="index.html">Volver al inicio</a>
+    </div>
+</body>
+</html>

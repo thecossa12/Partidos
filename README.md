@@ -200,6 +200,15 @@ Si vienen **14 jugadoras** y el partido es **2-0 (25-25 = 50 puntos totales)**:
    - `npm run backup:data`
 - Salida en carpeta `backups/` con timestamp.
 
+### Restauracion de backup
+- Restaurar un backup local en staging:
+   - `npm run backup:restore -- --file backups/backup-YYYYMMDD-HHmmss.json --force`
+- Restaurar el ultimo backup archivado en MongoDB:
+   - `npm run backup:restore -- --latest-archive --force`
+- Importante:
+   - el script exige `--force` para evitar restauraciones accidentales
+   - antes de restaurar en produccion, probar siempre en staging
+
 ### Rotacion automatica y retencion
 - Rotar backups locales por antiguedad:
    - `npm run backup:rotate`
@@ -242,6 +251,19 @@ Con eso, Railway ejecuta automáticamente los cron según el schedule en cada `r
 
 ### Checklist de salida comercial
 - Ver `GO-LIVE-CHECKLIST.md` para validacion completa de salida a clientes.
+
+### Documentos comerciales y legales (plantillas)
+- Checklist de cierre en 48h: `CHECKLIST-VENTA-48H.md`
+- Registro de salida a produccion: `GO-LIVE-REGISTRO.md`
+- Planes y precios base: `PLANES-Y-PRECIOS.md`
+- Proceso de alta de cliente: `PROCESO-ALTA-CLIENTE.md`
+- Terminos de servicio (publicable web): `terminos-servicio.html`
+- SLA y soporte (publicable web): `sla-soporte.html`
+- DPA (encargado del tratamiento, publicable web): `dpa-encargado-tratamiento.html`
+- Plantillas editables en markdown:
+   - `TERMINOS-SERVICIO.md`
+   - `SLA-SOPORTE.md`
+   - `DPA-ENCARGADO-TRATAMIENTO.md`
 
 ## Solución de Problemas
 
