@@ -4,7 +4,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "start": "node ../../scripts/go-live-check.js ; node ../../scripts/security-smoke-check.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "dotenv": "^17.2.3"
