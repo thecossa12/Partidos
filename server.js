@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { ObjectId } = require('mongodb');
 const { connectDB } = require('./db');
 require('dotenv').config();
 
@@ -109,6 +110,229 @@ function isStrongPassword(password) {
 
 function getClientIp(req) {
     return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
+}
+
+function normalizeEntityId(value) {
+    if (value === undefined || value === null) return '';
+    return String(value).trim();
+}
+
+function parseIsoDate(value) {
+    const parsed = Date.parse(value || '');
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function qualityScore(doc) {
+    if (!doc || typeof doc !== 'object') return 0;
+
+    let score = 0;
+    for (const [key, value] of Object.entries(doc)) {
+        if (key === '_id') continue;
+        if (value === undefined || value === null) continue;
+        if (typeof value === 'string' && !value.trim()) continue;
+        score += 1;
+    }
+
+    return score;
+}
+
+function chooseBestDoc(docs, options = {}) {
+    const { preferCompleted = false } = options;
+
+    return (docs || []).slice().sort((a, b) => {
+        if (preferCompleted) {
+            const completedScore = (b?.completada ? 1 : 0) - (a?.completada ? 1 : 0);
+            if (completedScore !== 0) return completedScore;
+        }
+
+        const qualityDiff = qualityScore(b) - qualityScore(a);
+        if (qualityDiff !== 0) return qualityDiff;
+
+        const updatedDiff = parseIsoDate(b?.updatedAt) - parseIsoDate(a?.updatedAt);
+        if (updatedDiff !== 0) return updatedDiff;
+
+        const createdDiff = parseIsoDate(b?.createdAt) - parseIsoDate(a?.createdAt);
+        if (createdDiff !== 0) return createdDiff;
+
+        return String(b?._id || '').localeCompare(String(a?._id || ''));
+    })[0];
+}
+
+function countDuplicatesById(docs) {
+    const counts = new Map();
+    for (const doc of docs || []) {
+        const key = normalizeEntityId(doc?.id);
+        if (!key) continue;
+        counts.set(key, (counts.get(key) || 0) + 1);
+    }
+
+    return Array.from(counts.values()).filter(count => count > 1).length;
+}
+
+async function runUserDataHealth(userId, applyChanges = false) {
+    const [equiposBefore, jugadorasBefore, jornadasBefore] = await Promise.all([
+        db.collection('equipos').find({ userId }).toArray(),
+        db.collection('jugadores').find({ userId }).toArray(),
+        db.collection('jornadas').find({ userId }).toArray()
+    ]);
+
+    const actions = {
+        deleteEquiposIds: [],
+        deleteJugadorasIds: [],
+        deleteJornadasIds: [],
+        markJornadasCompletedIds: []
+    };
+
+    const invalidEquipos = equiposBefore.filter((e) => {
+        const id = normalizeEntityId(e?.id);
+        const nombre = normalizeEntityId(e?.nombre).toLowerCase();
+        const nestedLegacy = Array.isArray(e?.equipos) && e.equipos.length > 0 && !id;
+        const invalidName = !nombre || nombre === 'undefined' || nombre === 'null';
+        return !id || invalidName || nestedLegacy;
+    });
+    invalidEquipos.forEach((e) => actions.deleteEquiposIds.push(e._id));
+
+    const validEquipos = equiposBefore.filter((e) => !actions.deleteEquiposIds.some(id => String(id) === String(e._id)));
+    const equiposById = new Map();
+    for (const equipo of validEquipos) {
+        const key = normalizeEntityId(equipo?.id);
+        if (!key) continue;
+        if (!equiposById.has(key)) equiposById.set(key, []);
+        equiposById.get(key).push(equipo);
+    }
+    for (const docs of equiposById.values()) {
+        if (docs.length <= 1) continue;
+        const best = chooseBestDoc(docs);
+        docs.forEach((doc) => {
+            if (String(doc._id) !== String(best._id)) actions.deleteEquiposIds.push(doc._id);
+        });
+    }
+
+    const invalidJugadoras = jugadorasBefore.filter((j) => {
+        const id = normalizeEntityId(j?.id);
+        const nombre = normalizeEntityId(j?.nombre).toLowerCase();
+        return !id || !nombre || nombre === 'undefined' || nombre === 'null';
+    });
+    invalidJugadoras.forEach((j) => actions.deleteJugadorasIds.push(j._id));
+
+    const validJugadoras = jugadorasBefore.filter((j) => !actions.deleteJugadorasIds.some(id => String(id) === String(j._id)));
+    const jugadorasById = new Map();
+    for (const jugadora of validJugadoras) {
+        const key = normalizeEntityId(jugadora?.id);
+        if (!key) continue;
+        if (!jugadorasById.has(key)) jugadorasById.set(key, []);
+        jugadorasById.get(key).push(jugadora);
+    }
+    for (const docs of jugadorasById.values()) {
+        if (docs.length <= 1) continue;
+        const best = chooseBestDoc(docs);
+        docs.forEach((doc) => {
+            if (String(doc._id) !== String(best._id)) actions.deleteJugadorasIds.push(doc._id);
+        });
+    }
+
+    const jornadasById = new Map();
+    for (const jornada of jornadasBefore) {
+        const key = normalizeEntityId(jornada?.id);
+        if (!key) continue;
+        if (!jornadasById.has(key)) jornadasById.set(key, []);
+        jornadasById.get(key).push(jornada);
+    }
+
+    const jornadasKept = [];
+    for (const docs of jornadasById.values()) {
+        if (docs.length === 1) {
+            jornadasKept.push(docs[0]);
+            continue;
+        }
+        const best = chooseBestDoc(docs, { preferCompleted: true });
+        jornadasKept.push(best);
+        docs.forEach((doc) => {
+            if (String(doc._id) !== String(best._id)) actions.deleteJornadasIds.push(doc._id);
+        });
+    }
+
+    const jornadasByTeam = new Map();
+    for (const jornada of jornadasKept) {
+        const teamKey = normalizeEntityId(jornada?.equipoId);
+        if (!jornadasByTeam.has(teamKey)) jornadasByTeam.set(teamKey, []);
+        jornadasByTeam.get(teamKey).push(jornada);
+    }
+
+    for (const jornadas of jornadasByTeam.values()) {
+        const incompletas = jornadas
+            .filter((j) => !j?.completada)
+            .sort((a, b) => parseIsoDate(b?.fechaLunes) - parseIsoDate(a?.fechaLunes));
+
+        if (incompletas.length <= 1) continue;
+
+        incompletas.slice(1).forEach((j) => {
+            actions.markJornadasCompletedIds.push(j._id);
+        });
+    }
+
+    actions.deleteEquiposIds = Array.from(new Set(actions.deleteEquiposIds.map(id => String(id))));
+    actions.deleteJugadorasIds = Array.from(new Set(actions.deleteJugadorasIds.map(id => String(id))));
+    actions.deleteJornadasIds = Array.from(new Set(actions.deleteJornadasIds.map(id => String(id))));
+    actions.markJornadasCompletedIds = Array.from(new Set(actions.markJornadasCompletedIds.map(id => String(id))));
+
+    if (applyChanges) {
+        if (actions.deleteEquiposIds.length > 0) {
+            await db.collection('equipos').deleteMany({ _id: { $in: actions.deleteEquiposIds.map(id => new ObjectId(id)) } });
+        }
+        if (actions.deleteJugadorasIds.length > 0) {
+            await db.collection('jugadores').deleteMany({ _id: { $in: actions.deleteJugadorasIds.map(id => new ObjectId(id)) } });
+        }
+        if (actions.deleteJornadasIds.length > 0) {
+            await db.collection('jornadas').deleteMany({ _id: { $in: actions.deleteJornadasIds.map(id => new ObjectId(id)) } });
+        }
+        if (actions.markJornadasCompletedIds.length > 0) {
+            await db.collection('jornadas').updateMany(
+                { _id: { $in: actions.markJornadasCompletedIds.map(id => new ObjectId(id)) } },
+                { $set: { completada: true, updatedAt: new Date().toISOString() } }
+            );
+        }
+    }
+
+    const [equiposAfter, jugadorasAfter, jornadasAfter] = applyChanges
+        ? await Promise.all([
+            db.collection('equipos').find({ userId }).toArray(),
+            db.collection('jugadores').find({ userId }).toArray(),
+            db.collection('jornadas').find({ userId }).toArray()
+        ])
+        : [equiposBefore, jugadorasBefore, jornadasBefore];
+
+    return {
+        userId,
+        actions: {
+            deleteEquiposCount: actions.deleteEquiposIds.length,
+            deleteJugadorasCount: actions.deleteJugadorasIds.length,
+            deleteJornadasCount: actions.deleteJornadasIds.length,
+            markJornadasCompletedCount: actions.markJornadasCompletedIds.length
+        },
+        before: {
+            equipos: equiposBefore.length,
+            jugadoras: jugadorasBefore.length,
+            jornadas: jornadasBefore.length,
+            jornadasCompletadas: jornadasBefore.filter(j => !!j.completada).length,
+            duplicates: {
+                equiposById: countDuplicatesById(equiposBefore),
+                jugadorasById: countDuplicatesById(jugadorasBefore),
+                jornadasById: countDuplicatesById(jornadasBefore)
+            }
+        },
+        after: {
+            equipos: equiposAfter.length,
+            jugadoras: jugadorasAfter.length,
+            jornadas: jornadasAfter.length,
+            jornadasCompletadas: jornadasAfter.filter(j => !!j.completada).length,
+            duplicates: {
+                equiposById: countDuplicatesById(equiposAfter),
+                jugadorasById: countDuplicatesById(jugadorasAfter),
+                jornadasById: countDuplicatesById(jornadasAfter)
+            }
+        }
+    };
 }
 
 async function writeAuditLog(eventType, req, details = {}) {
@@ -976,6 +1200,64 @@ app.get('/api/admin/audit-logs', async (req, res) => {
         res.json(stripMongoInternalFields(logs));
     } catch (error) {
         return handleInternalError(res, error, 'audit-logs-list');
+    }
+});
+
+// Auditoria/Reparacion de integridad de datos (solo admin)
+app.post('/api/admin/data-health', async (req, res) => {
+    try {
+        if (!req.authUser || !req.authUser.isAdmin) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const apply = !!req.body?.apply;
+        const targetUserId = sanitizeText(req.body?.userId || '', 80);
+
+        let users = [];
+        if (targetUserId) {
+            users = [targetUserId];
+        } else {
+            const allUsers = await db.collection('users')
+                .find({}, { projection: { _id: 0, username: 1 } })
+                .toArray();
+            users = Array.from(new Set(allUsers.map(u => sanitizeText(u.username || '', 80)).filter(Boolean))).sort();
+        }
+
+        const results = [];
+        for (const userId of users) {
+            const result = await runUserDataHealth(userId, apply);
+            results.push(result);
+        }
+
+        const summary = {
+            mode: apply ? 'apply' : 'dry-run',
+            usersTotal: results.length,
+            usersWithIssues: results.filter((r) => {
+                const a = r.actions || {};
+                return (a.deleteEquiposCount || 0) + (a.deleteJugadorasCount || 0) + (a.deleteJornadasCount || 0) + (a.markJornadasCompletedCount || 0) > 0;
+            }).length,
+            totals: results.reduce((acc, r) => {
+                const a = r.actions || {};
+                acc.deleteEquipos += a.deleteEquiposCount || 0;
+                acc.deleteJugadoras += a.deleteJugadorasCount || 0;
+                acc.deleteJornadas += a.deleteJornadasCount || 0;
+                acc.markJornadasCompleted += a.markJornadasCompletedCount || 0;
+                return acc;
+            }, { deleteEquipos: 0, deleteJugadoras: 0, deleteJornadas: 0, markJornadasCompleted: 0 }),
+            results
+        };
+
+        await writeAuditLog('admin_data_health_run', req, {
+            apply,
+            targetUserId: targetUserId || null,
+            usersTotal: summary.usersTotal,
+            usersWithIssues: summary.usersWithIssues,
+            totals: summary.totals
+        });
+
+        res.json(summary);
+    } catch (error) {
+        return handleInternalError(res, error, 'admin-data-health');
     }
 });
 

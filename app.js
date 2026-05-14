@@ -8062,6 +8062,8 @@ function setupAdminEvents() {
 
     // Botones de sistema
     document.getElementById('backup-data-btn').addEventListener('click', backupSystemData);
+    document.getElementById('audit-data-btn').addEventListener('click', auditDataIntegrity);
+    document.getElementById('repair-data-btn').addEventListener('click', repairDataIntegrity);
     document.getElementById('clear-data-btn').addEventListener('click', clearSystemData);
     document.getElementById('reset-users-btn').addEventListener('click', resetUsers);
 
@@ -8482,6 +8484,93 @@ function resetUsers() {
                 showNotification('❌ Error al resetear usuarios', 'error');
             }
         }
+    );
+}
+
+function getApiBaseUrl() {
+    if (window.app && window.app.API_URL) {
+        return window.app.API_URL;
+    }
+
+    return window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? 'http://localhost:3000/api'
+        : `${window.location.origin}/api`;
+}
+
+function buildDataIntegritySummary(data) {
+    const totals = data.totals || {};
+    const lines = [
+        `Modo: ${data.mode === 'apply' ? 'REPARACION' : 'AUDITORIA'}`,
+        `Usuarios revisados: ${data.usersTotal || 0}`,
+        `Usuarios con incidencias: ${data.usersWithIssues || 0}`,
+        '',
+        `Equipos eliminados: ${totals.deleteEquipos || 0}`,
+        `Jugadoras eliminadas: ${totals.deleteJugadoras || 0}`,
+        `Jornadas eliminadas: ${totals.deleteJornadas || 0}`,
+        `Jornadas marcadas completadas: ${totals.markJornadasCompleted || 0}`
+    ];
+
+    const topUsers = (data.results || [])
+        .filter((item) => {
+            const a = item.actions || {};
+            return (a.deleteEquiposCount || 0) + (a.deleteJugadorasCount || 0) + (a.deleteJornadasCount || 0) + (a.markJornadasCompletedCount || 0) > 0;
+        })
+        .slice(0, 5);
+
+    if (topUsers.length > 0) {
+        lines.push('', 'Usuarios con cambios:');
+        topUsers.forEach((item) => {
+            const a = item.actions || {};
+            lines.push(
+                `- ${item.userId}: equipos ${a.deleteEquiposCount || 0}, jugadoras ${a.deleteJugadorasCount || 0}, jornadas ${a.deleteJornadasCount || 0}, completadas ${a.markJornadasCompletedCount || 0}`
+            );
+        });
+    }
+
+    return lines.join('\n');
+}
+
+async function runDataIntegrityTask(apply) {
+    const actionLabel = apply ? 'reparar' : 'auditar';
+
+    try {
+        showNotification(`⏳ Iniciando ${actionLabel} de integridad de datos...`, 'info');
+
+        const response = await fetch(`${getApiBaseUrl()}/admin/data-health`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apply })
+        });
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+            throw new Error(payload.error || `No se pudo ${actionLabel} la integridad`);
+        }
+
+        showNotification(
+            apply
+                ? '✅ Reparación de integridad completada'
+                : '✅ Auditoría de integridad completada',
+            'success'
+        );
+
+        alert(buildDataIntegritySummary(payload));
+    } catch (error) {
+        console.error(`❌ Error al ${actionLabel} integridad:`, error);
+        showNotification(`❌ Error al ${actionLabel} integridad: ${error.message}`, 'error');
+    }
+}
+
+function auditDataIntegrity() {
+    runDataIntegrityTask(false);
+}
+
+function repairDataIntegrity() {
+    showConfirmModal(
+        '🛠️ Reparar Integridad de Datos',
+        'Se revisarán todos los usuarios y se aplicarán correcciones automáticas de duplicados/inconsistencias.\n\n¿Quieres continuar?',
+        () => runDataIntegrityTask(true)
     );
 }
 
