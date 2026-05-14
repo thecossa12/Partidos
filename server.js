@@ -979,10 +979,15 @@ app.get('/api/admin/audit-logs', async (req, res) => {
     }
 });
 
-// Exportación GDPR completa de datos de un usuario.
+// Exportación GDPR de datos de un usuario.
+// Soporta dos alcances:
+// - scope=all (default): todos los datos del usuario
+// - scope=current-team + equipoId: solo datos del equipo actual
 app.get('/api/users/:username/export', async (req, res) => {
     try {
         const { username } = req.params;
+        const scope = sanitizeText(req.query.scope || 'all', 40).toLowerCase();
+        const equipoIdRaw = req.query.equipoId;
 
         if (!req.authUser) {
             return res.status(401).json({ error: 'No autenticado' });
@@ -994,19 +999,40 @@ app.get('/api/users/:username/export', async (req, res) => {
             return res.status(403).json({ error: 'No autorizado para exportar los datos de este usuario' });
         }
 
+        if (scope === 'current-team' && (equipoIdRaw === undefined || equipoIdRaw === null || String(equipoIdRaw).trim() === '')) {
+            return res.status(400).json({ error: 'equipoId es requerido cuando scope=current-team' });
+        }
+
+        const teamValues = scope === 'current-team'
+            ? Array.from(new Set([
+                String(equipoIdRaw),
+                Number.isFinite(Number(equipoIdRaw)) ? Number(equipoIdRaw) : null
+            ].filter(value => value !== null && value !== undefined)))
+            : [];
+
+        const equiposFilter = scope === 'current-team'
+            ? { userId: username, id: { $in: teamValues } }
+            : { userId: username };
+
+        const relatedFilter = scope === 'current-team'
+            ? { userId: username, equipoId: { $in: teamValues } }
+            : { userId: username };
+
         await writeAuditLog('user_export_requested', req, {
             targetUsername: username,
-            requestedBy: req.authUser.sub
+            requestedBy: req.authUser.sub,
+            scope,
+            equipoId: scope === 'current-team' ? String(equipoIdRaw) : null
         });
 
-        const [userDoc, equipos, jugadoras, jornadas, configDoc] = await Promise.all([
+        const [userDoc, equiposRaw, jugadorasRaw, jornadasRaw, configDoc] = await Promise.all([
             db.collection('users').findOne(
                 { username },
                 { projection: { _id: 0, password: 0 } }
             ),
-            db.collection('equipos').find({ userId: username }).toArray(),
-            db.collection('jugadores').find({ userId: username }).toArray(),
-            db.collection('jornadas').find({ userId: username }).toArray(),
+            db.collection('equipos').find(equiposFilter).toArray(),
+            db.collection('jugadores').find(relatedFilter).toArray(),
+            db.collection('jornadas').find(relatedFilter).toArray(),
             db.collection('config').findOne({ userId: username })
         ]);
 
@@ -1014,10 +1040,27 @@ app.get('/api/users/:username/export', async (req, res) => {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
+        const dedupeById = (docs) => {
+            const seen = new Set();
+            const result = [];
+            for (const doc of docs || []) {
+                const key = String(doc?.id ?? '');
+                if (!key || seen.has(key)) continue;
+                seen.add(key);
+                result.push(doc);
+            }
+            return result;
+        };
+
+        const equipos = dedupeById(equiposRaw);
+        const jugadoras = dedupeById(jugadorasRaw);
+        const jornadas = dedupeById(jornadasRaw);
+
         const payload = {
             fechaExportacion: new Date().toISOString(),
-            version: '2.0-gdpr',
+            version: '2.1-gdpr',
             formato: 'application/json',
+            alcance: scope,
             titular: {
                 username: userDoc.username,
                 name: userDoc.name || '',

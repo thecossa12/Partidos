@@ -7314,7 +7314,14 @@ VolleyballManager.prototype.exportarDatos = async function() {
         console.log('📥 Iniciando exportación de datos...');
 
         const userId = this.getUserId();
-        const response = await fetch(`${this.API_URL}/users/${encodeURIComponent(userId)}/export`);
+        const equipoActual = this.getEquipoActual();
+        const equipoActualId = equipoActual ? equipoActual.id : this.equipoActualId;
+        const query = new URLSearchParams({
+            scope: 'current-team',
+            equipoId: String(equipoActualId)
+        });
+
+        const response = await fetch(`${this.API_URL}/users/${encodeURIComponent(userId)}/export?${query.toString()}`);
 
         if (!response.ok) {
             let message = `Error al exportar datos (${response.status})`;
@@ -7358,8 +7365,11 @@ VolleyballManager.prototype.exportarDatos = async function() {
 VolleyballManager.prototype.mostrarModalExportacion = function(data, onConfirm) {
     const resumen = data?.resumen || {};
     const titular = data?.titular || {};
+    const alcance = data?.alcance || 'all';
+    const equipoActual = this.getEquipoActual();
     const fechaExportacion = data?.fechaExportacion ? new Date(data.fechaExportacion).toLocaleString() : new Date().toLocaleString();
     const usernameSeguro = this.escapeHtmlSeguro(titular.username || this.getUserId());
+    const nombreEquipoSeguro = this.escapeHtmlSeguro(equipoActual?.nombre || 'Equipo actual');
 
     const modal = document.createElement('div');
     modal.style.cssText = `
@@ -7378,6 +7388,7 @@ VolleyballManager.prototype.mostrarModalExportacion = function(data, onConfirm) 
                 <h4>📊 Resumen de datos a exportar:</h4>
                 <ul style="line-height: 1.6;">
                     <li><strong>Usuario:</strong> ${usernameSeguro}</li>
+                    <li><strong>Alcance:</strong> ${alcance === 'current-team' ? `Solo equipo actual (${nombreEquipoSeguro})` : 'Todos los datos del usuario'}</li>
                     <li><strong>Equipos:</strong> ${resumen.totalEquipos || 0}</li>
                     <li><strong>Jugadoras:</strong> ${resumen.totalJugadoras || 0}</li>
                     <li><strong>Jornadas:</strong> ${resumen.totalJornadas || 0} (${resumen.totalJornadasCompletadas || 0} completadas)</li>
@@ -7389,7 +7400,7 @@ VolleyballManager.prototype.mostrarModalExportacion = function(data, onConfirm) 
                     <p style="margin: 0; font-size: 0.9rem; color: #6c757d;">
                         • Los datos se exportarán en formato JSON<br>
                         • Incluye perfil, configuración, equipos, jugadoras y jornadas<br>
-                        • Incluye datos completos para cumplimiento GDPR/LOPDGDD<br>
+                        • El alcance mostrado arriba indica exactamente qué se exporta<br>
                         • El archivo será compatible para futuras importaciones
                     </p>
                 </div>
