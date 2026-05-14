@@ -8044,6 +8044,8 @@ function initializeAdminPanel() {
     setupAdminEvents();
     // Inicializar editor de usuarios del sistema
     initSystemUsersEditor();
+    // Cargar selector para auditoria/reparacion por entrenador
+    loadDataHealthUsers();
     
     console.log('✅ Panel de admin inicializado');
 }
@@ -8064,6 +8066,7 @@ function setupAdminEvents() {
     document.getElementById('backup-data-btn').addEventListener('click', backupSystemData);
     document.getElementById('audit-data-btn').addEventListener('click', auditDataIntegrity);
     document.getElementById('repair-data-btn').addEventListener('click', repairDataIntegrity);
+    document.getElementById('reload-data-health-users-btn').addEventListener('click', loadDataHealthUsers);
     document.getElementById('clear-data-btn').addEventListener('click', clearSystemData);
     document.getElementById('reset-users-btn').addEventListener('click', resetUsers);
 
@@ -8497,6 +8500,118 @@ function getApiBaseUrl() {
         : `${window.location.origin}/api`;
 }
 
+async function loadDataHealthUsers() {
+    const selector = document.getElementById('data-health-user');
+    if (!selector) return;
+
+    const previousValue = selector.value;
+
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/users`);
+        const payload = await response.json();
+
+        if (!response.ok || !Array.isArray(payload)) {
+            throw new Error(payload.error || 'No se pudo cargar la lista de usuarios');
+        }
+
+        const users = payload
+            .map((item) => ({
+                username: String(item.username || '').trim(),
+                name: String(item.name || '').trim(),
+                isAdmin: !!item.isAdmin
+            }))
+            .filter((item) => item.username.length > 0)
+            .sort((a, b) => a.username.localeCompare(b.username, 'es', { sensitivity: 'base' }));
+
+        selector.innerHTML = '<option value="">Todos los entrenadores</option>';
+
+        users.forEach((user) => {
+            const option = document.createElement('option');
+            option.value = user.username;
+            option.textContent = `${user.username}${user.isAdmin ? ' (admin)' : ''}${user.name ? ` - ${user.name}` : ''}`;
+            selector.appendChild(option);
+        });
+
+        if (previousValue && users.some((item) => item.username === previousValue)) {
+            selector.value = previousValue;
+        }
+    } catch (error) {
+        console.error('❌ Error cargando usuarios para integridad:', error);
+        selector.innerHTML = '<option value="">Todos los entrenadores</option>';
+        showNotification(`❌ No se pudo cargar la lista de usuarios: ${error.message}`, 'error');
+    }
+}
+
+function getSelectedDataHealthUserId() {
+    const selector = document.getElementById('data-health-user');
+    if (!selector) return '';
+    return String(selector.value || '').trim();
+}
+
+function setDataHealthButtonsState(disabled) {
+    const ids = ['audit-data-btn', 'repair-data-btn', 'reload-data-health-users-btn'];
+    ids.forEach((id) => {
+        const button = document.getElementById(id);
+        if (button) button.disabled = !!disabled;
+    });
+}
+
+function renderDataHealthResults(data) {
+    const container = document.getElementById('data-health-results');
+    if (!container) return;
+
+    const totals = data.totals || {};
+    const rows = (data.results || []).map((item) => {
+        const a = item.actions || {};
+        const total = (a.deleteEquiposCount || 0) + (a.deleteJugadorasCount || 0) + (a.deleteJornadasCount || 0) + (a.markJornadasCompletedCount || 0);
+
+        return `
+            <tr>
+                <td style="padding: 6px 8px; border-bottom: 1px solid #eee;">${escapeHtml(item.userId || '-')}</td>
+                <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">${a.deleteEquiposCount || 0}</td>
+                <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">${a.deleteJugadorasCount || 0}</td>
+                <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">${a.deleteJornadasCount || 0}</td>
+                <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee;">${a.markJornadasCompletedCount || 0}</td>
+                <td style="padding: 6px 8px; text-align: right; border-bottom: 1px solid #eee; font-weight: 600;">${total}</td>
+            </tr>
+        `;
+    }).join('');
+
+    container.innerHTML = `
+        <div style="display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px;">
+            <strong>${data.mode === 'apply' ? '🛠️ Resultado de Reparación' : '🔍 Resultado de Auditoría'}</strong>
+            <span style="color: #666;">${new Date().toLocaleString('es-ES')}</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; margin-bottom: 12px;">
+            <div style="background: #fff; border: 1px solid #ececec; border-radius: 6px; padding: 8px;">Usuarios revisados: <strong>${data.usersTotal || 0}</strong></div>
+            <div style="background: #fff; border: 1px solid #ececec; border-radius: 6px; padding: 8px;">Usuarios con incidencias: <strong>${data.usersWithIssues || 0}</strong></div>
+            <div style="background: #fff; border: 1px solid #ececec; border-radius: 6px; padding: 8px;">Equipos eliminados: <strong>${totals.deleteEquipos || 0}</strong></div>
+            <div style="background: #fff; border: 1px solid #ececec; border-radius: 6px; padding: 8px;">Jugadoras eliminadas: <strong>${totals.deleteJugadoras || 0}</strong></div>
+            <div style="background: #fff; border: 1px solid #ececec; border-radius: 6px; padding: 8px;">Jornadas eliminadas: <strong>${totals.deleteJornadas || 0}</strong></div>
+            <div style="background: #fff; border: 1px solid #ececec; border-radius: 6px; padding: 8px;">Jornadas completadas: <strong>${totals.markJornadasCompleted || 0}</strong></div>
+        </div>
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #ececec;">
+                <thead>
+                    <tr style="background: #f4f6f8; text-align: left;">
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd;">Usuario</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">Eq. del.</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">Jug. del.</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">Jor. del.</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">Jor. comp.</th>
+                        <th style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows || '<tr><td colspan="6" style="padding: 10px; text-align: center; color: #666;">Sin resultados</td></tr>'}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.style.display = 'block';
+}
+
 function buildDataIntegritySummary(data) {
     const totals = data.totals || {};
     const lines = [
@@ -8532,14 +8647,16 @@ function buildDataIntegritySummary(data) {
 
 async function runDataIntegrityTask(apply) {
     const actionLabel = apply ? 'reparar' : 'auditar';
+    const targetUserId = getSelectedDataHealthUserId();
 
     try {
+        setDataHealthButtonsState(true);
         showNotification(`⏳ Iniciando ${actionLabel} de integridad de datos...`, 'info');
 
         const response = await fetch(`${getApiBaseUrl()}/admin/data-health`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apply })
+            body: JSON.stringify({ apply, userId: targetUserId || undefined })
         });
 
         const payload = await response.json();
@@ -8555,10 +8672,12 @@ async function runDataIntegrityTask(apply) {
             'success'
         );
 
-        alert(buildDataIntegritySummary(payload));
+        renderDataHealthResults(payload);
     } catch (error) {
         console.error(`❌ Error al ${actionLabel} integridad:`, error);
         showNotification(`❌ Error al ${actionLabel} integridad: ${error.message}`, 'error');
+    } finally {
+        setDataHealthButtonsState(false);
     }
 }
 

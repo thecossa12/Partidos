@@ -333,6 +333,13 @@
                     
                     <div class="admin-card">
                         <h5>Opciones de Sistema</h5>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
+                            <label for="data-health-user" style="font-weight: 600;">Entrenador:</label>
+                            <select id="data-health-user" class="form-control" style="min-width: 240px; max-width: 320px;">
+                                <option value="">Todos los entrenadores</option>
+                            </select>
+                            <button id="reload-data-health-users-btn" class="btn-system" style="background: #17a2b8; color: white;">🔄 Recargar Usuarios</button>
+                        </div>
                         <div class="system-actions">
                             <button id="backup-data-btn" class="btn-system">💾 Respaldar Datos</button>
                             <button id="audit-data-btn" class="btn-system">🔍 Auditar Integridad</button>
@@ -340,6 +347,7 @@
                             <button id="clear-data-btn" class="btn-system btn-danger">🗑️ Limpiar Datos</button>
                             <button id="reset-users-btn" class="btn-system btn-danger">👥 Resetear Usuarios</button>
                         </div>
+                        <div id="data-health-results" style="margin-top: 14px; padding: 12px; border: 1px solid #dcdcdc; border-radius: 8px; background: #fafafa; display: none;"></div>
                     </div>
                 </div>
             </div>
