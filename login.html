@@ -62,6 +62,17 @@
                 console.log('📊 Resultado de Auth.login():', result);
                 
                 if (result.success) {
+                    if (result.user && result.user.mustChangePassword) {
+                        const wantsToChangeNow = confirm('🔐 Tu contraseña actual es temporal. ¿Quieres cambiarla ahora?\n\nPulsa "Aceptar" para cambiarla ahora o "Cancelar" para hacerlo más tarde.');
+
+                        if (wantsToChangeNow) {
+                            const changed = await changePasswordFirstLogin();
+                            if (!changed) {
+                                return false;
+                            }
+                        }
+                    }
+
                     console.log('✅ Login exitoso, redirigiendo...');
                     window.location.href = 'index.html';
                     return true;
@@ -73,6 +84,71 @@
             } catch (error) {
                 console.error('❌ Error en attemptLogin:', error);
                 showError('Error al intentar iniciar sesión');
+                return false;
+            }
+        }
+
+        async function changePasswordFirstLogin() {
+            const newPassword = prompt('Introduce la nueva contraseña (mínimo 8 caracteres):');
+            if (newPassword === null || newPassword === '') {
+                showError('Cambio de contraseña cancelado. Puedes hacerlo después desde la app.');
+                return false;
+            }
+
+            if (newPassword.length < 8) {
+                showError('La nueva contraseña debe tener al menos 8 caracteres.');
+                return false;
+            }
+
+            const confirmPassword = prompt('Repite la nueva contraseña:');
+            if (confirmPassword === null || confirmPassword === '') {
+                showError('Cambio de contraseña cancelado. Puedes hacerlo después desde la app.');
+                return false;
+            }
+
+            if (newPassword !== confirmPassword) {
+                showError('Las contraseñas no coinciden.');
+                return false;
+            }
+
+            try {
+                const API_URL = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+                    ? 'http://localhost:3000/api'
+                    : window.location.origin + '/api';
+                const token = localStorage.getItem('volleyball_token') || '';
+
+                const response = await fetch(`${API_URL}/users/change-password`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+                    },
+                    body: JSON.stringify({ newPassword })
+                });
+
+                const payload = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    throw new Error(payload.error || `HTTP ${response.status}`);
+                }
+
+                // Actualizar sesión local para no volver a mostrar recordatorio.
+                try {
+                    const sessionRaw = localStorage.getItem('volleyball_auth');
+                    if (sessionRaw) {
+                        const session = JSON.parse(sessionRaw);
+                        session.mustChangePassword = false;
+                        localStorage.setItem('volleyball_auth', JSON.stringify(session));
+                        sessionStorage.setItem('volleyball_auth', JSON.stringify(session));
+                    }
+                } catch (error) {
+                    console.warn('⚠️ No se pudo actualizar el estado local de sesión:', error.message);
+                }
+
+                return true;
+            } catch (error) {
+                console.error('❌ Error cambiando contraseña en primer login:', error);
+                showError(`No se pudo cambiar la contraseña: ${error.message}`);
                 return false;
             }
         }

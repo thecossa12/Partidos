@@ -59,6 +59,18 @@ function isBcryptHash(value) {
     return typeof value === 'string' && /^\$2[aby]\$\d{2}\$/.test(value);
 }
 
+async function verifyPasswordAgainstStored(storedPassword, plainPassword) {
+    if (!storedPassword || typeof plainPassword !== 'string') {
+        return false;
+    }
+
+    if (isBcryptHash(storedPassword)) {
+        return bcrypt.compare(plainPassword, storedPassword);
+    }
+
+    return storedPassword === plainPassword;
+}
+
 function signUserToken(user) {
     return jwt.sign(
         {
@@ -1063,8 +1075,22 @@ app.post('/api/users', async (req, res) => {
 
         // Hash de contraseña (compatibilidad: si no se envía nueva, conserva la existente)
         let passwordToStore = existingUser?.password || null;
+        const passwordProvided = normalizedPassword.length > 0;
         if (normalizedPassword.length > 0) {
             passwordToStore = await bcrypt.hash(normalizedPassword, 12);
+        }
+
+        let mustChangePassword = !!existingUser?.mustChangePassword;
+        let passwordChangedAt = existingUser?.passwordChangedAt || null;
+
+        if (!existingUser && passwordProvided) {
+            // Usuario nuevo creado por admin: contraseña inicial temporal.
+            mustChangePassword = !canBootstrap;
+            passwordChangedAt = canBootstrap ? new Date().toISOString() : null;
+        } else if (existingUser && passwordProvided && isAdminRequest) {
+            // Reset/cambio desde panel admin: forzar paso de primer inicio otra vez.
+            mustChangePassword = true;
+            passwordChangedAt = null;
         }
 
         const userData = {
@@ -1072,7 +1098,9 @@ app.post('/api/users', async (req, res) => {
             password: passwordToStore,
             name: user.name,
             isAdmin: canBootstrap ? true : !!user.isAdmin,
-            lastLogin: existingUser?.lastLogin || null
+            lastLogin: existingUser?.lastLogin || null,
+            mustChangePassword,
+            passwordChangedAt
         };
         
         // Si es nuevo, agregar createdAt
@@ -1133,23 +1161,16 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
 
-        let isValidPassword = false;
+        let isValidPassword = await verifyPasswordAgainstStored(user.password, password);
 
-        // Compatibilidad hacia atrás: soportar contraseñas legacy en texto plano
-        if (isBcryptHash(user.password)) {
-            isValidPassword = await bcrypt.compare(password, user.password);
-        } else {
-            isValidPassword = user.password === password;
-
-            // Migración automática a hash al primer login correcto
-            if (isValidPassword) {
-                const hashedPassword = await bcrypt.hash(password, 12);
-                await db.collection('users').updateOne(
-                    { username },
-                    { $set: { password: hashedPassword } }
-                );
-                user.password = hashedPassword;
-            }
+        // Compatibilidad hacia atrás: migrar texto plano a hash al primer login correcto
+        if (isValidPassword && !isBcryptHash(user.password)) {
+            const hashedPassword = await bcrypt.hash(password, 12);
+            await db.collection('users').updateOne(
+                { username },
+                { $set: { password: hashedPassword } }
+            );
+            user.password = hashedPassword;
         }
 
         if (!isValidPassword) {
@@ -1170,11 +1191,124 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
             success: true,
             token,
             expiresIn: JWT_EXPIRES_IN,
-            user: { username: user.username, name: user.name, isAdmin: user.isAdmin }
+            user: {
+                username: user.username,
+                name: user.name,
+                isAdmin: user.isAdmin,
+                mustChangePassword: !!user.mustChangePassword
+            }
         });
     } catch (error) {
         console.error('❌ Error en login:', error);
         res.status(500).json({ error: 'Error interno del servidor' });
+    }
+});
+
+// Cambio de contraseña del usuario autenticado.
+// Regla: si mustChangePassword=true, no pide contraseña actual.
+app.post('/api/users/change-password', async (req, res) => {
+    try {
+        if (!req.authUser || !req.authUser.sub) {
+            return res.status(401).json({ error: 'No autenticado' });
+        }
+
+        const username = sanitizeText(req.authUser.sub, 40);
+        const oldPassword = typeof req.body?.oldPassword === 'string' ? req.body.oldPassword : '';
+        const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+
+        if (!isStrongPassword(newPassword)) {
+            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 8 y 128 caracteres.' });
+        }
+
+        const user = await db.collection('users').findOne({ username });
+        if (!user || !user.password) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const canSkipOldPassword = !!user.mustChangePassword;
+        if (!canSkipOldPassword) {
+            if (!oldPassword) {
+                return res.status(400).json({ error: 'La contraseña actual es obligatoria.' });
+            }
+
+            const isOldPasswordValid = await verifyPasswordAgainstStored(user.password, oldPassword);
+            if (!isOldPasswordValid) {
+                await writeAuditLog('password_change_failed', req, {
+                    username,
+                    reason: 'old_password_invalid'
+                });
+                return res.status(401).json({ error: 'La contraseña actual no es correcta.' });
+            }
+        }
+
+        const newHashedPassword = await bcrypt.hash(newPassword, 12);
+        await db.collection('users').updateOne(
+            { username },
+            {
+                $set: {
+                    password: newHashedPassword,
+                    mustChangePassword: false,
+                    passwordChangedAt: new Date().toISOString()
+                }
+            }
+        );
+
+        await writeAuditLog('password_change_success', req, {
+            username,
+            skippedOldPassword: canSkipOldPassword
+        });
+
+        return res.json({ success: true, mustChangePassword: false });
+    } catch (error) {
+        return handleInternalError(res, error, 'user-change-password');
+    }
+});
+
+// Reset de contraseña por admin para un usuario.
+// Vuelve a marcar mustChangePassword=true para el siguiente login.
+app.post('/api/users/:username/reset-password', async (req, res) => {
+    try {
+        if (!req.authUser || !req.authUser.isAdmin) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const targetUsername = sanitizeText(req.params.username, 40);
+        const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
+
+        if (!targetUsername) {
+            return res.status(400).json({ error: 'Usuario objetivo inválido' });
+        }
+
+        if (!isStrongPassword(newPassword)) {
+            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 8 y 128 caracteres.' });
+        }
+
+        const targetUser = await db.collection('users').findOne({ username: targetUsername });
+        if (!targetUser) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        await db.collection('users').updateOne(
+            { username: targetUsername },
+            {
+                $set: {
+                    password: hashedPassword,
+                    mustChangePassword: true,
+                    passwordChangedAt: null,
+                    lastPasswordResetAt: new Date().toISOString()
+                }
+            }
+        );
+
+        await writeAuditLog('admin_password_reset', req, {
+            targetUsername,
+            requestedBy: req.authUser.sub
+        });
+
+        return res.json({ success: true, mustChangePassword: true });
+    } catch (error) {
+        return handleInternalError(res, error, 'admin-reset-password');
     }
 });
 

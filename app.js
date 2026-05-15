@@ -102,6 +102,7 @@
         await this.aplicarAjusteSilenciosoSet3();
         
         this.inicializarApp();
+        this.mostrarAvisoCambioContrasenaPendiente();
     }
 
     async aplicarAjusteSilenciosoSet3() {
@@ -299,9 +300,61 @@
 
     // ==================== SINCRONIZACIÓN MONGODB ====================
     getUserId() {
-        const authData = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
-        this.userId = authData.username || 'admin';
-        return this.userId;
+        const sessionKeys = ['volleyball_auth', 'volleyball_session', 'current_user', 'currentUser'];
+
+        try {
+            if (typeof getSessionFromMultipleSources === 'function') {
+                const session = getSessionFromMultipleSources();
+                if (session && session.username) {
+                    this.userId = String(session.username);
+                    return this.userId;
+                }
+            }
+        } catch (error) {
+            console.warn('⚠️ No se pudo resolver sesión por helper global:', error.message);
+        }
+
+        for (const key of sessionKeys) {
+            try {
+                const localRaw = localStorage.getItem(key);
+                if (localRaw) {
+                    const parsed = JSON.parse(localRaw);
+                    if (parsed && parsed.username) {
+                        this.userId = String(parsed.username);
+                        return this.userId;
+                    }
+                }
+
+                const sessionRaw = sessionStorage.getItem(key);
+                if (sessionRaw) {
+                    const parsed = JSON.parse(sessionRaw);
+                    if (parsed && parsed.username) {
+                        this.userId = String(parsed.username);
+                        return this.userId;
+                    }
+                }
+            } catch (error) {
+                console.warn(`⚠️ Error leyendo clave de sesión ${key}:`, error.message);
+            }
+        }
+
+        return this.userId || '';
+    }
+
+    mostrarAvisoCambioContrasenaPendiente() {
+        try {
+            const authRaw = localStorage.getItem('volleyball_auth') || sessionStorage.getItem('volleyball_auth');
+            if (!authRaw) return;
+
+            const session = JSON.parse(authRaw);
+            if (!session || !session.mustChangePassword) return;
+
+            setTimeout(() => {
+                showNotification('🔐 Tienes una contraseña temporal. Puedes cambiarla ahora desde el botón "Cambiar contraseña".', 'info');
+            }, 700);
+        } catch (error) {
+            console.warn('⚠️ No se pudo mostrar aviso de cambio de contraseña:', error.message);
+        }
     }
 
     showSyncIndicator(status, message) {
@@ -8259,8 +8312,8 @@ function editUser() {
         return;
     }
 
-    if (newPassword && newPassword.length < 4) {
-        showNotification('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+    if (newPassword && newPassword.length < 8) {
+        showNotification('❌ La contraseña debe tener al menos 8 caracteres', 'error');
         return;
     }
 
@@ -8986,6 +9039,91 @@ function showNotification(message, type = 'info') {
     });
 }
 
+function actualizarSesionPostCambioContrasena() {
+    const sessionKeys = ['volleyball_auth', 'volleyball_session', 'current_user', 'currentUser'];
+    const storages = [localStorage, sessionStorage];
+
+    storages.forEach((storage) => {
+        sessionKeys.forEach((key) => {
+            try {
+                const raw = storage.getItem(key);
+                if (!raw) return;
+                const parsed = JSON.parse(raw);
+                if (!parsed || typeof parsed !== 'object') return;
+                parsed.mustChangePassword = false;
+                storage.setItem(key, JSON.stringify(parsed));
+            } catch (error) {
+                console.warn(`⚠️ No se pudo actualizar sesión en ${key}:`, error.message);
+            }
+        });
+    });
+}
+
+async function cambiarContrasenaPropia(options = {}) {
+    const allowWithoutOld = !!options.allowWithoutOld;
+    const oldPassword = allowWithoutOld
+        ? ''
+        : prompt('Introduce tu contraseña actual:');
+
+    if (!allowWithoutOld && (oldPassword === null || oldPassword === '')) {
+        showNotification('ℹ️ Cambio de contraseña cancelado', 'info');
+        return false;
+    }
+
+    const newPassword = prompt('Introduce la nueva contraseña (mínimo 8 caracteres):');
+    if (newPassword === null || newPassword === '') {
+        showNotification('ℹ️ Cambio de contraseña cancelado', 'info');
+        return false;
+    }
+
+    if (newPassword.length < 8) {
+        showNotification('❌ La nueva contraseña debe tener al menos 8 caracteres', 'error');
+        return false;
+    }
+
+    const confirmPassword = prompt('Repite la nueva contraseña:');
+    if (confirmPassword === null) {
+        showNotification('ℹ️ Cambio de contraseña cancelado', 'info');
+        return false;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showNotification('❌ Las contraseñas no coinciden', 'error');
+        return false;
+    }
+
+    try {
+        const token = localStorage.getItem('volleyball_token') || '';
+        const response = await fetch(`${getApiBaseUrl()}/users/change-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                oldPassword: allowWithoutOld ? undefined : oldPassword,
+                newPassword
+            })
+        });
+
+        const payload = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+
+        actualizarSesionPostCambioContrasena();
+        showNotification('✅ Contraseña actualizada correctamente', 'success');
+        return true;
+    } catch (error) {
+        console.error('❌ Error cambiando contraseña propia:', error);
+        showNotification(`❌ No se pudo cambiar la contraseña: ${error.message}`, 'error');
+        return false;
+    }
+}
+
+window.cambiarContrasenaPropia = cambiarContrasenaPropia;
+
 // ===== GESTIÓN DE USUARIOS PREDEFINIDOS DEL SISTEMA =====
 let systemUsersConfig = [];
 
@@ -9212,7 +9350,7 @@ function renderSystemUsersEditor() {
                            class="system-user-password" 
                            data-index="${index}" 
                            value="${user.password}" 
-                           placeholder="1234"
+                           placeholder="Mínimo 8 caracteres"
                            style="width: 100%;">
                 </div>
                 <div>

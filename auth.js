@@ -55,7 +55,8 @@ window.Auth = {
         return session ? {
             username: session.username,
             name: session.name,
-            isAdmin: session.isAdmin
+            isAdmin: session.isAdmin,
+            mustChangePassword: !!session.mustChangePassword
         } : null;
     },
     
@@ -153,6 +154,7 @@ window.Auth = {
                     username: result.user.username,
                     name: result.user.name,
                     isAdmin: result.user.isAdmin,
+                    mustChangePassword: !!result.user.mustChangePassword,
                     token: result.token || null,
                     loginTime: new Date().toISOString()
                 };
