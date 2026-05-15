@@ -45,6 +45,11 @@
                     <i class="fas fa-exclamation-triangle"></i>
                     <span id="errorText"></span>
                 </div>
+
+                <div id="loginCooldownMessage" class="error-message" style="display: none; background: #fff3cd; color: #856404; border: 1px solid #ffe69c;">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span id="loginCooldownText"></span>
+                </div>
             </form>
         </div>
     </div>
@@ -52,6 +57,51 @@
     <script src="auth.js"></script>
     <script>
         console.log('🔐 === LOGIN FINAL CARGADO ===');
+        let loginCooldownUntil = 0;
+        let loginCooldownInterval = null;
+        let defaultSubmitButtonHtml = '';
+
+        function startLoginCooldown(totalSeconds) {
+            const loginForm = document.getElementById('loginForm');
+            const submitBtn = loginForm ? loginForm.querySelector('button[type="submit"]') : null;
+            const cooldownWrap = document.getElementById('loginCooldownMessage');
+            const cooldownText = document.getElementById('loginCooldownText');
+
+            if (!submitBtn || !cooldownWrap || !cooldownText) return;
+
+            const seconds = Math.max(1, Number(totalSeconds || 0));
+            const nextUntil = Date.now() + (seconds * 1000);
+            if (nextUntil > loginCooldownUntil) {
+                loginCooldownUntil = nextUntil;
+            }
+
+            if (loginCooldownInterval) {
+                clearInterval(loginCooldownInterval);
+                loginCooldownInterval = null;
+            }
+
+            const tick = function() {
+                const remaining = Math.max(0, Math.ceil((loginCooldownUntil - Date.now()) / 1000));
+                if (remaining <= 0) {
+                    cooldownWrap.style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = defaultSubmitButtonHtml || '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión';
+                    if (loginCooldownInterval) {
+                        clearInterval(loginCooldownInterval);
+                        loginCooldownInterval = null;
+                    }
+                    return;
+                }
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `<i class="fas fa-hourglass-half"></i> Espera ${remaining}s`;
+                cooldownText.textContent = `Debes esperar ${remaining} segundo${remaining === 1 ? '' : 's'} para volver a intentar iniciar sesión.`;
+                cooldownWrap.style.display = 'flex';
+            };
+
+            tick();
+            loginCooldownInterval = setInterval(tick, 1000);
+        }
         
         async function attemptLogin(username, password) {
             console.log('🔐 Intentando login con Auth.login():', username);
@@ -68,6 +118,9 @@
                 } else {
                     console.log('❌ Login fallido:', result.message);
                     showError(result.message);
+                    if (result.retryAfterSeconds && result.retryAfterSeconds > 0) {
+                        startLoginCooldown(result.retryAfterSeconds);
+                    }
                     return false;
                 }
             } catch (error) {
@@ -99,8 +152,19 @@
             const loginForm = document.getElementById('loginForm');
             
             if (loginForm) {
+                const submitBtnInit = loginForm.querySelector('button[type="submit"]');
+                if (submitBtnInit) {
+                    defaultSubmitButtonHtml = submitBtnInit.innerHTML;
+                }
+
                 loginForm.addEventListener('submit', async function(e) {
                     e.preventDefault();
+
+                    if (Date.now() < loginCooldownUntil) {
+                        const remaining = Math.max(1, Math.ceil((loginCooldownUntil - Date.now()) / 1000));
+                        startLoginCooldown(remaining);
+                        return;
+                    }
                     
                     const username = document.getElementById('username').value.trim();
                     const password = document.getElementById('password').value;
@@ -118,8 +182,10 @@
                         showError('Error al iniciar sesión');
                     } finally {
                         // Restaurar botón
-                        submitBtn.innerHTML = originalText;
-                        submitBtn.disabled = false;
+                        if (Date.now() >= loginCooldownUntil) {
+                            submitBtn.innerHTML = originalText;
+                            submitBtn.disabled = false;
+                        }
                     }
                 });
             }

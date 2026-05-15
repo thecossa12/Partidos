@@ -419,14 +419,71 @@ app.use(cors({
     credentials: true
 }));
 
-// Rate limiting para el endpoint de login (máx 10 intentos por 15 min)
-const loginLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 10,
-    message: { error: 'Demasiados intentos de login. Inténtalo de nuevo en 15 minutos.' },
-    standardHeaders: true,
-    legacyHeaders: false
-});
+// Limitador progresivo para login.
+// Penalización por fallo consecutivo: 10s, 30s, 1m, 2m, 3m...
+// Se resetea al iniciar sesión correctamente.
+const loginAttemptState = new Map();
+
+function getLoginAttemptKey(req) {
+    const ip = String(req.ip || req.headers['x-forwarded-for'] || 'unknown').trim();
+    const username = sanitizeText(req.body?.username, 40).toLowerCase() || 'unknown';
+    return `${ip}::${username}`;
+}
+
+function getProgressiveLockMs(failureCount) {
+    if (failureCount <= 1) return 10 * 1000; // 1er fallo: 10s
+    if (failureCount === 2) return 30 * 1000; // 2do fallo: 30s
+    if (failureCount === 3) return 60 * 1000; // 3er fallo: 1m
+    const minutes = Math.min(failureCount - 2, 30); // 4to:2m, 5to:3m, etc.
+    return minutes * 60 * 1000;
+}
+
+function pruneOldLoginAttemptState() {
+    const now = Date.now();
+    for (const [key, state] of loginAttemptState.entries()) {
+        if (!state || !state.lockUntil || state.lockUntil < now - (24 * 60 * 60 * 1000)) {
+            loginAttemptState.delete(key);
+        }
+    }
+}
+
+function registerLoginFailure(req) {
+    const key = req.loginAttemptKey || getLoginAttemptKey(req);
+    const previous = loginAttemptState.get(key) || { failures: 0, lockUntil: 0 };
+    const failures = previous.failures + 1;
+    const lockMs = getProgressiveLockMs(failures);
+    const lockUntil = Date.now() + lockMs;
+    loginAttemptState.set(key, { failures, lockUntil, updatedAt: Date.now() });
+    return { failures, lockMs, lockUntil };
+}
+
+function clearLoginFailures(req) {
+    const key = req.loginAttemptKey || getLoginAttemptKey(req);
+    loginAttemptState.delete(key);
+}
+
+function loginLimiter(req, res, next) {
+    pruneOldLoginAttemptState();
+
+    const key = getLoginAttemptKey(req);
+    req.loginAttemptKey = key;
+
+    const state = loginAttemptState.get(key);
+    if (!state || !state.lockUntil) {
+        return next();
+    }
+
+    const now = Date.now();
+    if (state.lockUntil <= now) {
+        return next();
+    }
+
+    const waitSeconds = Math.max(1, Math.ceil((state.lockUntil - now) / 1000));
+    return res.status(429).json({
+        error: `Demasiados intentos de login. Espera ${waitSeconds} segundos.`,
+        retryAfterSeconds: waitSeconds
+    });
+}
 
 // Rate limiting general para toda la API
 const apiLimiter = rateLimit({
@@ -1158,7 +1215,11 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
 
         // Mensaje genérico para no revelar si el usuario existe
         if (!user || !user.password) {
-            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+            const throttle = registerLoginFailure(req);
+            return res.status(401).json({
+                error: 'Usuario o contraseña incorrectos',
+                retryAfterSeconds: Math.max(1, Math.ceil(throttle.lockMs / 1000))
+            });
         }
 
         let isValidPassword = await verifyPasswordAgainstStored(user.password, password);
@@ -1174,9 +1235,15 @@ app.post('/api/users/login', loginLimiter, async (req, res) => {
         }
 
         if (!isValidPassword) {
+            const throttle = registerLoginFailure(req);
             await writeAuditLog('login_failed', req, { username });
-            return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
+            return res.status(401).json({
+                error: 'Usuario o contraseña incorrectos',
+                retryAfterSeconds: Math.max(1, Math.ceil(throttle.lockMs / 1000))
+            });
         }
+
+        clearLoginFailures(req);
         
         // Actualizar último login
         await db.collection('users').updateOne(

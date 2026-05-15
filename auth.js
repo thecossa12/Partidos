@@ -175,7 +175,12 @@ window.Auth = {
             }
 
             const errorData = await response.json().catch(() => ({}));
-            return { success: false, message: errorData.error || 'Usuario o contraseña incorrectos' };
+            return {
+                success: false,
+                message: errorData.error || 'Usuario o contraseña incorrectos',
+                retryAfterSeconds: Number(errorData.retryAfterSeconds || 0),
+                status: response.status
+            };
         } catch (error) {
             console.warn('⚠️ Error conectando con MongoDB:', error.message);
             return { success: false, message: 'No se pudo iniciar sesión. Inténtalo de nuevo en unos segundos.' };

@@ -349,12 +349,10 @@
             const session = JSON.parse(authRaw);
             if (!session || !session.mustChangePassword) return;
 
-            // Abrir el modal automáticamente sobre la app en vez de una notificación
-            setTimeout(() => {
-                if (typeof window.showPasswordChangeModal === 'function') {
-                    window.showPasswordChangeModal({ requireOldPassword: false });
-                }
-            }, 700);
+            // Abrir el modal inmediatamente al aparecer la app para evitar que se vea sin difuminado.
+            if (typeof window.showPasswordChangeModal === 'function') {
+                window.showPasswordChangeModal({ requireOldPassword: false });
+            }
         } catch (error) {
             console.warn('⚠️ No se pudo abrir modal de contraseña temporal:', error.message);
         }
@@ -8139,45 +8137,89 @@ function setupAdminEvents() {
     });
 }
 
-function createNewUser() {
+async function createNewUser() {
     const username = document.getElementById('new-username').value.trim();
     const name = document.getElementById('new-name').value.trim();
     const password = document.getElementById('new-password').value;
     const isAdmin = document.getElementById('new-is-admin').value === 'true';
 
-    const result = Auth.createUser(username, password, name, isAdmin);
-    
-    if (result.success) {
-        showNotification('✅ ' + result.message, 'success');
-        // Limpiar formulario
+    if (!username || !name || !password) {
+        showNotification('❌ Usuario, nombre y contraseña son obligatorios', 'error');
+        return;
+    }
+
+    if (password.length < 4) {
+        showNotification('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('volleyball_token') || '';
+        const response = await fetch(`${getApiBaseUrl()}/users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ username, password, name, isAdmin })
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+
+        showNotification('✅ Usuario creado correctamente', 'success');
         document.getElementById('create-user-form').reset();
-        // Recargar lista
         loadUsersList();
-    } else {
-        showNotification('❌ ' + result.message, 'error');
+    } catch (error) {
+        console.error('❌ Error creando usuario desde admin:', error);
+        showNotification(`❌ No se pudo crear el usuario: ${error.message}`, 'error');
     }
 }
 
-function loadUsersList() {
-    const result = Auth.listUsers();
-    
-    if (!result.success) {
-        showNotification('❌ ' + result.message, 'error');
-        return;
-    }
-
+async function loadUsersList() {
     const usersList = document.getElementById('users-list');
+    if (!usersList) return;
+
     usersList.innerHTML = '';
 
-    if (result.users.length === 0) {
-        usersList.innerHTML = '<p style="text-align: center; color: #7f8c8d;">No hay usuarios registrados</p>';
-        return;
-    }
+    try {
+        const response = await fetch(`${getApiBaseUrl()}/users`);
+        const payload = await response.json().catch(() => ([]));
 
-    result.users.forEach(user => {
-        const userElement = createUserElement(user);
-        usersList.appendChild(userElement);
-    });
+        if (!response.ok || !Array.isArray(payload)) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+
+        if (payload.length === 0) {
+            usersList.innerHTML = '<p style="text-align: center; color: #7f8c8d;">No hay usuarios registrados</p>';
+            return;
+        }
+
+        payload.forEach(user => {
+            const userElement = createUserElement(user);
+            usersList.appendChild(userElement);
+        });
+    } catch (error) {
+        console.warn('⚠️ No se pudo cargar usuarios desde API, usando localStorage:', error.message);
+
+        const result = Auth.listUsers();
+        if (!result.success) {
+            showNotification('❌ No se pudo cargar la lista de usuarios', 'error');
+            return;
+        }
+
+        if (result.users.length === 0) {
+            usersList.innerHTML = '<p style="text-align: center; color: #7f8c8d;">No hay usuarios registrados</p>';
+            return;
+        }
+
+        result.users.forEach(user => {
+            const userElement = createUserElement(user);
+            usersList.appendChild(userElement);
+        });
+    }
 }
 
 function createUserElement(user) {
@@ -8303,7 +8345,7 @@ function openEditUserModal(username) {
     document.getElementById('edit-user-modal').style.display = 'flex';
 }
 
-function editUser() {
+async function editUser() {
     const originalUsername = document.getElementById('edit-user-modal').getAttribute('data-original-username');
     const newUsername = document.getElementById('edit-user-username').value.trim();
     const newName = document.getElementById('edit-user-name').value.trim();
@@ -8317,6 +8359,11 @@ function editUser() {
 
     if (newPassword && newPassword.length < 4) {
         showNotification('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+        return;
+    }
+
+    if (newUsername !== originalUsername) {
+        showNotification('❌ No se puede renombrar un usuario existente desde este formulario. Crea uno nuevo y elimina el anterior.', 'error');
         return;
     }
 
@@ -8409,37 +8456,75 @@ function editUser() {
         user.password = newPassword;
     }
 
-    // Guardar cambios en el formato correcto
-    const dataToSave = useObjectFormat ? userArrayToObject(users) : users;
-    localStorage.setItem(storageKey, JSON.stringify(dataToSave));
-    console.log(`💾 Usuarios guardados en localStorage["${storageKey}"] formato:`, useObjectFormat ? 'objeto' : 'array');
-    
-    // Si se cambió el username del usuario logueado, actualizar la sesión
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-    if (currentUser.username === originalUsername) {
-        currentUser.username = newUsername;
-        currentUser.name = newName;
-        currentUser.isAdmin = isAdmin;
-        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-        updateCurrentUserInfo();
-    }
+    try {
+        const token = localStorage.getItem('volleyball_token') || '';
+        const response = await fetch(`${getApiBaseUrl()}/users`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+                username: newUsername,
+                password: newPassword || '',
+                name: newName,
+                isAdmin
+            })
+        });
 
-    showNotification('✅ Usuario actualizado correctamente', 'success');
-    document.getElementById('edit-user-modal').style.display = 'none';
-    loadUsersList();
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+
+        // Guardar cambios también en localStorage para compatibilidad
+        const dataToSave = useObjectFormat ? userArrayToObject(users) : users;
+        localStorage.setItem(storageKey, JSON.stringify(dataToSave));
+
+        showNotification('✅ Usuario actualizado correctamente', 'success');
+        document.getElementById('edit-user-modal').style.display = 'none';
+        loadUsersList();
+    } catch (error) {
+        console.error('❌ Error actualizando usuario en backend:', error);
+        showNotification(`❌ No se pudo actualizar el usuario: ${error.message}`, 'error');
+    }
 }
 
-function changeUserPassword() {
+async function changeUserPassword() {
     const username = document.getElementById('change-password-user').value;
     const newPassword = document.getElementById('change-password-new').value;
 
-    const result = Auth.changePassword(username, newPassword);
-    
-    if (result.success) {
-        showNotification('✅ ' + result.message, 'success');
+    if (!username || !newPassword) {
+        showNotification('❌ Usuario y nueva contraseña son obligatorios', 'error');
+        return;
+    }
+
+    if (newPassword.length < 4) {
+        showNotification('❌ La nueva contraseña debe tener al menos 4 caracteres', 'error');
+        return;
+    }
+
+    try {
+        const token = localStorage.getItem('volleyball_token') || '';
+        const response = await fetch(`${getApiBaseUrl()}/users/${encodeURIComponent(username)}/reset-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({ newPassword })
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+
+        showNotification('✅ Contraseña del usuario actualizada correctamente', 'success');
         document.getElementById('change-password-modal').style.display = 'none';
-    } else {
-        showNotification('❌ ' + result.message, 'error');
+    } catch (error) {
+        console.error('❌ Error cambiando contraseña desde admin:', error);
+        showNotification(`❌ No se pudo cambiar la contraseña: ${error.message}`, 'error');
     }
 }
 
@@ -8451,14 +8536,36 @@ function confirmDeleteUser(username) {
     );
 }
 
-function deleteUser(username) {
-    const result = Auth.deleteUser(username);
-    
-    if (result.success) {
-        showNotification('✅ ' + result.message, 'success');
+async function deleteUser(username) {
+    if (!username) return;
+
+    try {
+        const token = localStorage.getItem('volleyball_token') || '';
+        const response = await fetch(`${getApiBaseUrl()}/users/${encodeURIComponent(username)}`, {
+            method: 'DELETE',
+            headers: {
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            }
+        });
+
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(payload.error || `HTTP ${response.status}`);
+        }
+
+        // Compatibilidad local para entornos sin API completa
+        try {
+            Auth.deleteUser(username);
+        } catch (e) {
+            // Ignorar errores de fallback local
+        }
+
+        showNotification('✅ Usuario eliminado correctamente', 'success');
         loadUsersList();
-    } else {
-        showNotification('❌ ' + result.message, 'error');
+        loadCurrentSystemUsers();
+    } catch (error) {
+        console.error('❌ Error eliminando usuario:', error);
+        showNotification(`❌ No se pudo eliminar el usuario: ${error.message}`, 'error');
     }
 }
 
@@ -9224,14 +9331,60 @@ async function saveSystemUsersLocally() {
     
     // Sincronizar con MongoDB
     try {
+        const apiBaseUrl = getApiBaseUrl();
+        const token = localStorage.getItem('volleyball_token') || '';
+        const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+
+        // 1) Detectar usuarios que existían en backend y ya no están en el editor (borrados)
+        const currentResponse = await fetch(`${apiBaseUrl}/users`, {
+            headers: {
+                ...authHeaders
+            }
+        });
+        const currentPayload = await currentResponse.json().catch(() => ([]));
+        if (!currentResponse.ok || !Array.isArray(currentPayload)) {
+            throw new Error((currentPayload && currentPayload.error) || `HTTP ${currentResponse.status}`);
+        }
+
+        const newUsernames = new Set(systemUsersConfig.map((u) => String(u.username || '').trim()).filter(Boolean));
+        const removedUsers = currentPayload
+            .map((u) => String(u.username || '').trim())
+            .filter((username) => username && !newUsernames.has(username) && username !== 'admin');
+
         let syncCount = 0;
         let errorCount = 0;
+        let deleteCount = 0;
+
+        for (const username of removedUsers) {
+            try {
+                const deleteResponse = await fetch(`${apiBaseUrl}/users/${encodeURIComponent(username)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        ...authHeaders
+                    }
+                });
+
+                const deletePayload = await deleteResponse.json().catch(() => ({}));
+                if (!deleteResponse.ok) {
+                    throw new Error(deletePayload.error || `HTTP ${deleteResponse.status}`);
+                }
+
+                console.log(`✅ Usuario ${username} eliminado en MongoDB`);
+                deleteCount++;
+            } catch (deleteError) {
+                console.error(`❌ Error eliminando usuario ${username}:`, deleteError.message || deleteError);
+                errorCount++;
+            }
+        }
         
         for (const user of systemUsersConfig) {
             try {
-                const response = await fetch(`${app.API_URL}/users`, {
+                const response = await fetch(`${apiBaseUrl}/users`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...authHeaders
+                    },
                     body: JSON.stringify({
                         username: user.username,
                         password: user.password === undefined || user.password === null ? '' : String(user.password),
@@ -9270,10 +9423,12 @@ async function saveSystemUsersLocally() {
         console.log('✅ Usuarios guardados:', Object.keys(usersObject));
         
         if (errorCount === 0) {
-            showNotification(`✅ ${syncCount} usuarios guardados y sincronizados correctamente`, 'success');
+            showNotification(`✅ ${syncCount} usuarios guardados y ${deleteCount} eliminados correctamente`, 'success');
         } else {
-            showNotification(`⚠️ ${syncCount} usuarios sincronizados, ${errorCount} con errores. Revisa la consola.`, 'warning');
+            showNotification(`⚠️ ${syncCount} usuarios sincronizados, ${deleteCount} eliminados, ${errorCount} con errores. Revisa la consola.`, 'warning');
         }
+
+        loadUsersList();
     } catch (error) {
         console.error('❌ Error sincronizando usuarios con MongoDB:', error);
         showNotification('⚠️ Usuarios guardados localmente, pero hubo un error al sincronizar con la base de datos', 'warning');
