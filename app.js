@@ -350,7 +350,7 @@
             if (!session || !session.mustChangePassword) return;
 
             setTimeout(() => {
-                showNotification('🔐 Tienes una contraseña temporal. Puedes cambiarla ahora desde el botón "Cambiar contraseña".', 'info');
+                showNotification('🔐 Tu contraseña es temporal. Pulsa el botón "🔑 Contraseña" para cambiarla.', 'info');
             }, 700);
         } catch (error) {
             console.warn('⚠️ No se pudo mostrar aviso de cambio de contraseña:', error.message);
@@ -8312,8 +8312,8 @@ function editUser() {
         return;
     }
 
-    if (newPassword && newPassword.length < 8) {
-        showNotification('❌ La contraseña debe tener al menos 8 caracteres', 'error');
+    if (newPassword && newPassword.length < 4) {
+        showNotification('❌ La contraseña debe tener al menos 4 caracteres', 'error');
         return;
     }
 
@@ -9060,66 +9060,25 @@ function actualizarSesionPostCambioContrasena() {
 }
 
 async function cambiarContrasenaPropia(options = {}) {
-    const allowWithoutOld = !!options.allowWithoutOld;
-    const oldPassword = allowWithoutOld
-        ? ''
-        : prompt('Introduce tu contraseña actual:');
+    let allowWithoutOld = !!options.allowWithoutOld;
 
-    if (!allowWithoutOld && (oldPassword === null || oldPassword === '')) {
-        showNotification('ℹ️ Cambio de contraseña cancelado', 'info');
-        return false;
+    // Si la sesión todavía marca contraseña temporal, no pedir la anterior
+    if (!allowWithoutOld) {
+        try {
+            const authRaw = localStorage.getItem('volleyball_auth') || sessionStorage.getItem('volleyball_auth');
+            if (authRaw) {
+                const session = JSON.parse(authRaw);
+                if (session && session.mustChangePassword) allowWithoutOld = true;
+            }
+        } catch (e) { /* ignorar */ }
     }
 
-    const newPassword = prompt('Introduce la nueva contraseña (mínimo 8 caracteres):');
-    if (newPassword === null || newPassword === '') {
-        showNotification('ℹ️ Cambio de contraseña cancelado', 'info');
-        return false;
+    if (typeof window.showPasswordChangeModal === 'function') {
+        return window.showPasswordChangeModal({ requireOldPassword: !allowWithoutOld });
     }
 
-    if (newPassword.length < 8) {
-        showNotification('❌ La nueva contraseña debe tener al menos 8 caracteres', 'error');
-        return false;
-    }
-
-    const confirmPassword = prompt('Repite la nueva contraseña:');
-    if (confirmPassword === null) {
-        showNotification('ℹ️ Cambio de contraseña cancelado', 'info');
-        return false;
-    }
-
-    if (newPassword !== confirmPassword) {
-        showNotification('❌ Las contraseñas no coinciden', 'error');
-        return false;
-    }
-
-    try {
-        const token = localStorage.getItem('volleyball_token') || '';
-        const response = await fetch(`${getApiBaseUrl()}/users/change-password`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            },
-            body: JSON.stringify({
-                oldPassword: allowWithoutOld ? undefined : oldPassword,
-                newPassword
-            })
-        });
-
-        const payload = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-            throw new Error(payload.error || `HTTP ${response.status}`);
-        }
-
-        actualizarSesionPostCambioContrasena();
-        showNotification('✅ Contraseña actualizada correctamente', 'success');
-        return true;
-    } catch (error) {
-        console.error('❌ Error cambiando contraseña propia:', error);
-        showNotification(`❌ No se pudo cambiar la contraseña: ${error.message}`, 'error');
-        return false;
-    }
+    showNotification('❌ No se pudo abrir el formulario de cambio de contraseña', 'error');
+    return false;
 }
 
 window.cambiarContrasenaPropia = cambiarContrasenaPropia;
@@ -9350,7 +9309,7 @@ function renderSystemUsersEditor() {
                            class="system-user-password" 
                            data-index="${index}" 
                            value="${user.password}" 
-                           placeholder="Mínimo 8 caracteres"
+                           placeholder="Mínimo 4 caracteres"
                            style="width: 100%;">
                 </div>
                 <div>

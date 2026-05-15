@@ -117,7 +117,7 @@ function isValidUsername(username) {
 }
 
 function isStrongPassword(password) {
-    return typeof password === 'string' && password.length >= 8 && password.length <= 128;
+    return typeof password === 'string' && password.length >= 4 && password.length <= 128;
 }
 
 function getClientIp(req) {
@@ -1070,7 +1070,7 @@ app.post('/api/users', async (req, res) => {
         }
 
         if (normalizedPassword && !isStrongPassword(normalizedPassword)) {
-            return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 128 caracteres.' });
+            return res.status(400).json({ error: 'La contraseña debe tener entre 4 y 128 caracteres.' });
         }
 
         // Hash de contraseña (compatibilidad: si no se envía nueva, conserva la existente)
@@ -1217,7 +1217,7 @@ app.post('/api/users/change-password', async (req, res) => {
         const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
 
         if (!isStrongPassword(newPassword)) {
-            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 8 y 128 caracteres.' });
+            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 4 y 128 caracteres.' });
         }
 
         const user = await db.collection('users').findOne({ username });
@@ -1280,7 +1280,7 @@ app.post('/api/users/:username/reset-password', async (req, res) => {
         }
 
         if (!isStrongPassword(newPassword)) {
-            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 8 y 128 caracteres.' });
+            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 4 y 128 caracteres.' });
         }
 
         const targetUser = await db.collection('users').findOne({ username: targetUsername });

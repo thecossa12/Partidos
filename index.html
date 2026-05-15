@@ -442,7 +442,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="edit-user-password">🔑 Nueva Contraseña:</label>
-                            <input type="password" id="edit-user-password" placeholder="Nueva contraseña (mín. 8 caracteres)">
+                            <input type="password" id="edit-user-password" placeholder="Nueva contraseña (mín. 4 caracteres)">
                             <small class="form-help">Dejar vacío para mantener la contraseña actual</small>
                         </div>
                         <div class="form-group">
@@ -696,5 +696,148 @@
         }
     })();
     </script>
+
+    <!-- ===== MODAL CAMBIAR CONTRASEÑA ===== -->
+    <div id="modal-cambiar-contrasena" style="display:none; position:fixed; inset:0; z-index:99998; align-items:center; justify-content:center; backdrop-filter:blur(7px); -webkit-backdrop-filter:blur(7px); background:rgba(0,0,0,0.5);">
+        <div style="background:#fff; border-radius:16px; padding:36px 40px; max-width:440px; width:90%; box-shadow:0 12px 48px rgba(0,0,0,0.22); position:relative; animation:pwdModalIn 0.2s ease;">
+            <div style="text-align:center; margin-bottom:20px;">
+                <div style="font-size:2.8rem; margin-bottom:8px; line-height:1;">&#128273;</div>
+                <h3 id="pwd-modal-title" style="margin:0 0 6px 0; font-size:1.3rem; color:#1a1a2e;"></h3>
+                <p id="pwd-modal-subtitle" style="color:#666; margin:0; font-size:0.93rem; line-height:1.5;"></p>
+            </div>
+            <div id="pwd-modal-old-group" style="margin-bottom:14px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem; color:#333;">Contraseña actual</label>
+                <input type="password" id="pwd-modal-old" placeholder="Tu contraseña actual" autocomplete="current-password"
+                       style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;"
+                       onfocus="this.style.borderColor='#0d6efd'" onblur="this.style.borderColor='#ddd'">
+            </div>
+            <div style="margin-bottom:14px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem; color:#333;">Nueva contraseña</label>
+                <input type="password" id="pwd-modal-new" placeholder="Mínimo 4 caracteres" autocomplete="new-password"
+                       style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;"
+                       onfocus="this.style.borderColor='#0d6efd'" onblur="this.style.borderColor='#ddd'">
+            </div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem; color:#333;">Repetir contraseña</label>
+                <input type="password" id="pwd-modal-confirm" placeholder="Repite la nueva contraseña" autocomplete="new-password"
+                       style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;"
+                       onfocus="this.style.borderColor='#0d6efd'" onblur="this.style.borderColor='#ddd'">
+            </div>
+            <div id="pwd-modal-error" style="display:none; color:#dc3545; margin-bottom:16px; font-size:0.9rem; background:#fff0f0; padding:9px 13px; border-radius:7px; border:1px solid #f5c6cb;"></div>
+            <div style="display:flex; gap:10px;">
+                <button id="pwd-modal-cancel" type="button"
+                        style="flex:1; padding:12px; background:#f0f0f0; border:none; border-radius:8px; cursor:pointer; font-size:0.95rem; color:#555; font-weight:500;">
+                    Cancelar
+                </button>
+                <button id="pwd-modal-submit" type="button"
+                        style="flex:2; padding:12px; background:linear-gradient(135deg,#0d6efd,#0a58ca); color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:1rem; font-weight:600; box-shadow:0 2px 8px rgba(13,110,253,.35);">
+                    Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+    @keyframes pwdModalIn {
+        from { opacity:0; transform:scale(.94) translateY(-12px); }
+        to   { opacity:1; transform:scale(1)  translateY(0); }
+    }
+    </style>
+
+    <script>
+    window.showPasswordChangeModal = function(options) {
+        options = options || {};
+        var requireOldPassword = !!options.requireOldPassword;
+        return new Promise(function(resolve) {
+            var modal       = document.getElementById('modal-cambiar-contrasena');
+            var titleEl     = document.getElementById('pwd-modal-title');
+            var subtitleEl  = document.getElementById('pwd-modal-subtitle');
+            var oldGroup    = document.getElementById('pwd-modal-old-group');
+            var oldInput    = document.getElementById('pwd-modal-old');
+            var newInput    = document.getElementById('pwd-modal-new');
+            var confirmInput= document.getElementById('pwd-modal-confirm');
+            var errorDiv    = document.getElementById('pwd-modal-error');
+            var submitBtn   = document.getElementById('pwd-modal-submit');
+            var cancelBtn   = document.getElementById('pwd-modal-cancel');
+            if (!modal) { resolve(false); return; }
+
+            // Reset
+            oldInput.value = '';
+            newInput.value = '';
+            confirmInput.value = '';
+            errorDiv.style.display = 'none';
+            errorDiv.textContent   = '';
+            submitBtn.disabled     = false;
+            submitBtn.textContent  = 'Guardar';
+
+            if (requireOldPassword) {
+                titleEl.textContent    = 'Cambiar contraseña';
+                subtitleEl.textContent = 'Introduce tu contraseña actual y la nueva para realizar el cambio.';
+                oldGroup.style.display = 'block';
+            } else {
+                titleEl.textContent    = 'Establecer contraseña';
+                subtitleEl.textContent = 'Tu contraseña actual es temporal. Establece una nueva para proteger tu cuenta.';
+                oldGroup.style.display = 'none';
+            }
+
+            modal.style.display = 'flex';
+            setTimeout(function() { (requireOldPassword ? oldInput : newInput).focus(); }, 80);
+
+            function cleanup() {
+                modal.style.display = 'none';
+                submitBtn.removeEventListener('click', onSubmit);
+                cancelBtn.removeEventListener('click', onCancel);
+                [oldInput, newInput, confirmInput].forEach(function(el) {
+                    el.removeEventListener('keydown', onEnter);
+                });
+            }
+            function showErr(msg) {
+                errorDiv.textContent   = msg;
+                errorDiv.style.display = 'block';
+            }
+            async function onSubmit() {
+                var oldPwd      = requireOldPassword ? oldInput.value : '';
+                var newPwd      = newInput.value;
+                var confirmPwd  = confirmInput.value;
+                errorDiv.style.display = 'none';
+                if (requireOldPassword && !oldPwd) { showErr('Debes introducir tu contraseña actual.'); return; }
+                if (!newPwd || newPwd.length < 4)  { showErr('La nueva contraseña debe tener al menos 4 caracteres.'); return; }
+                if (newPwd !== confirmPwd)          { showErr('Las contraseñas no coinciden.'); return; }
+                submitBtn.disabled    = true;
+                submitBtn.textContent = 'Guardando…';
+                try {
+                    var token   = localStorage.getItem('volleyball_token') || '';
+                    var apiBase = typeof getApiBaseUrl === 'function'
+                        ? getApiBaseUrl()
+                        : (window.app ? window.app.API_URL : (window.location.origin + '/api'));
+                    var body = { newPassword: newPwd };
+                    if (requireOldPassword) body.oldPassword = oldPwd;
+                    var res = await fetch(apiBase + '/users/change-password', {
+                        method : 'POST',
+                        headers: Object.assign({'Content-Type':'application/json'},
+                                               token ? {'Authorization':'Bearer '+token} : {}),
+                        body   : JSON.stringify(body)
+                    });
+                    var payload = await res.json().catch(function() { return {}; });
+                    if (!res.ok) throw new Error(payload.error || ('HTTP ' + res.status));
+                    if (typeof actualizarSesionPostCambioContrasena === 'function') actualizarSesionPostCambioContrasena();
+                    cleanup();
+                    if (typeof showNotification === 'function') showNotification('✅ Contraseña actualizada correctamente', 'success');
+                    resolve(true);
+                } catch (err) {
+                    submitBtn.disabled    = false;
+                    submitBtn.textContent = 'Guardar';
+                    showErr(err.message || 'No se pudo cambiar la contraseña.');
+                }
+            }
+            function onCancel() { cleanup(); resolve(false); }
+            function onEnter(e) { if (e.key === 'Enter') { e.preventDefault(); onSubmit(); } }
+            submitBtn.addEventListener('click', onSubmit);
+            cancelBtn.addEventListener('click', onCancel);
+            [oldInput, newInput, confirmInput].forEach(function(el) { el.addEventListener('keydown', onEnter); });
+        });
+    };
+    </script>
+
 </body>
 </html>
