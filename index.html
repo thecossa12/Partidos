@@ -830,7 +830,28 @@
                     showErr(err.message || 'No se pudo cambiar la contraseña.');
                 }
             }
-            function onCancel() { cleanup(); resolve(false); }
+            function onCancel() {
+                // Si era modal de contraseña temporal, marcar en BD que ya fue visto
+                // para que no vuelva a salir en futuros logins
+                if (!requireOldPassword) {
+                    try {
+                        var token   = localStorage.getItem('volleyball_token') || '';
+                        var apiBase = typeof getApiBaseUrl === 'function'
+                            ? getApiBaseUrl()
+                            : (window.app ? window.app.API_URL : (window.location.origin + '/api'));
+                        fetch(apiBase + '/users/dismiss-password-reminder', {
+                            method : 'POST',
+                            headers: Object.assign({'Content-Type':'application/json'},
+                                                   token ? {'Authorization':'Bearer '+token} : {})
+                        }).catch(function() {});
+                    } catch(e) {}
+                    if (typeof actualizarSesionPostCambioContrasena === 'function') {
+                        actualizarSesionPostCambioContrasena();
+                    }
+                }
+                cleanup();
+                resolve(false);
+            }
             function onEnter(e) { if (e.key === 'Enter') { e.preventDefault(); onSubmit(); } }
             submitBtn.addEventListener('click', onSubmit);
             cancelBtn.addEventListener('click', onCancel);

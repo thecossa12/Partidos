@@ -349,11 +349,14 @@
             const session = JSON.parse(authRaw);
             if (!session || !session.mustChangePassword) return;
 
+            // Abrir el modal automáticamente sobre la app en vez de una notificación
             setTimeout(() => {
-                showNotification('🔐 Tu contraseña es temporal. Pulsa el botón "🔑 Contraseña" para cambiarla.', 'info');
+                if (typeof window.showPasswordChangeModal === 'function') {
+                    window.showPasswordChangeModal({ requireOldPassword: false });
+                }
             }, 700);
         } catch (error) {
-            console.warn('⚠️ No se pudo mostrar aviso de cambio de contraseña:', error.message);
+            console.warn('⚠️ No se pudo abrir modal de contraseña temporal:', error.message);
         }
     }
 

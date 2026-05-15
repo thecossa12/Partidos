@@ -1264,6 +1264,26 @@ app.post('/api/users/change-password', async (req, res) => {
     }
 });
 
+// Descarta el aviso de contraseña temporal sin cambiarla.
+// El usuario decidió hacerlo más tarde; marcamos mustChangePassword=false
+// para que no vuelva a aparecer hasta que el admin lo reestablezca.
+app.post('/api/users/dismiss-password-reminder', async (req, res) => {
+    try {
+        const db = getDb();
+        if (!req.authUser) {
+            return res.status(401).json({ error: 'No autenticado' });
+        }
+        const username = req.authUser.username;
+        await db.collection('users').updateOne(
+            { username },
+            { $set: { mustChangePassword: false } }
+        );
+        return res.json({ success: true });
+    } catch (error) {
+        return handleInternalError(res, error, 'dismiss-password-reminder');
+    }
+});
+
 // Reset de contraseña por admin para un usuario.
 // Vuelve a marcar mustChangePassword=true para el siguiente login.
 app.post('/api/users/:username/reset-password', async (req, res) => {
