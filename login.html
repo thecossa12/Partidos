@@ -61,6 +61,13 @@
         let loginCooldownInterval = null;
         let defaultSubmitButtonHtml = '';
 
+        function clearError() {
+            const errorDiv = document.getElementById('errorMessage');
+            if (errorDiv) {
+                errorDiv.style.display = 'none';
+            }
+        }
+
         function startLoginCooldown(totalSeconds) {
             const loginForm = document.getElementById('loginForm');
             const submitBtn = loginForm ? loginForm.querySelector('button[type="submit"]') : null;
@@ -68,6 +75,8 @@
             const cooldownText = document.getElementById('loginCooldownText');
 
             if (!submitBtn || !cooldownWrap || !cooldownText) return;
+
+            clearError();
 
             const seconds = Math.max(1, Number(totalSeconds || 0));
             const nextUntil = Date.now() + (seconds * 1000);
@@ -117,9 +126,10 @@
                     return true;
                 } else {
                     console.log('❌ Login fallido:', result.message);
-                    showError(result.message);
                     if (result.retryAfterSeconds && result.retryAfterSeconds > 0) {
                         startLoginCooldown(result.retryAfterSeconds);
+                    } else {
+                        showError(result.message);
                     }
                     return false;
                 }

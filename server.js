@@ -1336,11 +1336,10 @@ app.post('/api/users/change-password', async (req, res) => {
 // para que no vuelva a aparecer hasta que el admin lo reestablezca.
 app.post('/api/users/dismiss-password-reminder', async (req, res) => {
     try {
-        const db = getDb();
-        if (!req.authUser) {
+        if (!req.authUser || !req.authUser.sub) {
             return res.status(401).json({ error: 'No autenticado' });
         }
-        const username = req.authUser.username;
+        const username = sanitizeText(req.authUser.sub, 40);
         await db.collection('users').updateOne(
             { username },
             { $set: { mustChangePassword: false } }
