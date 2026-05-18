@@ -20,12 +20,18 @@
         }
     }
 
+    function normalizeUrlForAuth(resource) {
+        if (typeof resource === 'string') return resource;
+        if (resource && typeof resource.url === 'string') return resource.url;
+        return '';
+    }
+
     function shouldAttachToken(url) {
         return typeof url === 'string' && url.includes('/api/');
     }
 
     window.fetch = function(resource, init = {}) {
-        const url = typeof resource === 'string' ? resource : (resource && resource.url ? resource.url : '');
+        const url = normalizeUrlForAuth(resource);
         const token = getStoredToken();
 
         if (!token || !shouldAttachToken(url)) {
@@ -131,6 +137,16 @@ window.Auth = {
 
     login: async function(username, password) {
         console.log('🔐 Auth.login() - Intentando login:', username);
+
+        async function readLoginPayloadSafe(response) {
+            const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+            if (contentType.includes('application/json')) {
+                return response.json().catch(() => ({}));
+            }
+
+            const text = await response.text().catch(() => '');
+            return text ? { error: text } : {};
+        }
         
         // PASO 1: Intentar autenticar con MongoDB primero
         try {
@@ -144,9 +160,13 @@ window.Auth = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
+            const payload = await readLoginPayloadSafe(response);
             
             if (response.ok) {
-                const result = await response.json();
+                if (!payload || typeof payload !== 'object' || !payload.user || !payload.user.username) {
+                    return { success: false, message: 'Respuesta inválida del servidor de autenticación.' };
+                }
+                const result = payload;
                 console.log('✅ Autenticación exitosa desde MongoDB:', result.user);
                 
                 // Crear sesión
@@ -174,11 +194,10 @@ window.Auth = {
                 return { success: true, message: 'Login exitoso', user: session };
             }
 
-            const errorData = await response.json().catch(() => ({}));
             return {
                 success: false,
-                message: errorData.error || 'Usuario o contraseña incorrectos',
-                retryAfterSeconds: Number(errorData.retryAfterSeconds || 0),
+                message: payload.error || 'Usuario o contraseña incorrectos',
+                retryAfterSeconds: Number(payload.retryAfterSeconds || 0),
                 status: response.status
             };
         } catch (error) {
@@ -318,6 +337,15 @@ window.Auth = {
 function getSessionFromMultipleSources() {
     console.log('🔍 Verificando sesión desde múltiples fuentes...');
     
+    function isValidSessionShape(session) {
+        return !!(
+            session &&
+            typeof session === 'object' &&
+            typeof session.username === 'string' &&
+            session.username.trim().length > 0
+        );
+    }
+
     // Lista de claves posibles en sessionStorage
     const sessionKeys = ['volleyball_session', 'volleyball_auth', 'current_user', 'voleibol_session'];
     
@@ -328,6 +356,10 @@ function getSessionFromMultipleSources() {
             if (sessionData) {
                 console.log(`📦 Datos encontrados en sessionStorage[${key}]:`, sessionData);
                 const parsed = JSON.parse(sessionData);
+                if (!isValidSessionShape(parsed)) {
+                    console.log(`⚠️ Sesión inválida en sessionStorage[${key}] (falta username)`);
+                    continue;
+                }
                 console.log('✅ Sesión encontrada en sessionStorage:', parsed);
                 return parsed;
             }
@@ -344,6 +376,10 @@ function getSessionFromMultipleSources() {
             if (sessionData) {
                 console.log(`� Datos encontrados en localStorage[${key}]:`, sessionData);
                 const parsed = JSON.parse(sessionData);
+                if (!isValidSessionShape(parsed)) {
+                    console.log(`⚠️ Sesión inválida en localStorage[${key}] (falta username)`);
+                    continue;
+                }
                 console.log('✅ Sesión encontrada en localStorage:', parsed);
                 return parsed;
             }
@@ -358,6 +394,10 @@ function getSessionFromMultipleSources() {
     if (authToken) {
         try {
             const sessionData = JSON.parse(atob(decodeURIComponent(authToken)));
+            if (!isValidSessionShape(sessionData)) {
+                console.log('⚠️ Token URL con sesión inválida (falta username)');
+                return null;
+            }
             console.log('✅ Sesión encontrada en URL:', sessionData);
             
             // Guardar la sesión en storage para uso futuro

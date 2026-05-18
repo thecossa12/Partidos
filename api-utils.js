@@ -39,13 +39,25 @@ async function apiFetch(url, options = {}) {
     return fetch(url, finalOptions);
 }
 
+async function readResponseSafe(response) {
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+
+    if (contentType.includes('application/json')) {
+        return response.json().catch(() => ({}));
+    }
+
+    const text = await response.text().catch(() => '');
+    return text ? { message: text } : {};
+}
+
 const api = {
     // ==================== JUGADORES ====================
     
     async getJugadores() {
         try {
             const response = await apiFetch(`${API_URL}/jugadores`);
-            return await response.json();
+            const data = await readResponseSafe(response);
+            return Array.isArray(data) ? data : [];
         } catch (error) {
             console.error('Error obteniendo jugadores:', error);
             return [];
@@ -59,7 +71,7 @@ const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jugador) // jugador/a
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error creando jugador/a:', error);
             throw error;
@@ -73,7 +85,7 @@ const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jugador) // jugador/a
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error actualizando jugador/a:', error);
             throw error;
@@ -85,7 +97,7 @@ const api = {
             const response = await apiFetch(`${API_URL}/jugadores/${id}`, {
                 method: 'DELETE'
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error eliminando jugador:', error);
             throw error;
@@ -97,7 +109,8 @@ const api = {
     async getJornadas() {
         try {
             const response = await apiFetch(`${API_URL}/jornadas`);
-            return await response.json();
+            const data = await readResponseSafe(response);
+            return Array.isArray(data) ? data : [];
         } catch (error) {
             console.error('Error obteniendo jornadas:', error);
             return [];
@@ -111,7 +124,7 @@ const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jornada)
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error creando jornada:', error);
             throw error;
@@ -125,7 +138,7 @@ const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jornada)
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error actualizando jornada:', error);
             throw error;
@@ -137,7 +150,7 @@ const api = {
             const response = await apiFetch(`${API_URL}/jornadas/${id}`, {
                 method: 'DELETE'
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error eliminando jornada:', error);
             throw error;
@@ -151,7 +164,7 @@ const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ ids })
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error eliminando jornadas:', error);
             throw error;
@@ -167,7 +180,7 @@ const api = {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ jugadoras, jornadas })
             });
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error en migración:', error);
             throw error;
@@ -178,11 +191,15 @@ const api = {
     
     async getConfig(userId) {
         try {
-            const response = await apiFetch(`${API_URL}/config?userId=${userId}`);
+            const response = await apiFetch(`${API_URL}/config?userId=${encodeURIComponent(String(userId || ''))}`);
             if (!response.ok) {
                 throw new Error('Error obteniendo configuración');
             }
-            return await response.json();
+            const data = await readResponseSafe(response);
+            if (!data || typeof data !== 'object' || Array.isArray(data)) {
+                throw new Error('Formato de configuración inválido');
+            }
+            return data;
         } catch (error) {
             console.error('Error obteniendo config:', error);
             return {
@@ -203,7 +220,7 @@ const api = {
             if (!response.ok) {
                 throw new Error('Error guardando configuración');
             }
-            return await response.json();
+            return await readResponseSafe(response);
         } catch (error) {
             console.error('Error guardando config:', error);
             throw error;

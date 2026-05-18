@@ -640,23 +640,47 @@
     <script>
     // Borrar cuenta propia
     document.addEventListener('DOMContentLoaded', function() {
+        function getAuthUserSafe() {
+            try {
+                const raw = localStorage.getItem('volleyball_auth') || '{}';
+                const parsed = JSON.parse(raw);
+                return (parsed && typeof parsed === 'object') ? parsed : {};
+            } catch (error) {
+                return {};
+            }
+        }
+
+        async function readPayloadSafe(response) {
+            var contentType = String(response.headers.get('content-type') || '').toLowerCase();
+            if (contentType.indexOf('application/json') !== -1) {
+                return response.json().catch(function() { return {}; });
+            }
+            var text = await response.text().catch(function() { return ''; });
+            return text ? { error: text } : {};
+        }
+
         var btnBorrar = document.getElementById('btn-borrar-cuenta');
         if (btnBorrar) {
             btnBorrar.onclick = async function() {
                 if (confirm('¿Seguro que quieres borrar tu cuenta y todos tus datos? Esta acción es irreversible.')) {
-                    const user = JSON.parse(localStorage.getItem('volleyball_auth') || '{}');
+                    const user = getAuthUserSafe();
                     if (!user || !user.username) return alert('No se pudo identificar el usuario.');
                     const token = localStorage.getItem('volleyball_token');
-                    const res = await fetch(`/api/users/${user.username}`, {
-                        method: 'DELETE',
-                        headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-                    });
-                    if (res.ok) {
-                        alert('Cuenta eliminada correctamente.');
-                        localStorage.clear();
-                        window.location.href = 'login.html';
-                    } else {
-                        alert('Error al borrar la cuenta.');
+                    try {
+                        const res = await fetch(`/api/users/${encodeURIComponent(String(user.username))}`, {
+                            method: 'DELETE',
+                            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                        });
+                        const payload = await readPayloadSafe(res);
+                        if (res.ok) {
+                            alert('Cuenta eliminada correctamente.');
+                            localStorage.clear();
+                            window.location.href = 'login.html';
+                        } else {
+                            alert((payload && payload.error) ? payload.error : 'Error al borrar la cuenta.');
+                        }
+                    } catch (error) {
+                        alert('No se pudo conectar con el servidor para borrar la cuenta.');
                     }
                 }
             };
@@ -669,15 +693,20 @@
                 if (!username) return;
                 if (!confirm('¿Seguro que quieres borrar el usuario ' + username + ' y todos sus datos?')) return;
                 const token = localStorage.getItem('volleyball_token');
-                const res = await fetch(`/api/users/${username}`, {
-                    method: 'DELETE',
-                    headers: { 'Authorization': token ? `Bearer ${token}` : '' }
-                });
-                if (res.ok) {
-                    alert('Usuario eliminado correctamente.');
-                    window.location.reload();
-                } else {
-                    alert('Error al borrar el usuario.');
+                try {
+                    const res = await fetch(`/api/users/${encodeURIComponent(String(username))}`, {
+                        method: 'DELETE',
+                        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                    });
+                    const payload = await readPayloadSafe(res);
+                    if (res.ok) {
+                        alert('Usuario eliminado correctamente.');
+                        window.location.reload();
+                    } else {
+                        alert((payload && payload.error) ? payload.error : 'Error al borrar el usuario.');
+                    }
+                } catch (error) {
+                    alert('No se pudo conectar con el servidor para borrar el usuario.');
                 }
             };
         }

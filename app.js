@@ -341,6 +341,56 @@
         return this.userId || '';
     }
 
+    getAuthHeaders(extra = {}) {
+        const token = localStorage.getItem('volleyball_token') || '';
+        return token
+            ? { 'Authorization': `Bearer ${token}`, ...extra }
+            : { ...extra };
+    }
+
+    async authFetch(url, options = {}) {
+        const token = localStorage.getItem('volleyball_token') || '';
+        const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const merged = { ...options, headers: { ...authHeaders, ...(options.headers || {}) } };
+        const response = await fetch(url, merged);
+        if (response.status === 401) {
+            this._handleSessionExpired();
+            // Lanzar error para detener la ejecución del caller inmediatamente
+            throw new Error('SESSION_EXPIRED');
+        }
+        return response;
+    }
+
+    async readResponseSafe(response, fallbackValue = {}) {
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+
+        if (contentType.includes('application/json')) {
+            return response.json().catch(() => fallbackValue);
+        }
+
+        const text = await response.text().catch(() => '');
+        if (!text) {
+            return fallbackValue;
+        }
+
+        if (fallbackValue && typeof fallbackValue === 'object' && !Array.isArray(fallbackValue)) {
+            return { ...fallbackValue, error: text };
+        }
+
+        return fallbackValue;
+    }
+
+    _handleSessionExpired() {
+        // Comprobar también si la redirección ya está en curso (no solo en esta instancia)
+        if (this._sessionExpiredHandled || sessionStorage.getItem('_redirectingToLogin')) return;
+        this._sessionExpiredHandled = true;
+        sessionStorage.setItem('_redirectingToLogin', '1');
+        console.warn('⚠️ Sesión expirada, redirigiendo al login...');
+        ['volleyball_token', 'volleyball_auth', 'volleyball_session', 'current_user', 'currentUser'].forEach(k => localStorage.removeItem(k));
+        alert('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.');
+        window.location.href = '/login.html';
+    }
+
     mostrarAvisoCambioContrasenaPendiente() {
         try {
             const authRaw = localStorage.getItem('volleyball_auth') || sessionStorage.getItem('volleyball_auth');
@@ -462,7 +512,7 @@
             }
 
             const enviarPayload = async (payloadParcial, etiqueta) => {
-                const response = await fetch(`${this.API_URL}/sync`, {
+                const response = await this.authFetch(`${this.API_URL}/sync`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payloadParcial)
@@ -479,7 +529,7 @@
                     throw new Error(`Error en la sincronización (${response.status})`);
                 }
 
-                return response.json();
+                return this.readResponseSafe(response, {});
             };
 
             const dividirEnLotes = (arr = [], size = this.syncChunkSize) => {
@@ -519,9 +569,9 @@
             const userId = this.getUserId();
             
             // Intentar cargar jugadores de MongoDB
-            const jugadoresRes = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
+            const jugadoresRes = await this.authFetch(`${this.API_URL}/jugadores?userId=${userId}`);
             if (jugadoresRes.ok) {
-                const jugadores = await jugadoresRes.json();
+                const jugadores = await this.readResponseSafe(jugadoresRes, []);
                 if (jugadores.length > 0) {
                     console.log('☁️ Cargando jugadores desde MongoDB:', jugadores.length);
                     return { jugadores };
@@ -541,18 +591,18 @@
         try {
             // PASO 1: Limpiar equipos inválidos primero
             console.log('🧹 Limpiando equipos inválidos de MongoDB...');
-            const cleanupRes = await fetch(`${this.API_URL}/equipos/cleanup-invalid?userId=${userId}`, {
+            const cleanupRes = await this.authFetch(`${this.API_URL}/equipos/cleanup-invalid?userId=${userId}`, {
                 method: 'DELETE'
             });
             if (cleanupRes.ok) {
-                const cleanupData = await cleanupRes.json();
+                const cleanupData = await this.readResponseSafe(cleanupRes, { deletedCount: 0 });
                 console.log(`✅ Limpiados ${cleanupData.deletedCount} equipos inválidos`);
             }
             
             // PASO 2: Cargar equipos desde MongoDB
-            const response = await fetch(`${this.API_URL}/equipos?userId=${userId}`);
+            const response = await this.authFetch(`${this.API_URL}/equipos?userId=${userId}`);
             if (response.ok) {
-                const rawEquipos = await response.json();
+                const rawEquipos = await this.readResponseSafe(response, []);
                 
                 console.log('📦 Equipos raw desde MongoDB:', rawEquipos.length);
                 
@@ -599,8 +649,7 @@
             }
         } catch (error) {
             console.warn('⚠️ No se pudo cargar equipos desde MongoDB, usando localStorage');
-            const data = localStorage.getItem(`volleyball_equipos_${userId}`);
-            equipos = data ? JSON.parse(data) : [];
+            equipos = readStorageJsonSafe(localStorage, `volleyball_equipos_${userId}`, []);
             // Filtrar también del localStorage
             equipos = equipos.filter(e => 
                 e && 
@@ -620,13 +669,13 @@
         
         try {
             // Eliminar TODOS los documentos de equipos del usuario en MongoDB
-            await fetch(`${this.API_URL}/equipos/cleanup?userId=${userId}`, {
+            await this.authFetch(`${this.API_URL}/equipos/cleanup?userId=${userId}`, {
                 method: 'DELETE'
             });
             
             // Re-guardar solo los equipos limpios
             for (const equipo of equiposLimpios) {
-                await fetch(`${this.API_URL}/equipos`, {
+                await this.authFetch(`${this.API_URL}/equipos`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(equipo)
@@ -662,14 +711,14 @@
             for (const equipo of this.equipos) {
                 if (equipo && equipo.id && equipo.nombre) {
                     console.log(`  📤 Enviando equipo: ${equipo.nombre} (id: ${equipo.id})`);
-                    const response = await fetch(`${this.API_URL}/equipos`, {
+                    const response = await this.authFetch(`${this.API_URL}/equipos`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(equipo)
                     });
                     
                     if (!response.ok) {
-                        const errorData = await response.json();
+                        const errorData = await this.readResponseSafe(response, {});
                         console.error(`❌ Error guardando equipo ${equipo.nombre}:`, errorData);
                     } else {
                         console.log(`  ✅ Equipo ${equipo.nombre} guardado en MongoDB`);
@@ -815,7 +864,7 @@
         
         // Eliminar de MongoDB primero
         try {
-            const response = await fetch(`${this.API_URL}/equipos/${equipoId}?userId=${userId}`, {
+            const response = await this.authFetch(`${this.API_URL}/equipos/${equipoId}?userId=${userId}`, {
                 method: 'DELETE'
             });
             
@@ -917,35 +966,33 @@
         
         let jugadoras = [];
         
-        // PRIMERO: Intentar cargar desde localStorage (donde están los datos migrados)
+        // PRIMERO: Cargar desde MongoDB (siempre, para tener datos frescos y multi-dispositivo)
         const localKey = `volleyball_jugadoras_${userId}_${equipoId}`;
-        const localData = localStorage.getItem(localKey);
-        
-        if (localData) {
-            try {
-                jugadoras = JSON.parse(localData);
-                console.log('💾 Jugadoras cargadas desde localStorage:', jugadoras.length);
-            } catch (e) {
-                console.error('Error parseando jugadoras de localStorage:', e);
+        try {
+            console.log('📂 Cargando jugadoras desde MongoDB...');
+            const response = await this.authFetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
+            if (response.ok) {
+                jugadoras = await this.readResponseSafe(response, []);
+                console.log('☁️ Jugadoras cargadas desde MongoDB:', jugadoras.length);
+                // Actualizar caché local
+                if (jugadoras.length > 0) {
+                    localStorage.setItem(localKey, JSON.stringify(jugadoras));
+                }
             }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar desde MongoDB, usando localStorage:', error.message);
         }
         
-        // SEGUNDO: Si no hay datos locales, intentar MongoDB
+        // FALLBACK: Si MongoDB no devolvió datos, usar localStorage
         if (jugadoras.length === 0) {
-            try {
-                console.log('📂 Intentando cargar desde MongoDB...');
-                const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
-                if (response.ok) {
-                    jugadoras = await response.json();
-                    console.log('☁️ Jugadoras cargadas desde MongoDB:', jugadoras.length);
-                    
-                    // Guardar en localStorage como backup
-                    if (jugadoras.length > 0) {
-                        localStorage.setItem(localKey, JSON.stringify(jugadoras));
-                    }
+            const localData = localStorage.getItem(localKey);
+            if (localData) {
+                try {
+                    jugadoras = JSON.parse(localData);
+                    console.log('💾 Jugadoras cargadas desde localStorage (fallback):', jugadoras.length);
+                } catch (e) {
+                    console.error('Error parseando jugadoras de localStorage:', e);
                 }
-            } catch (error) {
-                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
             }
         }
         
@@ -954,7 +1001,11 @@
 
         console.log('👥 Jugadoras totales:', jugadoras.length);
         
-        this._jugadorasCargadas = true;
+        // Solo marcar como cargadas si realmente obtuvimos datos; si está vacío
+        // por fallo de red Y localStorage vacío, permitir reintento en próxima llamada.
+        if (jugadoras.length > 0) {
+            this._jugadorasCargadas = true;
+        }
         
         return jugadoras;
     }
@@ -1050,7 +1101,7 @@
             
             console.log('☁️ Sincronizando jugadora con MongoDB:', jugadoraSinMongoId.nombre);
             
-            const response = await fetch(`${this.API_URL}/jugadores`, {
+            const response = await this.authFetch(`${this.API_URL}/jugadores`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(jugadoraSinMongoId)
@@ -1087,7 +1138,7 @@
                 
                 console.log('☁️ Sincronizando jornada con MongoDB:', jornadaSinMongoId.id);
                 
-                const response = await fetch(`${this.API_URL}/jornadas`, {
+                const response = await this.authFetch(`${this.API_URL}/jornadas`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(jornadaSinMongoId)
@@ -1264,35 +1315,33 @@
         
         let jornadas = [];
         
-        // PRIMERO: Intentar cargar desde localStorage (donde están los datos migrados)
+        // PRIMERO: Cargar desde MongoDB (siempre, para tener datos frescos y multi-dispositivo)
         const localKey = `volleyball_jornadas_${userId}_${equipoId}`;
-        const localData = localStorage.getItem(localKey);
-        
-        if (localData) {
-            try {
-                jornadas = JSON.parse(localData);
-                console.log('💾 Jornadas cargadas desde localStorage:', jornadas.length);
-            } catch (e) {
-                console.error('Error parseando jornadas de localStorage:', e);
+        try {
+            console.log('📂 Cargando jornadas desde MongoDB...');
+            const response = await this.authFetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
+            if (response.ok) {
+                jornadas = await this.readResponseSafe(response, []);
+                console.log('☁️ Jornadas cargadas desde MongoDB:', jornadas.length);
+                // Actualizar caché local
+                if (jornadas.length > 0) {
+                    localStorage.setItem(localKey, JSON.stringify(jornadas));
+                }
             }
+        } catch (error) {
+            console.warn('⚠️ No se pudo cargar desde MongoDB, usando localStorage:', error.message);
         }
         
-        // SEGUNDO: Si no hay datos locales, intentar MongoDB
+        // FALLBACK: Si MongoDB no devolvió datos, usar localStorage
         if (jornadas.length === 0) {
-            try {
-                console.log('📂 Intentando cargar desde MongoDB...');
-                const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
-                if (response.ok) {
-                    jornadas = await response.json();
-                    console.log('☁️ Jornadas cargadas desde MongoDB:', jornadas.length);
-                    
-                    // Guardar en localStorage como backup
-                    if (jornadas.length > 0) {
-                        localStorage.setItem(localKey, JSON.stringify(jornadas));
-                    }
+            const localData = localStorage.getItem(localKey);
+            if (localData) {
+                try {
+                    jornadas = JSON.parse(localData);
+                    console.log('💾 Jornadas cargadas desde localStorage (fallback):', jornadas.length);
+                } catch (e) {
+                    console.error('Error parseando jornadas de localStorage:', e);
                 }
-            } catch (error) {
-                console.warn('⚠️ No se pudo cargar desde MongoDB:', error.message);
             }
         }
         
@@ -1347,9 +1396,14 @@
         
         try {
             // Intentar cargar desde MongoDB primero
-            const configMongo = await fetch(`${this.API_URL}/config?userId=${userId}`);
+            const configMongo = await this.authFetch(`${this.API_URL}/config?userId=${userId}`);
             if (configMongo.ok) {
-                const config = await configMongo.json();
+                const config = await this.readResponseSafe(configMongo, {
+                    nombreEquipo: '',
+                    polideportivoCasa: '',
+                    ubicacionesGuardadas: [],
+                    rivalesGuardados: []
+                });
                 // Guardar en localStorage como caché
                 localStorage.setItem(`volleyball_config_${userId}`, JSON.stringify(config));
                 return config;
@@ -1359,13 +1413,12 @@
         }
         
         // Fallback a localStorage si MongoDB falla
-        const data = localStorage.getItem(`volleyball_config_${userId}`);
-        return data ? JSON.parse(data) : {
+        return readStorageJsonSafe(localStorage, `volleyball_config_${userId}`, {
             nombreEquipo: '',
             polideportivoCasa: '',
             ubicacionesGuardadas: [],
             rivalesGuardados: []
-        };
+        });
     }
 
     async guardarConfiguracion(config) {
@@ -1376,7 +1429,7 @@
         
         // Sincronizar con MongoDB en segundo plano
         try {
-            await fetch(`${this.API_URL}/config`, {
+            await this.authFetch(`${this.API_URL}/config`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, ...config })
@@ -1673,9 +1726,9 @@
         // TAMBIÉN BUSCAR EN MONGODB datos sin equipoId
         try {
             console.log('🔍 Buscando datos antiguos en MongoDB...');
-            const response = await fetch(`${this.API_URL}/jugadores?userId=${userId}`);
+            const response = await this.authFetch(`${this.API_URL}/jugadores?userId=${userId}`);
             if (response.ok) {
-                const jugadores = await response.json();
+                const jugadores = await this.readResponseSafe(response, []);
                 const jugadoresSinEquipo = jugadores.filter(j => !j.equipoId);
                 
                 if (jugadoresSinEquipo.length > 0) {
@@ -1691,8 +1744,7 @@
                         
                         // Guardar en localStorage
                         const nuevaKey = `volleyball_jugadoras_${userId}_${this.equipoActualId}`;
-                        const datosExistentes = localStorage.getItem(nuevaKey);
-                        const jugadoresExistentes = datosExistentes ? JSON.parse(datosExistentes) : [];
+                        const jugadoresExistentes = readStorageJsonSafe(localStorage, nuevaKey, []);
                         
                         // Combinar sin duplicar
                         const idsMigrados = new Set(jugadoresExistentes.map(j => j.id));
@@ -1716,9 +1768,9 @@
         // TAMBIÉN BUSCAR JORNADAS EN MONGODB sin equipoId
         try {
             console.log('🔍 Buscando jornadas antiguas en MongoDB...');
-            const response = await fetch(`${this.API_URL}/jornadas?userId=${userId}`);
+            const response = await this.authFetch(`${this.API_URL}/jornadas?userId=${userId}`);
             if (response.ok) {
-                const jornadas = await response.json();
+                const jornadas = await this.readResponseSafe(response, []);
                 const jornadasSinEquipo = jornadas.filter(j => !j.equipoId);
                 
                 if (jornadasSinEquipo.length > 0) {
@@ -1738,8 +1790,7 @@
                         
                         // Guardar en localStorage
                         const nuevaKey = `volleyball_jornadas_${userId}_${this.equipoActualId}`;
-                        const datosExistentes = localStorage.getItem(nuevaKey);
-                        const jornadasExistentes = datosExistentes ? JSON.parse(datosExistentes) : [];
+                        const jornadasExistentes = readStorageJsonSafe(localStorage, nuevaKey, []);
                         
                         // Combinar sin duplicar
                         const idsMigrados = new Set(jornadasExistentes.map(j => j.id));
@@ -1921,9 +1972,9 @@
             let huboCambios = false;
             
             // Cargar jugadoras desde MongoDB
-            const jugadorasResponse = await fetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
+            const jugadorasResponse = await this.authFetch(`${this.API_URL}/jugadores?userId=${userId}&equipoId=${equipoId}`);
             if (jugadorasResponse.ok) {
-                const jugadorasMongo = await jugadorasResponse.json();
+                const jugadorasMongo = await this.readResponseSafe(jugadorasResponse, []);
                 const jugadorasFusionadas = this.fusionarJugadorasConPrioridadLocal(jugadorasMongo);
                 
                 // Solo actualizar si hay diferencias
@@ -1941,9 +1992,9 @@
             }
             
             // Cargar jornadas desde MongoDB
-            const jornadasResponse = await fetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
+            const jornadasResponse = await this.authFetch(`${this.API_URL}/jornadas?userId=${userId}&equipoId=${equipoId}`);
             if (jornadasResponse.ok) {
-                const jornadasMongo = await jornadasResponse.json();
+                const jornadasMongo = await this.readResponseSafe(jornadasResponse, []);
                 const jornadasFusionadas = this.fusionarJornadasConPrioridadLocal(jornadasMongo);
                 
                 // Solo actualizar si hay diferencias
@@ -5522,7 +5573,7 @@
             // Eliminar de MongoDB
             try {
                 const userId = this.getUserId();
-                const response = await fetch(`${this.API_URL}/jugadores/${id}?userId=${userId}`, {
+                const response = await this.authFetch(`${this.API_URL}/jugadores/${id}?userId=${userId}`, {
                     method: 'DELETE'
                 });
                 
@@ -7133,7 +7184,7 @@
         
         // Eliminar de MongoDB de forma explícita
         try {
-            const deleteResponse = await fetch(`${this.API_URL}/jornadas/${jornadaId}?userId=${userId}`, {
+            const deleteResponse = await this.authFetch(`${this.API_URL}/jornadas/${jornadaId}?userId=${userId}`, {
                 method: 'DELETE'
             });
             
@@ -7375,12 +7426,15 @@ VolleyballManager.prototype.exportarDatos = async function() {
             equipoId: String(equipoActualId)
         });
 
-        const response = await fetch(`${this.API_URL}/users/${encodeURIComponent(userId)}/export?${query.toString()}`);
+        const response = await this.authFetch(`${this.API_URL}/users/${encodeURIComponent(userId)}/export?${query.toString()}`);
 
         if (!response.ok) {
             let message = `Error al exportar datos (${response.status})`;
             try {
-                const errorData = await response.json();
+                const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+                const errorData = contentType.includes('application/json')
+                    ? await response.json().catch(() => ({}))
+                    : { error: await response.text().catch(() => '') };
                 message = errorData.error || message;
             } catch (jsonError) {
                 // Ignorar parseo de error y mantener mensaje por defecto
@@ -7388,7 +7442,14 @@ VolleyballManager.prototype.exportarDatos = async function() {
             throw new Error(message);
         }
 
-        const dataExportacion = await response.json();
+        const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+        const dataExportacion = contentType.includes('application/json')
+            ? await response.json().catch(() => ({}))
+            : {};
+
+        if (!dataExportacion || typeof dataExportacion !== 'object' || Array.isArray(dataExportacion)) {
+            throw new Error('Respuesta inválida al exportar datos');
+        }
         
         // Mostrar modal de confirmación antes de descargar
         this.mostrarModalExportacion(dataExportacion, () => {
@@ -8164,7 +8225,7 @@ async function createNewUser() {
             body: JSON.stringify({ username, password, name, isAdmin })
         });
 
-        const payload = await response.json().catch(() => ({}));
+        const payload = await readApiPayloadSafe(response, {});
         if (!response.ok) {
             throw new Error(payload.error || `HTTP ${response.status}`);
         }
@@ -8185,8 +8246,17 @@ async function loadUsersList() {
     usersList.innerHTML = '';
 
     try {
-        const response = await fetch(`${getApiBaseUrl()}/users`);
-        const payload = await response.json().catch(() => ([]));
+        const token = localStorage.getItem('volleyball_token') || '';
+        const response = await fetch(`${getApiBaseUrl()}/users`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const payload = await readApiPayloadSafe(response, []);
+
+        if (response.status === 401) {
+            ['volleyball_token', 'volleyball_auth', 'volleyball_session', 'current_user'].forEach(k => localStorage.removeItem(k));
+            window.location.href = '/login.html';
+            return;
+        }
 
         if (!response.ok || !Array.isArray(payload)) {
             throw new Error(payload.error || `HTTP ${response.status}`);
@@ -8301,8 +8371,8 @@ function openEditUserModal(username) {
         console.warn('⚠️ Auth.getUsers() falló, usando localStorage directo:', e.message);
         
         // Fallback a localStorage directo
-        const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        const systemUsers = JSON.parse(localStorage.getItem('system_users') || '{}');
+        const localUsers = readStorageJsonSafe(localStorage, 'users', []);
+        const systemUsers = readStorageJsonSafe(localStorage, 'system_users', {});
         
         // Convertir y usar el que tenga datos
         const localArray = objectToUserArray(localUsers);
@@ -8414,8 +8484,8 @@ async function editUser() {
     } catch (e) {
         console.warn('⚠️ Usando localStorage directo para editUser');
         
-        const localUsers = JSON.parse(localStorage.getItem('users') || '[]');
-        const systemUsers = JSON.parse(localStorage.getItem('system_users') || '{}');
+        const localUsers = readStorageJsonSafe(localStorage, 'users', []);
+        const systemUsers = readStorageJsonSafe(localStorage, 'system_users', {});
         
         const localArray = objectToUserArray(localUsers);
         const systemArray = objectToUserArray(systemUsers);
@@ -8472,7 +8542,7 @@ async function editUser() {
             })
         });
 
-        const payload = await response.json().catch(() => ({}));
+        const payload = await readApiPayloadSafe(response, {});
         if (!response.ok) {
             throw new Error(payload.error || `HTTP ${response.status}`);
         }
@@ -8515,7 +8585,7 @@ async function changeUserPassword() {
             body: JSON.stringify({ newPassword })
         });
 
-        const payload = await response.json().catch(() => ({}));
+        const payload = await readApiPayloadSafe(response, {});
         if (!response.ok) {
             throw new Error(payload.error || `HTTP ${response.status}`);
         }
@@ -8548,7 +8618,7 @@ async function deleteUser(username) {
             }
         });
 
-        const payload = await response.json().catch(() => ({}));
+        const payload = await readApiPayloadSafe(response, {});
         if (!response.ok) {
             throw new Error(payload.error || `HTTP ${response.status}`);
         }
@@ -8663,6 +8733,29 @@ function getApiBaseUrl() {
         : `${window.location.origin}/api`;
 }
 
+async function readApiPayloadSafe(response, fallbackValue) {
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+
+    if (contentType.includes('application/json')) {
+        return response.json().catch(() => fallbackValue);
+    }
+
+    const text = await response.text().catch(() => '');
+    if (!text) return fallbackValue;
+    return { error: text };
+}
+
+function readStorageJsonSafe(storage, key, fallbackValue) {
+    try {
+        const raw = storage.getItem(key);
+        if (!raw) return fallbackValue;
+        const parsed = JSON.parse(raw);
+        return parsed === null || parsed === undefined ? fallbackValue : parsed;
+    } catch (error) {
+        return fallbackValue;
+    }
+}
+
 async function loadDataHealthUsers() {
     const selector = document.getElementById('data-health-user');
     if (!selector) return;
@@ -8670,8 +8763,11 @@ async function loadDataHealthUsers() {
     const previousValue = selector.value;
 
     try {
-        const response = await fetch(`${getApiBaseUrl()}/users`);
-        const payload = await response.json();
+        const token = localStorage.getItem('volleyball_token') || '';
+        const response = await fetch(`${getApiBaseUrl()}/users`, {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        const payload = await readApiPayloadSafe(response, []);
 
         if (!response.ok || !Array.isArray(payload)) {
             throw new Error(payload.error || 'No se pudo cargar la lista de usuarios');
@@ -8816,16 +8912,24 @@ async function runDataIntegrityTask(apply) {
         setDataHealthButtonsState(true);
         showNotification(`⏳ Iniciando ${actionLabel} de integridad de datos...`, 'info');
 
+        const token = localStorage.getItem('volleyball_token') || '';
         const response = await fetch(`${getApiBaseUrl()}/admin/data-health`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
             body: JSON.stringify({ apply, userId: targetUserId || undefined })
         });
 
-        const payload = await response.json();
+        const payload = await readApiPayloadSafe(response, {});
 
         if (!response.ok) {
             throw new Error(payload.error || `No se pudo ${actionLabel} la integridad`);
+        }
+
+        if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+            throw new Error('Formato de respuesta inválido en integridad de datos');
         }
 
         showNotification(
@@ -8936,8 +9040,8 @@ window.testModal = function() {
 window.debugUsers = function() {
     console.log('🔍 === DEBUG USUARIOS COMPLETO ===');
     
-    console.log('1. localStorage "users":', JSON.parse(localStorage.getItem('users') || '[]'));
-    console.log('2. localStorage "system_users":', JSON.parse(localStorage.getItem('system_users') || '[]'));
+    console.log('1. localStorage "users":', readStorageJsonSafe(localStorage, 'users', []));
+    console.log('2. localStorage "system_users":', readStorageJsonSafe(localStorage, 'system_users', []));
     
     try {
         const authUsers = Auth.getUsers();
@@ -8952,14 +9056,14 @@ window.debugUsers = function() {
         console.error('3. Auth.getUsers() ERROR:', e);
     }
     
-    console.log('4. currentUser:', JSON.parse(localStorage.getItem('currentUser') || '{}'));
+    console.log('4. currentUser:', readStorageJsonSafe(localStorage, 'currentUser', {}));
     
     // Verificar todas las claves de localStorage
     console.log('5. Todas las claves de localStorage:');
     for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
         if (key.includes('user') || key.includes('User')) {
-            console.log(`   ${key}:`, JSON.parse(localStorage.getItem(key) || '{}'));
+            console.log(`   ${key}:`, readStorageJsonSafe(localStorage, key, {}));
         }
     }
     
@@ -9341,7 +9445,7 @@ async function saveSystemUsersLocally() {
                 ...authHeaders
             }
         });
-        const currentPayload = await currentResponse.json().catch(() => ([]));
+        const currentPayload = await readApiPayloadSafe(currentResponse, []);
         if (!currentResponse.ok || !Array.isArray(currentPayload)) {
             throw new Error((currentPayload && currentPayload.error) || `HTTP ${currentResponse.status}`);
         }
@@ -9364,7 +9468,7 @@ async function saveSystemUsersLocally() {
                     }
                 });
 
-                const deletePayload = await deleteResponse.json().catch(() => ({}));
+                const deletePayload = await readApiPayloadSafe(deleteResponse, {});
                 if (!deleteResponse.ok) {
                     throw new Error(deletePayload.error || `HTTP ${deleteResponse.status}`);
                 }
@@ -9379,7 +9483,7 @@ async function saveSystemUsersLocally() {
         
         for (const user of systemUsersConfig) {
             try {
-                const response = await fetch(`${apiBaseUrl}/users`, {
+                const createResponse = await fetch(`${apiBaseUrl}/users`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -9393,18 +9497,18 @@ async function saveSystemUsersLocally() {
                     })
                 });
                 
-                if (!response.ok) {
-                    const errorText = await response.text();
+                if (!createResponse.ok) {
+                    const errorText = await createResponse.text();
                     let errorPayload;
                     try {
                         errorPayload = JSON.parse(errorText);
                     } catch (e) {
-                        errorPayload = { error: errorText || `HTTP ${response.status}` };
+                        errorPayload = { error: errorText || `HTTP ${createResponse.status}` };
                     }
                     console.error(`❌ Error sincronizando usuario ${user.username}:`, errorPayload);
                     errorCount++;
                 } else {
-                    const resultText = await response.text();
+                    const resultText = await createResponse.text();
                     let result = {};
                     try {
                         result = resultText ? JSON.parse(resultText) : {};
