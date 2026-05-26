@@ -575,6 +575,13 @@ function logout() {
 // ===== INICIALIZACIÓN ===== 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📄 DOM Cargado en index con nuevo sistema');
+
+    if (window.__volleyballBootstrapHandled) {
+        console.log('⚠️ Arranque principal ya gestionado en app.js, omitiendo duplicación...');
+        return;
+    }
+
+    window.__volleyballBootstrapHandled = true;
     
     // No ejecutar verificación de autenticación en la página de login
     if (window.location.pathname.endsWith('login.html') || window.location.pathname.endsWith('test-auth.html')) {

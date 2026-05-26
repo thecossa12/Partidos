@@ -7252,10 +7252,19 @@
     }
 
     // ==================== BANNER JORNADA PENDIENTE ====================
+    obtenerClaveSemanaJornada(jornada) {
+        if (!jornada) return '';
+
+        const fechaBase = jornada.fechaLunes || jornada.fechaSeleccionada || jornada.fechaSabado || '';
+        if (!fechaBase) return '';
+
+        return String(fechaBase).split('T')[0];
+    }
+
     esJornadaPendienteValida(jornada) {
         if (!jornada || jornada.completada) return false;
 
-        const fechaClave = jornada.fechaLunes || jornada.fechaSeleccionada;
+        const fechaClave = this.obtenerClaveSemanaJornada(jornada);
         if (!fechaClave) return true;
 
         // Ignorar borradores inconsistentes si ya existe una jornada completada para la misma semana.
@@ -7264,7 +7273,7 @@
                 return false;
             }
 
-            const otraFechaClave = otraJornada.fechaLunes || otraJornada.fechaSeleccionada;
+            const otraFechaClave = this.obtenerClaveSemanaJornada(otraJornada);
             return otraFechaClave === fechaClave;
         });
 
@@ -7272,7 +7281,38 @@
     }
 
     obtenerJornadaPendientePrioritaria() {
-        const pendientesValidas = this.jornadas
+        const jornadasPorSemana = new Map();
+
+        (Array.isArray(this.jornadas) ? this.jornadas : []).forEach(jornada => {
+            if (!jornada) return;
+
+            const claveSemana = this.obtenerClaveSemanaJornada(jornada) || `id:${jornada.id || ''}`;
+            const jornadaExistente = jornadasPorSemana.get(claveSemana);
+
+            if (!jornadaExistente) {
+                jornadasPorSemana.set(claveSemana, jornada);
+                return;
+            }
+
+            const existenteCompletada = !!jornadaExistente.completada;
+            const nuevaCompletada = !!jornada.completada;
+
+            if (nuevaCompletada !== existenteCompletada) {
+                if (nuevaCompletada) {
+                    jornadasPorSemana.set(claveSemana, jornada);
+                }
+                return;
+            }
+
+            const fechaExistente = new Date(jornadaExistente.fechaCompletada || jornadaExistente.fechaCreacion || 0).getTime();
+            const fechaNueva = new Date(jornada.fechaCompletada || jornada.fechaCreacion || 0).getTime();
+
+            if (fechaNueva >= fechaExistente) {
+                jornadasPorSemana.set(claveSemana, jornada);
+            }
+        });
+
+        const pendientesValidas = Array.from(jornadasPorSemana.values())
             .filter(jornada => this.esJornadaPendienteValida(jornada))
             .sort((a, b) => {
                 const fechaA = new Date(this.obtenerFechaSabadoJornada(a) || a.fechaCreacion || 0).getTime();
@@ -8077,6 +8117,13 @@ window.repararFormulario = repararFormulario;
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🏐 Iniciando sistema de voleibol...');
+
+    if (window.__volleyballBootstrapHandled) {
+        console.log('⚠️ Arranque principal ya gestionado por auth.js, omitiendo...');
+        return;
+    }
+
+    window.__volleyballBootstrapHandled = true;
     
     // CERRAR TODOS LOS MODALES AL CARGAR
     setTimeout(() => closeAllModals(), 100);
