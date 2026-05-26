@@ -65,17 +65,51 @@
         }
     })();
 
+    const allowlistedPatterns = [
+        /iniciando constructor/i,
+        /api url/i,
+        /constructor completado/i,
+        /equipos cargados/i,
+        /jornadas cargadas/i,
+        /jornadas registradas/i,
+        /jornada lista para edici[oó]n/i,
+        /login exitoso/i,
+        /usuario autenticado/i,
+        /sistema iniciado/i,
+        /inicializaci[oó]n completa/i,
+        /arranque principal/i,
+        /borrador guardado/i,
+        /jornada sincronizada/i,
+        /datos actualizados/i,
+        /error/i,
+        /advertencia/i,
+        /acceso denegado/i,
+        /sesi[oó]n encontrada/i,
+        /sesi[oó]n limpiada/i,
+        /sesi[oó]n guardada/i
+    ];
+
+    function shouldShowLog(args) {
+        if (isDebugEnabled) return true;
+        if (!args || args.length === 0) return false;
+
+        const firstArg = args[0];
+        if (typeof firstArg !== 'string') return false;
+
+        return allowlistedPatterns.some(pattern => pattern.test(firstArg));
+    }
+
     const originalLog = console.log.bind(console);
     const originalDebug = console.debug ? console.debug.bind(console) : originalLog;
 
     console.log = function(...args) {
-        if (isDebugEnabled) {
+        if (shouldShowLog(args)) {
             originalLog(...args);
         }
     };
 
     console.debug = function(...args) {
-        if (isDebugEnabled) {
+        if (shouldShowLog(args)) {
             originalDebug(...args);
         }
     };

@@ -1207,9 +1207,12 @@
 
             const fechaLocal = new Date(jornadaLocal.fechaCompletada || jornadaLocal.fechaCreacion || 0).getTime();
             const fechaMongo = new Date(jornadaMongo.fechaCompletada || jornadaMongo.fechaCreacion || 0).getTime();
+            const updatedAtLocal = new Date(jornadaLocal.updatedAt || jornadaLocal.fechaCompletada || jornadaLocal.fechaCreacion || 0).getTime();
+            const updatedAtMongo = new Date(jornadaMongo.updatedAt || jornadaMongo.fechaCompletada || jornadaMongo.fechaCreacion || 0).getTime();
             const preservarLocal =
                 (!!jornadaLocal.completada && !jornadaMongo.completada) ||
                 (!!this.jornadaActual && String(this.jornadaActual.id) === key) ||
+                updatedAtLocal > updatedAtMongo ||
                 fechaLocal > fechaMongo;
 
             jornadasMap.set(
@@ -1364,6 +1367,15 @@
     guardarJornadas() {
         const userId = this.getUserId();
         const equipoId = this.equipoActualId;
+        const ahora = new Date().toISOString();
+
+        if (this.jornadaActual && this.jornadas.some(j => this.idsIguales(j.id, this.jornadaActual.id))) {
+            this.jornadaActual.updatedAt = ahora;
+        }
+
+        if (this.jornadaEditandoEstadisticas && this.jornadas.some(j => this.idsIguales(j.id, this.jornadaEditandoEstadisticas.id))) {
+            this.jornadaEditandoEstadisticas.updatedAt = ahora;
+        }
         
         // Asegurar que todas las jornadas tengan equipoId
         const jornadasConEquipo = this.jornadas.map(j => ({
@@ -2511,6 +2523,7 @@
             rotacion: null,
             completada: false,
             fechaCreacion: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
             sinPartido: sinPartido, // Indicador de si hubo partido o no
             ubicacion: sinPartido ? '' : ubicacionInput,
             tipoUbicacion: sinPartido ? '' : tipoUbicacion, // 'casa' o 'fuera'
@@ -4661,6 +4674,7 @@
         
         // Guardar la planificación actual como borrador preservando posiciones vacías
         this.jornadaActual.sets = this.obtenerSetsNormalizados(this.planificacionSets);
+        this.jornadaActual.updatedAt = new Date().toISOString();
         
         // Guardar sustituciones temporales
         this.jornadaActual.sustituciones = {
@@ -4696,6 +4710,7 @@
         this.jornadaActual.completada = true;
         this.jornadaActual.fechaCompletada = new Date().toISOString();
         this.jornadaActual.fechaCompletada = new Date().toISOString();
+        this.jornadaActual.updatedAt = new Date().toISOString();
 
         if (eraCompletada) {
             this.recalcularEstadisticasCompletas();
@@ -4817,6 +4832,7 @@
         
         // Marcar como completada
         this.jornadaActual.completada = true;
+        this.jornadaActual.updatedAt = new Date().toISOString();
 
         if (eraCompletada) {
             this.recalcularEstadisticasCompletas();
