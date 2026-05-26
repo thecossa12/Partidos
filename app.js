@@ -1830,7 +1830,7 @@
                         <input type="text" id="inputPolideportivoCasa" value="${polideportivoCasa}" 
                                placeholder="Ej: Mariano Benlliure" 
                                style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                        <button class="btn-guardar-casa" onclick="app.guardarPolideportivoCasa()">💾 Guardar</button>
+                        <button class="btn-guardar-casa" onclick="window.app.guardarPolideportivoCasa()">💾 Guardar</button>
                     </div>
                     ${polideportivoCasa ? `<small style="color: #666; margin-top: 5px; display: block;">Actual: ${polideportivoCasa}</small>` : ''}
                 </div>
@@ -2188,7 +2188,7 @@
                             ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} ${j.nombre} 
                             <span class="dorsal-badge">#${j.dorsal}</span>
                         </span>
-                        <button onclick="app.eliminarJugadoraSetup(${j.id})">❌</button>
+                        <button onclick="window.app.eliminarJugadoraSetup(${j.id})">❌</button>
                     </div>
                 `).join('');
         }
@@ -2312,12 +2312,12 @@
             if (fechaInput && !fechaInput.value) {
                 const hoy = new Date();
                 console.log('🗓️ Configurando fecha por defecto desde:', hoy);
-                const fechaString = hoy.toISOString().split('T')[0]; // Convertir a string YYYY-MM-DD
+                const fechaString = this.formatearFechaLocalInput(hoy);
                 console.log('🗓️ Fecha string generada:', fechaString);
                 const lunes = this.obtenerProximoLunes(fechaString);
                 console.log('🗓️ Lunes obtenido:', lunes);
                 if (lunes && !isNaN(lunes.getTime())) {
-                    fechaInput.value = lunes.toISOString().split('T')[0];
+                    fechaInput.value = this.formatearFechaLocalInput(lunes);
                     console.log('🗓️ Fecha asignada al input:', fechaInput.value);
                 } else {
                     console.error('🗓️ Error: Lunes inválido');
@@ -2333,7 +2333,7 @@
             const fechaInput = document.getElementById('fechaJornada');
             if (fechaInput && !fechaInput.value) {
                 const hoy = new Date();
-                fechaInput.value = hoy.toISOString().split('T')[0];
+                fechaInput.value = this.formatearFechaLocalInput(hoy);
             }
             this.actualizarListaJornadas();
         }
@@ -2346,7 +2346,7 @@
         try {
             // Si es un objeto Date, convertir a string primero
             if (fecha instanceof Date) {
-                fecha = fecha.toISOString().split('T')[0];
+                fecha = this.formatearFechaLocalInput(fecha);
             }
             
             // Asegurar que tiene el formato correcto YYYY-MM-DD
@@ -2688,7 +2688,7 @@
                     const lesionadaIcon = jugadora.lesionada ? '🩹 ' : '';
                     return `
                         <div class="jugadora-card ${isSelected ? 'selected' : ''} ${lesionadaClass}" 
-                             onclick="app.toggleAsistencia('${grid.asistencia}', ${jugadora.id})">
+                             onclick="window.app.toggleAsistencia('${grid.asistencia}', ${jugadora.id})">
                             <div class="jugadora-header">
                                 <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
                                 <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
@@ -3244,7 +3244,7 @@
                         sustitucionElement.className = 'sustitucion-item';
                         sustitucionElement.innerHTML = `
                             <span>${entraJugadora.nombre} entra por ${saleJugadora.nombre} en el punto ${sustitucion.punto}</span>
-                            <button class="btn-eliminar-sustitucion" onclick="app.eliminarSustitucion(this)">×</button>
+                            <button class="btn-eliminar-sustitucion" onclick="window.app.eliminarSustitucion(this)">×</button>
                         `;
                         container1.appendChild(sustitucionElement);
                     }
@@ -3265,7 +3265,7 @@
                         sustitucionElement.className = 'sustitucion-item';
                         sustitucionElement.innerHTML = `
                             <span>${entraJugadora.nombre} entra por ${saleJugadora.nombre} en el punto ${sustitucion.punto}</span>
-                            <button class="btn-eliminar-sustitucion" onclick="app.eliminarSustitucion(this)">×</button>
+                            <button class="btn-eliminar-sustitucion" onclick="window.app.eliminarSustitucion(this)">×</button>
                         `;
                         container2.appendChild(sustitucionElement);
                     }
@@ -3286,7 +3286,7 @@
                         sustitucionElement.className = 'sustitucion-item';
                         sustitucionElement.innerHTML = `
                             <span>${entraJugadora.nombre} entra por ${saleJugadora.nombre} en el punto ${sustitucion.punto}</span>
-                            <button class="btn-eliminar-sustitucion" onclick="app.eliminarSustitucion(this)">×</button>
+                            <button class="btn-eliminar-sustitucion" onclick="window.app.eliminarSustitucion(this)">×</button>
                         `;
                         container3.appendChild(sustitucionElement);
                     }
@@ -3472,14 +3472,14 @@
             else if (jugadora.posicion === 'central') emojiRol = '🛡️';
             
             return `
-                <div class="posicion-campo ocupada" onclick="app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
+                <div class="posicion-campo ocupada" onclick="window.app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
                     <span class="numero-posicion">${posicion}</span>
                     <span class="jugadora-info">${emojiRol} ${jugadora.nombre}</span>
                 </div>
             `;
         } else {
             return `
-                <div class="posicion-campo vacia" onclick="app.añadirJugadoraAPosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para añadir jugadora">
+                <div class="posicion-campo vacia" onclick="window.app.añadirJugadoraAPosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para añadir jugadora">
                     <span class="numero-posicion">${posicion}</span>
                     <span>Libre</span>
                 </div>
@@ -3574,7 +3574,7 @@
             }
             
             return `
-                <div class="jugadora-modal-item" style="${colorFondo}" onclick="app.seleccionarJugadoraParaPosicion(${j.id}, ${posicion}, '${setKey}')">
+                <div class="jugadora-modal-item" style="${colorFondo}" onclick="window.app.seleccionarJugadoraParaPosicion(${j.id}, ${posicion}, '${setKey}')">
                     <div class="jugadora-modal-info">
                         <span class="jugadora-modal-nombre">${emojiRol} ${j.nombre}</span>
                     </div>
@@ -4072,7 +4072,7 @@
             div.className = 'sustitucion-item';
             div.innerHTML = `
                 <span>${textoSustitucion}</span>
-                <button onclick="app.eliminarSustitucion(this, ${set})" class="btn-eliminar-sustitucion">×</button>
+                <button onclick="window.app.eliminarSustitucion(this, ${set})" class="btn-eliminar-sustitucion">×</button>
             `;
             container.appendChild(div);
             console.log('📝 Sustitución añadida al contenedor', containerId);
@@ -5402,10 +5402,10 @@
                             </div>
                         </div>
                         <div>
-                            <button class="lesion-btn" onclick="app.gestionarLesion(${jugadora.id})">${jugadora.lesionada ? '🩹' : '💊'} Lesión</button>
+                            <button class="lesion-btn" onclick="window.app.gestionarLesion(${jugadora.id})">${jugadora.lesionada ? '🩹' : '💊'} Lesión</button>
                             <button class="info-btn" onclick="verInfoJugadoraGlobal(${jugadora.id})">Ver Info</button>
-                            <button class="edit-btn" onclick="app.editarJugadora(${jugadora.id})">EDITAR</button>
-                            <button class="delete-btn" onclick="app.eliminarJugadora(${jugadora.id})">ELIMINAR</button>
+                            <button class="edit-btn" onclick="window.app.editarJugadora(${jugadora.id})">EDITAR</button>
+                            <button class="delete-btn" onclick="window.app.eliminarJugadora(${jugadora.id})">ELIMINAR</button>
                         </div>
                     </div>
                 `;
@@ -5630,7 +5630,7 @@
                         </div>
                         
                         <div class="modal-actions">
-                            <button class="btn-guardar" onclick="app.guardarLesion(${jugadoraId})">💾 Guardar</button>
+                            <button class="btn-guardar" onclick="window.app.guardarLesion(${jugadoraId})">💾 Guardar</button>
                             <button class="btn-cancelar" onclick="document.getElementById('modalLesion').remove()">❌ Cancelar</button>
                         </div>
                     </div>
@@ -6021,7 +6021,7 @@
 
             return `
                 <div class="jornada-historial colapsada" data-jornada-id="${jornada.id}">
-                    <div class="jornada-header" onclick="app.toggleJornadaDetalle(${jornada.id})">
+                    <div class="jornada-header" onclick="window.app.toggleJornadaDetalle(${jornada.id})">
                         <div class="jornada-header-izquierda">
                             <input type="checkbox" class="checkbox-jornada" value="${jornada.id}" onclick="event.stopPropagation()">
                             <span class="icono-expandir">▶</span>
@@ -6041,12 +6041,12 @@
                             </div>
                         </div>
                         <div class="jornada-acciones" onclick="event.stopPropagation()">
-                            <button onclick="app.abrirModalEstadisticas(${jornada.id})" class="btn-estadisticas-partido">
+                            <button onclick="window.app.abrirModalEstadisticas(${jornada.id})" class="btn-estadisticas-partido">
                                 📊 ${jornada.estadisticas ? 'Editar' : 'Añadir'} Estadísticas
                             </button>
-                            <button onclick="app.continuarEditandoJornada(${jornada.id})" class="btn-editar-jornada">✏️ Editar</button>
+                            <button onclick="window.app.continuarEditandoJornada(${jornada.id})" class="btn-editar-jornada">✏️ Editar</button>
                             ${!jornada.completada ? `
-                                <button onclick="app.eliminarJornada(${jornada.id})" class="btn-eliminar-jornada">🗑️</button>
+                                <button onclick="window.app.eliminarJornada(${jornada.id})" class="btn-eliminar-jornada">🗑️</button>
                             ` : ''}
                         </div>
                     </div>
@@ -6671,6 +6671,17 @@
             month: '2-digit', 
             year: 'numeric' 
         });
+    }
+
+    formatearFechaLocalInput(fecha) {
+        if (!(fecha instanceof Date) || Number.isNaN(fecha.getTime())) {
+            return '';
+        }
+
+        const year = fecha.getFullYear();
+        const month = String(fecha.getMonth() + 1).padStart(2, '0');
+        const day = String(fecha.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
     }
 
     actualizarTitulosDias() {

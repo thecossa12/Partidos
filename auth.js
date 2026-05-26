@@ -49,6 +49,51 @@
     window.__volleyballFetchPatched = true;
 })();
 
+(function installVolleyballConsoleFilter() {
+    if (typeof window === 'undefined') return;
+    if (window.__volleyballConsoleFiltered) return;
+
+    const isDebugEnabled = (() => {
+        try {
+            if (window.location && /[?&]debugLogs=1(?:&|$)/.test(window.location.search)) {
+                return true;
+            }
+
+            return localStorage.getItem('volleyball_debug_logs') === 'true';
+        } catch (error) {
+            return false;
+        }
+    })();
+
+    const originalLog = console.log.bind(console);
+    const originalDebug = console.debug ? console.debug.bind(console) : originalLog;
+
+    console.log = function(...args) {
+        if (isDebugEnabled) {
+            originalLog(...args);
+        }
+    };
+
+    console.debug = function(...args) {
+        if (isDebugEnabled) {
+            originalDebug(...args);
+        }
+    };
+
+    window.__volleyballConsoleFiltered = true;
+    window.__volleyballDebugLogsEnabled = isDebugEnabled;
+
+    window.setVolleyballDebugLogs = function(enabled) {
+        try {
+            localStorage.setItem('volleyball_debug_logs', enabled ? 'true' : 'false');
+        } catch (error) {
+            console.warn('⚠️ No se pudo guardar el estado de debug:', error.message);
+        }
+
+        window.location.reload();
+    };
+})();
+
 // Objeto Auth compatible con el sistema anterior
 window.Auth = {
     requireAuth: function() {
