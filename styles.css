@@ -6462,38 +6462,51 @@ input:checked + .slider:before {
     overflow: hidden;
 }
 
+.planificador-sets .numero-posicion {
+    top: 2px;
+    left: 2px;
+    width: 12px;
+    height: 12px;
+    font-size: 7px;
+    z-index: 2;
+}
+
 .planificador-sets .jugadora-info {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0;
+    gap: 1px;
     width: 100%;
     min-width: 0;
     max-width: 100%;
     text-align: center;
     line-height: 1;
+    padding-top: 8px;
 }
 
 .planificador-sets .jugadora-emoji {
-    font-size: 0.9em;
+    font-size: 1.05em;
     line-height: 1;
     flex-shrink: 0;
 }
 
 .planificador-sets .jugadora-nombre {
-    display: block;
+    display: -webkit-box;
     width: 100%;
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
-    text-overflow: clip;
-    white-space: nowrap;
-    word-break: normal;
+    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: keep-all;
     overflow-wrap: normal;
-    min-height: 1.1em;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    min-height: 2.1em;
     line-height: 1.05;
-    letter-spacing: -0.1px;
+    letter-spacing: -0.05px;
 }
 
 @media (max-width: 430px) {
@@ -6507,17 +6520,29 @@ input:checked + .slider:before {
     }
 
     .planificador-sets .posicion-campo {
-        min-height: 48px;
+        min-height: 56px;
         max-height: none;
         padding: 2px 3px;
     }
 
+    .planificador-sets .numero-posicion {
+        top: 2px;
+        left: 2px;
+        width: 11px;
+        height: 11px;
+        font-size: 6px;
+    }
+
     .planificador-sets .jugadora-info {
-        font-size: clamp(8px, 2.3vw, 11px);
+        font-size: clamp(8px, 2.2vw, 10px);
+    }
+
+    .planificador-sets .jugadora-emoji {
+        font-size: 1.12em;
     }
 
     .planificador-sets .jugadora-nombre {
-        font-size: clamp(8px, 2.1vw, 10px);
+        font-size: clamp(8px, 2.05vw, 9.5px);
     }
 }
 
