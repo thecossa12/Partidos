@@ -13,11 +13,11 @@ Nota: este checklist no sustituye asesoramiento legal profesional.
 - [x] Validar que AUTH_MODE=strict, TRUST_PROXY, ALLOW_BOOTSTRAP=false y ALLOWED_ORIGINS esten definidos en produccion.
 - [x] Ejecutar verificaciones:
   - npm run go-live:check
-  - npm run test:security
+  - npm run test:securityxºº
 
 ## Dia 2 - Bloque operacion y ventas
 
-- [x] Definir planes y precio (por equipo/mes o por club/mes) (ver [PLANES-Y-PRECIOS.md](PLANES-Y-PRECIOS.md)).
+- [x] Definir planes y precio (por equipo/mes o por club/mes) (ver x[PLANES-Y-PRECIOS.md](PLANES-Y-PRECIOS.md)).
 - [x] Definir proceso de alta de cliente (formulario + provision de usuario admin del club) (ver [PROCESO-ALTA-CLIENTE.md](PROCESO-ALTA-CLIENTE.md)).
 - [x] Definir proceso de baja (cancelacion + exportacion + borrado).
 - [x] Definir responsable de incidentes y canal de soporte (email y horario).
@@ -39,3 +39,4 @@ Se considera listo cuando:
 - Resultado de npm run go-live:check y npm run test:security.
 - Version y fecha de despliegue en un changelog interno.
 - URL publica de documentos legales.
+ 

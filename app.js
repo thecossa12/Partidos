@@ -3487,7 +3487,10 @@
             return `
                 <div class="posicion-campo ocupada" onclick="window.app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
                     <span class="numero-posicion">${posicion}</span>
-                    <span class="jugadora-info">${emojiRol} ${jugadora.nombre}</span>
+                    <span class="jugadora-info">
+                        <span class="jugadora-emoji">${emojiRol}</span>
+                        <span class="jugadora-nombre">${jugadora.nombre}</span>
+                    </span>
                 </div>
             `;
         } else {

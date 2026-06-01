@@ -6463,17 +6463,47 @@ input:checked + .slider:before {
 }
 
 .planificador-sets .jugadora-info {
-    display: block;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    text-align: center;
+    line-height: 1.05;
+}
+
+.planificador-sets .jugadora-emoji {
+    font-size: 0.9em;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.planificador-sets .jugadora-nombre {
+    display: -webkit-box;
     width: 100%;
     min-width: 0;
     max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
-    line-height: 1.15;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    line-clamp: 2;
+    min-height: 2.1em;
 }
 
 @media (max-width: 430px) {
+    .planificador-sets .posicion-campo {
+        min-height: 52px;
+        max-height: none;
+        padding: 3px 4px;
+    }
+
     .planificador-sets .jugadora-info {
         font-size: clamp(10px, 2.9vw, 12px);
     }
