@@ -6451,6 +6451,34 @@ input:checked + .slider:before {
     font-size: 0.95rem;
 }
 
+/* Fix responsive del campo de sets: evita desbordes de jugadoras en movil */
+.planificador-sets .fila-campo {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.planificador-sets .posicion-campo {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.planificador-sets .jugadora-info {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    line-height: 1.15;
+}
+
+@media (max-width: 430px) {
+    .planificador-sets .jugadora-info {
+        font-size: clamp(10px, 2.9vw, 12px);
+    }
+}
+
 .sets-container {
     margin-bottom: 24px;
 }
