@@ -16,6 +16,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-jwt-secret-change-me'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 const AUTH_MODE = process.env.AUTH_MODE || 'compat';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+const MIN_PASSWORD_LENGTH = Number(process.env.MIN_PASSWORD_LENGTH || 8);
 const ALLOW_BOOTSTRAP = typeof process.env.ALLOW_BOOTSTRAP !== 'undefined'
     ? String(process.env.ALLOW_BOOTSTRAP).toLowerCase() === 'true'
     : !IS_PRODUCTION;
@@ -109,7 +110,11 @@ function stripMongoInternalFields(value) {
 
 function sanitizeText(value, maxLength = 120) {
     if (value === undefined || value === null) return '';
-    return String(value).trim().replace(/\s+/g, ' ').slice(0, maxLength);
+    return String(value)
+        .trim()
+        .replace(/\s+/g, ' ')
+        .replace(/[<>]/g, '')
+        .slice(0, maxLength);
 }
 
 function isValidUsername(username) {
@@ -117,7 +122,7 @@ function isValidUsername(username) {
 }
 
 function isStrongPassword(password) {
-    return typeof password === 'string' && password.length >= 4 && password.length <= 128;
+    return typeof password === 'string' && password.length >= MIN_PASSWORD_LENGTH && password.length <= 128;
 }
 
 function getClientIp(req) {
@@ -132,6 +137,35 @@ function normalizeEntityId(value) {
 function parseIsoDate(value) {
     const parsed = Date.parse(value || '');
     return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getRequiredUserId(req, res, source = 'query') {
+    const container = source === 'body' ? req.body : req.query;
+    const userId = container?.userId;
+    if (!userId) {
+        res.status(400).json({ error: 'userId es requerido' });
+        return null;
+    }
+    return String(userId);
+}
+
+function normalizeNumericValue(value) {
+    if (value === undefined || value === null || value === '') return value;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : value;
+}
+
+function buildFlexibleIdOrFilter(fieldName, rawValue) {
+    const variants = new Set();
+    const asString = String(rawValue);
+    variants.add(asString);
+
+    const asNumber = Number(rawValue);
+    if (Number.isFinite(asNumber)) {
+        variants.add(asNumber);
+    }
+
+    return { $or: Array.from(variants).map((variant) => ({ [fieldName]: variant })) };
 }
 
 function qualityScore(doc) {
@@ -389,16 +423,30 @@ if (IS_PRODUCTION) {
 
 // Headers de seguridad HTTP
 app.use(helmet({
-    contentSecurityPolicy: false // Desactivado para no romper los assets inline existentes
+    contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            imgSrc: ["'self'", 'data:'],
+            connectSrc: ["'self'"],
+            frameAncestors: ["'none'"],
+            objectSrc: ["'none'"]
+        }
+    },
+    referrerPolicy: { policy: 'no-referrer' }
 }));
 
 // CORS:
 // - Si ALLOWED_ORIGINS está definido, se aplica lista blanca.
 // - Si no está definido, se permite el origen recibido para evitar bloqueos
 //   en despliegues cloud con mismo dominio.
-const allowedOrigins = process.env.ALLOWED_ORIGINS
+const configuredOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(item => normalizeOrigin(item)).filter(Boolean)
-    : null;
+    : [];
+const defaultDevOrigins = ['http://localhost:3000', 'http://127.0.0.1:3000'];
+const allowedOrigins = (IS_PRODUCTION ? configuredOrigins : configuredOrigins.concat(defaultDevOrigins));
 
 app.use(cors({
     origin: function (origin, callback) {
@@ -407,8 +455,14 @@ app.use(cors({
 
         const normalizedOrigin = normalizeOrigin(origin);
 
-        // Sin lista blanca explícita, permitir origen recibido (modo flexible).
-        if (!allowedOrigins) return callback(null, true);
+        // En producción se exige lista blanca explícita.
+        if (allowedOrigins.length === 0) {
+            if (IS_PRODUCTION) {
+                console.warn('⚠️ ALLOWED_ORIGINS no definido en producción. Se bloquean orígenes cross-site.');
+                return callback(null, false);
+            }
+            return callback(null, true);
+        }
 
         if (allowedOrigins.includes(normalizedOrigin)) return callback(null, true);
 
@@ -566,13 +620,82 @@ app.get('/', (req, res) => {
     res.redirect('/login.html');
 });
 
-app.use(express.static(__dirname)); // Servir archivos estáticos desde la raíz
+// Evita exposición accidental de código fuente, scripts internos y backups.
+app.use((req, res, next) => {
+    const blockedPrefixes = ['/backups/', '/scripts/', '/railway/'];
+    const blockedFiles = new Set(['/server.js', '/db.js']);
+
+    if (blockedPrefixes.some(prefix => req.path.startsWith(prefix)) || blockedFiles.has(req.path)) {
+        return res.status(404).json({ error: 'Recurso no encontrado' });
+    }
+
+    return next();
+});
+
+app.use(express.static(__dirname, {
+    dotfiles: 'deny',
+    index: false,
+    extensions: ['html']
+})); // Servir solo estáticos web públicos desde raíz
 
 let db;
+
+async function ensureDatabaseIndexes(database) {
+    const indexJobs = [
+        {
+            collection: 'users',
+            key: { username: 1 },
+            options: { unique: true, name: 'uniq_username' }
+        },
+        {
+            collection: 'equipos',
+            key: { userId: 1, id: 1 },
+            options: {
+                unique: true,
+                name: 'uniq_equipos_user_id',
+                partialFilterExpression: { userId: { $exists: true }, id: { $exists: true } }
+            }
+        },
+        {
+            collection: 'jugadores',
+            key: { userId: 1, id: 1 },
+            options: {
+                unique: true,
+                name: 'uniq_jugadores_user_id',
+                partialFilterExpression: { userId: { $exists: true }, id: { $exists: true } }
+            }
+        },
+        {
+            collection: 'jornadas',
+            key: { userId: 1, id: 1 },
+            options: {
+                unique: true,
+                name: 'uniq_jornadas_user_id',
+                partialFilterExpression: { userId: { $exists: true }, id: { $exists: true } }
+            }
+        },
+        {
+            collection: 'audit_logs',
+            key: { timestamp: -1 },
+            options: { name: 'idx_audit_timestamp' }
+        }
+    ];
+
+    for (const job of indexJobs) {
+        try {
+            await database.collection(job.collection).createIndex(job.key, job.options);
+        } catch (error) {
+            console.warn(`⚠️ No se pudo crear índice ${job.options.name}:`, error.message);
+        }
+    }
+}
 
 // Conectar a MongoDB al iniciar el servidor
 connectDB().then(database => {
     db = database;
+    ensureDatabaseIndexes(db).catch((error) => {
+        console.warn('⚠️ Error creando índices recomendados:', error.message);
+    });
     console.log('✅ Base de datos conectada');
 }).catch(err => {
     console.error('❌ Error conectando a la base de datos:', err);
@@ -624,10 +747,8 @@ app.get('/api/health/ready', async (req, res) => {
 // Obtener todos los equipos de un usuario
 app.get('/api/equipos', async (req, res) => {
     try {
-        const userId = req.query.userId;
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
         const equipos = await db.collection('equipos').find({ userId }).toArray();
         res.json(equipos);
@@ -689,11 +810,8 @@ app.put('/api/equipos/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const equipo = req.body;
-        const userId = req.query.userId;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
         await db.collection('equipos').updateOne(
             { id, userId },
@@ -709,16 +827,13 @@ app.put('/api/equipos/:id', async (req, res) => {
 app.delete('/api/equipos/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.query.userId;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
         console.log(`🗑️ Eliminando equipo ${id} del usuario ${userId}`);
         
         // Convertir ID a diferentes formatos para buscar
-        const idNumber = parseInt(id);
+        const idNumber = Number(id);
         const idString = String(id);
         
         // Eliminar equipos directos (varios formatos de ID)
@@ -779,11 +894,8 @@ app.delete('/api/equipos/:id', async (req, res) => {
 // Endpoint para limpiar equipos inválidos (undefined, null, sin nombre)
 app.delete('/api/equipos/cleanup-invalid', async (req, res) => {
     try {
-        const { userId } = req.query;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
         console.log('🧹 Limpiando equipos inválidos para userId:', userId);
         
@@ -814,11 +926,8 @@ app.delete('/api/equipos/cleanup-invalid', async (req, res) => {
 // Limpiar todos los equipos de un usuario (para reorganización)
 app.delete('/api/equipos/cleanup', async (req, res) => {
     try {
-        const userId = req.query.userId;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
         console.log(`🧹 Limpiando todos los equipos del usuario ${userId}`);
         
@@ -838,23 +947,13 @@ app.delete('/api/equipos/cleanup', async (req, res) => {
 // Obtener todos los jugadores (filtrados por usuario)
 app.get('/api/jugadores', async (req, res) => {
     try {
-        const userId = req.query.userId;
-        let equipoId = req.query.equipoId;
-
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
+        const equipoId = req.query.equipoId;
 
         const filter = { userId };
         if (equipoId) {
-            // Convertir a número si es numérico
-            equipoId = isNaN(equipoId) ? equipoId : parseInt(equipoId);
-            // Buscar tanto como string como número
-            filter.$or = [
-                { equipoId: equipoId },
-                { equipoId: String(equipoId) },
-                { equipoId: parseInt(equipoId) }
-            ];
+            Object.assign(filter, buildFlexibleIdOrFilter('equipoId', equipoId));
         }
 
         const jugadores = await db.collection('jugadores').find(filter).toArray();
@@ -887,9 +986,7 @@ app.post('/api/jugadores', async (req, res) => {
         }
         
         // Asegurar que equipoId sea número
-        if (jugador.equipoId && !isNaN(jugador.equipoId)) {
-            jugador.equipoId = parseInt(jugador.equipoId);
-        }
+        jugador.equipoId = normalizeNumericValue(jugador.equipoId);
         
         // Usar updateOne con upsert para crear o actualizar
         const result = await db.collection('jugadores').updateOne(
@@ -911,14 +1008,11 @@ app.put('/api/jugadores/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const jugador = req.body;
-        const userId = req.query.userId;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
         await db.collection('jugadores').updateOne(
-            { id: parseInt(id), userId },
+            { id: normalizeNumericValue(id), userId },
             { $set: jugador }
         );
         res.json({ success: true });
@@ -931,13 +1025,10 @@ app.put('/api/jugadores/:id', async (req, res) => {
 app.delete('/api/jugadores/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.query.userId;
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
-        
-        await db.collection('jugadores').deleteOne({ id: parseInt(id), userId });
+        await db.collection('jugadores').deleteOne({ id: normalizeNumericValue(id), userId });
         res.json({ success: true });
     } catch (error) {
         handleInternalError(res, error);
@@ -949,23 +1040,13 @@ app.delete('/api/jugadores/:id', async (req, res) => {
 // Obtener todas las jornadas (filtradas por usuario y opcionalmente por equipo)
 app.get('/api/jornadas', async (req, res) => {
     try {
-        const userId = req.query.userId;
-        let equipoId = req.query.equipoId;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
+        const equipoId = req.query.equipoId;
         
         const filter = { userId };
         if (equipoId) {
-            // Convertir a número si es numérico
-            equipoId = isNaN(equipoId) ? equipoId : parseInt(equipoId);
-            // Buscar tanto como string como número
-            filter.$or = [
-                { equipoId: equipoId },
-                { equipoId: String(equipoId) },
-                { equipoId: parseInt(equipoId) }
-            ];
+            Object.assign(filter, buildFlexibleIdOrFilter('equipoId', equipoId));
         }
         
         const jornadas = await db.collection('jornadas').find(filter).toArray();
@@ -995,9 +1076,7 @@ app.post('/api/jornadas', async (req, res) => {
         }
         
         // Normalizar equipoId a número si existe
-        if (jornada.equipoId) {
-            jornada.equipoId = parseInt(jornada.equipoId);
-        }
+        jornada.equipoId = normalizeNumericValue(jornada.equipoId);
         
         // Usar upsert para crear o actualizar
         const result = await db.collection('jornadas').updateOne(
@@ -1018,14 +1097,11 @@ app.put('/api/jornadas/:id', async (req, res) => {
     try {
         const { id } = req.params;
         const jornada = req.body;
-        const userId = req.query.userId;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
         await db.collection('jornadas').updateOne(
-            { id: parseInt(id), userId },
+            { id: normalizeNumericValue(id), userId },
             { $set: jornada }
         );
         res.json({ success: true });
@@ -1038,13 +1114,10 @@ app.put('/api/jornadas/:id', async (req, res) => {
 app.delete('/api/jornadas/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const userId = req.query.userId;
+        const userId = getRequiredUserId(req, res, 'query');
+        if (!userId) return;
         
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
-        
-        await db.collection('jornadas').deleteOne({ id: parseInt(id), userId });
+        await db.collection('jornadas').deleteOne({ id: normalizeNumericValue(id), userId });
         res.json({ success: true });
     } catch (error) {
         handleInternalError(res, error);
@@ -1054,14 +1127,12 @@ app.delete('/api/jornadas/:id', async (req, res) => {
 // Eliminar múltiples jornadas
 app.post('/api/jornadas/delete-multiple', async (req, res) => {
     try {
-        const { ids, userId } = req.body;
-        
-        if (!userId) {
-            return res.status(400).json({ error: 'userId es requerido' });
-        }
+        const { ids } = req.body;
+        const userId = getRequiredUserId(req, res, 'body');
+        if (!userId) return;
         
         await db.collection('jornadas').deleteMany({ 
-            id: { $in: ids.map(id => parseInt(id)) },
+            id: { $in: ids.map(id => normalizeNumericValue(id)) },
             userId
         });
         res.json({ success: true });
@@ -1127,7 +1198,7 @@ app.post('/api/users', async (req, res) => {
         }
 
         if (normalizedPassword && !isStrongPassword(normalizedPassword)) {
-            return res.status(400).json({ error: 'La contraseña debe tener entre 4 y 128 caracteres.' });
+            return res.status(400).json({ error: `La contraseña debe tener entre ${MIN_PASSWORD_LENGTH} y 128 caracteres.` });
         }
 
         // Hash de contraseña (compatibilidad: si no se envía nueva, conserva la existente)
@@ -1284,7 +1355,7 @@ app.post('/api/users/change-password', async (req, res) => {
         const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
 
         if (!isStrongPassword(newPassword)) {
-            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 4 y 128 caracteres.' });
+            return res.status(400).json({ error: `La nueva contraseña debe tener entre ${MIN_PASSWORD_LENGTH} y 128 caracteres.` });
         }
 
         const user = await db.collection('users').findOne({ username });

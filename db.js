@@ -2,6 +2,7 @@ const { MongoClient, ServerApiVersion } = require("mongodb");
 require("dotenv").config();
 
 const url = process.env.MONGO_URI;
+const DB_NAME = process.env.DB_NAME || "volleyball";
 if (!url || typeof url !== "string" || !url.trim()) {
     throw new Error("MONGO_URI no está configurada. Define la variable de entorno antes de iniciar la app.");
 }
@@ -30,7 +31,7 @@ async function connectDB() {
     try {
         await client.connect();
         console.log("✅ Conectado a MongoDB Atlas");
-        dbInstance = client.db("volleyball"); // nombre de tu base de datos
+        dbInstance = client.db(DB_NAME);
         return dbInstance;
     } catch (error) {
         console.error("❌ Error al conectar:", error);

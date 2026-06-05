@@ -80,6 +80,46 @@ async function loadLatestArchive(db) {
   return doc[0].data;
 }
 
+async function performRestore(db, client, data) {
+  const session = client.startSession();
+
+  const runRestoreWork = async (contextDb, activeSession = null) => {
+    // Vaciar colecciones antes de reimportar.
+    for (const collectionName of COLLECTIONS) {
+      await contextDb.collection(collectionName).deleteMany({}, activeSession ? { session: activeSession } : undefined);
+    }
+
+    // Reimportar datos.
+    for (const collectionName of COLLECTIONS) {
+      const docs = Array.isArray(data[collectionName]) ? data[collectionName].map(stripMongoInternalFields) : [];
+      if (docs.length > 0) {
+        const insertOptions = activeSession
+          ? { ordered: false, session: activeSession }
+          : { ordered: false };
+        await contextDb.collection(collectionName).insertMany(docs, insertOptions);
+      }
+    }
+  };
+
+  try {
+    await session.withTransaction(async () => {
+      await runRestoreWork(db, session);
+    });
+    console.log('OK restore ejecutado dentro de transaccion');
+  } catch (error) {
+    const transactionNotSupported = /Transaction numbers are only allowed|not supported|replica set/i.test(String(error && error.message));
+    if (!transactionNotSupported) {
+      throw error;
+    }
+
+    console.warn('⚠️ Transacciones no soportadas en este despliegue. Continuando sin transaccion.');
+    await runRestoreWork(db);
+    console.log('OK restore completado sin transaccion');
+  } finally {
+    await session.endSession();
+  }
+}
+
 function normalizeBackupPayload(payload) {
   if (!payload || typeof payload !== 'object') {
     throw new Error('El backup no tiene una estructura valida');
@@ -134,18 +174,7 @@ async function main() {
 
     console.log('PREVIEW restore summary:', summary);
 
-    // Vaciar colecciones antes de reimportar.
-    for (const collectionName of COLLECTIONS) {
-      await db.collection(collectionName).deleteMany({});
-    }
-
-    // Reimportar datos.
-    for (const collectionName of COLLECTIONS) {
-      const docs = Array.isArray(data[collectionName]) ? data[collectionName].map(stripMongoInternalFields) : [];
-      if (docs.length > 0) {
-        await db.collection(collectionName).insertMany(docs, { ordered: false });
-      }
-    }
+    await performRestore(db, client, data);
 
     console.log('OK restore completado:', summary);
   } finally {
