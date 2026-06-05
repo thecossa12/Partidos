@@ -263,6 +263,25 @@ body {
     margin-bottom: 10px;
 }
 
+.legal-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px 14px;
+}
+
+.legal-links a {
+    color: #4f5ec9;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.legal-links a:hover,
+.legal-links a:focus-visible {
+    text-decoration: underline;
+}
+
 .demo-info {
     background: rgba(102, 126, 234, 0.1);
     padding: 10px;
