@@ -33,7 +33,7 @@
     <div id="access-denied" style="display: none; text-align: center; padding: 50px; font-family: Arial, sans-serif; background: #f8d7da; color: #721c24;">
         <h2>🚫 Acceso Denegado</h2>
         <p>Tu sesión ha expirado o no tienes permisos.</p>
-        <button onclick="window.location.href='login.html'" 
+        <button id="btn-ir-login-denegado"
                 style="padding: 12px 24px; font-size: 16px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer;">
             🔐 Ir a Login
         </button>
@@ -67,26 +67,26 @@
             <!-- Selector de Equipos -->
             <div class="selector-equipos-container">
                 <label for="selectorEquipos" style="font-weight: 600; margin-right: 8px;">🏆 Equipo:</label>
-                <select id="selectorEquipos" onchange="app.cambiarEquipo(this.value)" style="padding: 8px 12px; border: 2px solid #667eea; border-radius: 6px; font-size: 0.95rem; background: white; cursor: pointer; min-width: 200px;">
+                <select id="selectorEquipos" style="padding: 8px 12px; border: 2px solid #667eea; border-radius: 6px; font-size: 0.95rem; background: white; cursor: pointer; min-width: 200px;">
                     <!-- Se llenará dinámicamente -->
                 </select>
-                <button onclick="app.crearNuevoEquipo()" style="margin-left: 10px; padding: 8px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                <button id="btn-crear-equipo-header" style="margin-left: 10px; padding: 8px 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                     ➕ Nuevo Equipo
                 </button>
-                <button onclick="app.mostrarModalGestionEquipos()" style="margin-left: 5px; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                <button id="btn-abrir-modal-gestion-equipos" style="margin-left: 5px; padding: 8px 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
                     ⚙️
                 </button>
             </div>
             
             <div class="user-info" style="position: absolute; top: 20px; right: 20px; background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 14px;">
                 <span id="current-user">Cargando...</span>
-                <button onclick="app.sincronizarDesdeMongoDB()" style="margin-left: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Refrescar datos desde la base de datos">
+                <button id="btn-sync-mongodb" style="margin-left: 10px; padding: 5px 10px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Refrescar datos desde la base de datos">
                     🔄 Sync
                 </button>
-                <button onclick="window.cambiarContrasenaPropia()" style="margin-left: 5px; padding: 5px 10px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Cambiar contraseña">
+                <button id="btn-cambiar-contrasena" style="margin-left: 5px; padding: 5px 10px; background: #0d6efd; color: white; border: none; border-radius: 4px; cursor: pointer;" title="Cambiar contraseña">
                     🔑 Contraseña
                 </button>
-                <button onclick="logout()" style="margin-left: 5px; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                <button id="btn-logout-header" style="margin-left: 5px; padding: 5px 10px; background: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
                     🚪 Logout
                 </button>
                 <button id="btn-borrar-cuenta" style="margin-left: 5px; padding: 5px 10px; background: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">🗑️ Borrar Cuenta</button>
@@ -156,10 +156,10 @@
                             <span id="progresoJornada">Paso 1 de 3</span>
                         </div>
                         <div class="navegacion-rapida">
-                            <button id="irLunes" class="btn-nav active" onclick="window.app.irAPaso('lunes')">Lunes</button>
-                            <button id="irMiercoles" class="btn-nav" onclick="window.app.irAPaso('miercoles')">Miércoles</button>
-                            <button id="irSabado" class="btn-nav" onclick="window.app.irAPaso('sabado')">Sábado</button>
-                            <button id="volverInicio" class="btn-volver" onclick="app.volverAInicioJornada()">🔄 Nueva Jornada</button>
+                            <button id="irLunes" class="btn-nav active">Lunes</button>
+                            <button id="irMiercoles" class="btn-nav">Miércoles</button>
+                            <button id="irSabado" class="btn-nav">Sábado</button>
+                            <button id="volverInicio" class="btn-volver">🔄 Nueva Jornada</button>
                         </div>
                     </div>
                 </div>
@@ -442,7 +442,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="edit-user-password">🔑 Nueva Contraseña:</label>
-                            <input type="password" id="edit-user-password" placeholder="Nueva contraseña (mín. 4 caracteres)">
+                            <input type="password" id="edit-user-password" placeholder="Nueva contraseña (mín. 8 caracteres)">
                             <small class="form-help">Dejar vacío para mantener la contraseña actual</small>
                         </div>
                         <div class="form-group">
@@ -484,7 +484,7 @@
         <div class="modal-content modal-seleccion-content">
             <div class="modal-header">
                 <h4 id="titulo-seleccion-jugadora">Seleccionar Jugador/a</h4>
-                <button class="btn-cerrar-modal" onclick="app.cerrarModalSeleccion()">✕</button>
+                <button id="btn-cerrar-modal-seleccion" class="btn-cerrar-modal">✕</button>
             </div>
             <div class="modal-body">
                 <div id="lista-jugadoras-modal" class="lista-jugadoras-modal">
@@ -529,7 +529,7 @@
         <div class="modal-estadisticas">
             <div class="modal-header-estadisticas">
                 <h3>📊 Estadísticas y Notas del Partido</h3>
-                <button onclick="app.cerrarModalEstadisticas()" class="btn-cerrar-modal">✕</button>
+                <button id="btn-cerrar-modal-estadisticas-header" class="btn-cerrar-modal">✕</button>
             </div>
             
             <div class="modal-body-estadisticas">
@@ -592,8 +592,8 @@
             </div>
 
             <div class="modal-footer-estadisticas">
-                <button onclick="app.guardarEstadisticasPartido()" class="btn-guardar-estadisticas">💾 Guardar</button>
-                <button onclick="app.cerrarModalEstadisticas()" class="btn-cancelar-estadisticas">Cancelar</button>
+                <button id="btn-guardar-estadisticas" class="btn-guardar-estadisticas">💾 Guardar</button>
+                <button id="btn-cancelar-estadisticas" class="btn-cancelar-estadisticas">Cancelar</button>
             </div>
         </div>
     </div>
@@ -603,7 +603,7 @@
         <div class="modal-estadisticas" style="max-width: 600px;">
             <div class="modal-header-estadisticas">
                 <h3>🏆 Gestión de Equipos</h3>
-                <button onclick="app.cerrarModalGestionEquipos()" class="btn-cerrar-modal">✕</button>
+                <button id="btn-cerrar-modal-gestion-equipos" class="btn-cerrar-modal">✕</button>
             </div>
             
             <div class="modal-body-estadisticas">
@@ -612,7 +612,7 @@
                 </div>
                 
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
-                    <button onclick="app.crearNuevoEquipo(); app.cerrarModalGestionEquipos();" class="btn-crear" style="width: 100%;">
+                    <button id="btn-crear-equipo-modal" class="btn-crear" style="width: 100%;">
                         ➕ Crear Nuevo Equipo
                     </button>
                 </div>
@@ -661,7 +661,7 @@
 
         var btnBorrar = document.getElementById('btn-borrar-cuenta');
         if (btnBorrar) {
-            btnBorrar.onclick = async function() {
+            btnBorrar.addEventListener('click', async function() {
                 if (confirm('¿Seguro que quieres borrar tu cuenta y todos tus datos? Esta acción es irreversible.')) {
                     const user = getAuthUserSafe();
                     if (!user || !user.username) return alert('No se pudo identificar el usuario.');
@@ -683,12 +683,12 @@
                         alert('No se pudo conectar con el servidor para borrar la cuenta.');
                     }
                 }
-            };
+            });
         }
         // Admin: borrar usuario seleccionado (debes adaptar la selección de usuario en tu panel)
         var btnAdminBorrar = document.getElementById('admin-borrar-usuario-btn');
         if (btnAdminBorrar) {
-            btnAdminBorrar.onclick = async function() {
+            btnAdminBorrar.addEventListener('click', async function() {
                 var username = prompt('Introduce el nombre de usuario a borrar:');
                 if (!username) return;
                 if (!confirm('¿Seguro que quieres borrar el usuario ' + username + ' y todos sus datos?')) return;
@@ -708,7 +708,7 @@
                 } catch (error) {
                     alert('No se pudo conectar con el servidor para borrar el usuario.');
                 }
-            };
+            });
         }
     });
     </script>
@@ -718,12 +718,137 @@
     (function() {
         if (!localStorage.getItem('cookies_accepted')) {
             document.getElementById('cookie-banner').style.display = 'block';
-            document.getElementById('aceptar-cookies').onclick = function() {
-                localStorage.setItem('cookies_accepted', 'true');
-                document.getElementById('cookie-banner').style.display = 'none';
-            };
+            var aceptarCookiesBtn = document.getElementById('aceptar-cookies');
+            if (aceptarCookiesBtn) {
+                aceptarCookiesBtn.addEventListener('click', function() {
+                    localStorage.setItem('cookies_accepted', 'true');
+                    document.getElementById('cookie-banner').style.display = 'none';
+                }, { once: true });
+            }
         }
     })();
+    </script>
+
+    <script>
+    // Migracion de handlers inline a listeners JS para compatibilidad CSP estricta.
+    document.addEventListener('DOMContentLoaded', function() {
+        function bindClick(id, handler) {
+            var el = document.getElementById(id);
+            if (!el || el.dataset.listenerBound === 'true') return;
+            el.addEventListener('click', handler);
+            el.dataset.listenerBound = 'true';
+        }
+
+        function bindChange(id, handler) {
+            var el = document.getElementById(id);
+            if (!el || el.dataset.listenerBound === 'true') return;
+            el.addEventListener('change', handler);
+            el.dataset.listenerBound = 'true';
+        }
+
+        bindClick('btn-ir-login-denegado', function() {
+            window.location.href = 'login.html';
+        });
+
+        bindChange('selectorEquipos', function(event) {
+            if (window.app && typeof window.app.cambiarEquipo === 'function') {
+                window.app.cambiarEquipo(event.target.value);
+            }
+        });
+
+        bindClick('btn-crear-equipo-header', function() {
+            if (window.app && typeof window.app.crearNuevoEquipo === 'function') {
+                window.app.crearNuevoEquipo();
+            }
+        });
+
+        bindClick('btn-abrir-modal-gestion-equipos', function() {
+            if (window.app && typeof window.app.mostrarModalGestionEquipos === 'function') {
+                window.app.mostrarModalGestionEquipos();
+            }
+        });
+
+        bindClick('btn-sync-mongodb', function() {
+            if (window.app && typeof window.app.sincronizarDesdeMongoDB === 'function') {
+                window.app.sincronizarDesdeMongoDB();
+            }
+        });
+
+        bindClick('btn-cambiar-contrasena', function() {
+            if (typeof window.cambiarContrasenaPropia === 'function') {
+                window.cambiarContrasenaPropia();
+            }
+        });
+
+        bindClick('btn-logout-header', function() {
+            if (typeof window.logout === 'function') {
+                window.logout();
+            }
+        });
+
+        bindClick('irLunes', function() {
+            if (window.app && typeof window.app.irAPaso === 'function') {
+                window.app.irAPaso('lunes');
+            }
+        });
+
+        bindClick('irMiercoles', function() {
+            if (window.app && typeof window.app.irAPaso === 'function') {
+                window.app.irAPaso('miercoles');
+            }
+        });
+
+        bindClick('irSabado', function() {
+            if (window.app && typeof window.app.irAPaso === 'function') {
+                window.app.irAPaso('sabado');
+            }
+        });
+
+        bindClick('volverInicio', function() {
+            if (window.app && typeof window.app.volverAInicioJornada === 'function') {
+                window.app.volverAInicioJornada();
+            }
+        });
+
+        bindClick('btn-cerrar-modal-seleccion', function() {
+            if (window.app && typeof window.app.cerrarModalSeleccion === 'function') {
+                window.app.cerrarModalSeleccion();
+            }
+        });
+
+        bindClick('btn-cerrar-modal-estadisticas-header', function() {
+            if (window.app && typeof window.app.cerrarModalEstadisticas === 'function') {
+                window.app.cerrarModalEstadisticas();
+            }
+        });
+
+        bindClick('btn-guardar-estadisticas', function() {
+            if (window.app && typeof window.app.guardarEstadisticasPartido === 'function') {
+                window.app.guardarEstadisticasPartido();
+            }
+        });
+
+        bindClick('btn-cancelar-estadisticas', function() {
+            if (window.app && typeof window.app.cerrarModalEstadisticas === 'function') {
+                window.app.cerrarModalEstadisticas();
+            }
+        });
+
+        bindClick('btn-cerrar-modal-gestion-equipos', function() {
+            if (window.app && typeof window.app.cerrarModalGestionEquipos === 'function') {
+                window.app.cerrarModalGestionEquipos();
+            }
+        });
+
+        bindClick('btn-crear-equipo-modal', function() {
+            if (window.app && typeof window.app.crearNuevoEquipo === 'function') {
+                window.app.crearNuevoEquipo();
+            }
+            if (window.app && typeof window.app.cerrarModalGestionEquipos === 'function') {
+                window.app.cerrarModalGestionEquipos();
+            }
+        });
+    });
     </script>
 
     <!-- ===== MODAL CAMBIAR CONTRASEÑA ===== -->
@@ -737,20 +862,17 @@
             <div id="pwd-modal-old-group" style="margin-bottom:14px;">
                 <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem; color:#333;">Contraseña actual</label>
                 <input type="password" id="pwd-modal-old" placeholder="Tu contraseña actual" autocomplete="current-password"
-                       style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;"
-                       onfocus="this.style.borderColor='#0d6efd'" onblur="this.style.borderColor='#ddd'">
+                      style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;">
             </div>
             <div style="margin-bottom:14px;">
                 <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem; color:#333;">Nueva contraseña</label>
-                <input type="password" id="pwd-modal-new" placeholder="Mínimo 4 caracteres" autocomplete="new-password"
-                       style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;"
-                       onfocus="this.style.borderColor='#0d6efd'" onblur="this.style.borderColor='#ddd'">
+                <input type="password" id="pwd-modal-new" placeholder="Mínimo 8 caracteres" autocomplete="new-password"
+                      style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;">
             </div>
             <div style="margin-bottom:20px;">
                 <label style="display:block; font-weight:600; margin-bottom:6px; font-size:0.9rem; color:#333;">Repetir contraseña</label>
                 <input type="password" id="pwd-modal-confirm" placeholder="Repite la nueva contraseña" autocomplete="new-password"
-                       style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;"
-                       onfocus="this.style.borderColor='#0d6efd'" onblur="this.style.borderColor='#ddd'">
+                      style="width:100%; padding:11px 13px; border:1.5px solid #ddd; border-radius:8px; font-size:1rem; box-sizing:border-box; outline:none; transition:border-color .15s;">
             </div>
             <div id="pwd-modal-error" style="display:none; color:#dc3545; margin-bottom:16px; font-size:0.9rem; background:#fff0f0; padding:9px 13px; border-radius:7px; border:1px solid #f5c6cb;"></div>
             <div style="display:flex; gap:10px;">
@@ -770,6 +892,10 @@
     @keyframes pwdModalIn {
         from { opacity:0; transform:scale(.94) translateY(-12px); }
         to   { opacity:1; transform:scale(1)  translateY(0); }
+    }
+
+    #modal-cambiar-contrasena input:focus {
+        border-color: #0d6efd !important;
     }
     </style>
 
@@ -830,7 +956,7 @@
                 var confirmPwd  = confirmInput.value;
                 errorDiv.style.display = 'none';
                 if (requireOldPassword && !oldPwd) { showErr('Debes introducir tu contraseña actual.'); return; }
-                if (!newPwd || newPwd.length < 4)  { showErr('La nueva contraseña debe tener al menos 4 caracteres.'); return; }
+                if (!newPwd || newPwd.length < 8)  { showErr('La nueva contraseña debe tener al menos 8 caracteres.'); return; }
                 if (newPwd !== confirmPwd)          { showErr('Las contraseñas no coinciden.'); return; }
                 submitBtn.disabled    = true;
                 submitBtn.textContent = 'Guardando…';

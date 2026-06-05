@@ -66,27 +66,9 @@
     })();
 
     const allowlistedPatterns = [
-        /iniciando constructor/i,
-        /api url/i,
-        /constructor completado/i,
-        /equipos cargados/i,
-        /jornadas cargadas/i,
-        /jornadas registradas/i,
-        /jornada lista para edici[oó]n/i,
-        /login exitoso/i,
-        /usuario autenticado/i,
-        /sistema iniciado/i,
-        /inicializaci[oó]n completa/i,
-        /arranque principal/i,
-        /borrador guardado/i,
-        /jornada sincronizada/i,
-        /datos actualizados/i,
         /error/i,
         /advertencia/i,
-        /acceso denegado/i,
-        /sesi[oó]n encontrada/i,
-        /sesi[oó]n limpiada/i,
-        /sesi[oó]n guardada/i
+        /acceso denegado/i
     ];
 
     function shouldShowLog(args) {

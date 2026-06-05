@@ -8286,8 +8286,8 @@ async function createNewUser() {
         return;
     }
 
-    if (password.length < 4) {
-        showNotification('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+    if (password.length < 8) {
+        showNotification('❌ La contraseña debe tener al menos 8 caracteres', 'error');
         return;
     }
 
@@ -8504,8 +8504,8 @@ async function editUser() {
         return;
     }
 
-    if (newPassword && newPassword.length < 4) {
-        showNotification('❌ La contraseña debe tener al menos 4 caracteres', 'error');
+    if (newPassword && newPassword.length < 8) {
+        showNotification('❌ La contraseña debe tener al menos 8 caracteres', 'error');
         return;
     }
 
@@ -8646,8 +8646,8 @@ async function changeUserPassword() {
         return;
     }
 
-    if (newPassword.length < 4) {
-        showNotification('❌ La nueva contraseña debe tener al menos 4 caracteres', 'error');
+    if (newPassword.length < 8) {
+        showNotification('❌ La nueva contraseña debe tener al menos 8 caracteres', 'error');
         return;
     }
 
@@ -9648,7 +9648,7 @@ function renderSystemUsersEditor() {
                            class="system-user-password" 
                            data-index="${index}" 
                            value="${user.password}" 
-                           placeholder="Mínimo 4 caracteres"
+                           placeholder="Mínimo 8 caracteres"
                            style="width: 100%;">
                 </div>
                 <div>
