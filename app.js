@@ -5406,9 +5406,9 @@ class VolleyballManager {
                 } else if (jugadora.posicion === 'libero') {
                     posicion = 'Líbero';
                 } else if (jugadora.posicion === 'opuesta') {
-                    posicion = 'Opuesta';
+                    posicion = 'Opuesto/a';
                 } else {
-                    posicion = 'Jugador/a';
+                    posicion = 'Cuatro';
                 }
                 
                 return `
@@ -7413,9 +7413,9 @@ function verInfoJugadoraGlobal(jugadoraId) {
     } else if (jugadora.posicion === 'libero') {
         posicionTexto = '🧤 Líbero';
     } else if (jugadora.posicion === 'opuesta') {
-        posicionTexto = '🏹 Opuesta';
+        posicionTexto = '🏹 Opuesto/a';
     } else {
-        posicionTexto = '🏐 Jugador/a';
+        posicionTexto = '🏐 Cuatro';
     }
 
     // Calcular sustituciones totales (tanto si entra como si sale) - SOLO DE JORNADAS COMPLETADAS
