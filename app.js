@@ -1,4 +1,12 @@
-﻿class VolleyballManager {
+﻿function obtenerEmojiPosicion(posicion) {
+    if (posicion === 'colocadora') return '🎯';
+    if (posicion === 'central') return '🛡️';
+    if (posicion === 'libero') return '🧤';
+    if (posicion === 'opuesta') return '🏹';
+    return '🏐';
+}
+
+class VolleyballManager {
     constructor() {
         console.log('🏗️ Iniciando constructor VolleyballManager...');
         // Detectar automáticamente la URL del API (producción o local)
@@ -2197,7 +2205,7 @@
                 .map(j => `
                     <div class="jugadora-setup-item">
                         <span class="jugadora-setup-info">
-                            ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} ${j.nombre} 
+                            ${obtenerEmojiPosicion(j.posicion)} ${j.nombre}
                             <span class="dorsal-badge">#${j.dorsal}</span>
                         </span>
                         <button onclick="window.app.eliminarJugadoraSetup(${j.id})">❌</button>
@@ -2704,7 +2712,7 @@
                              onclick="window.app.toggleAsistencia('${grid.asistencia}', ${jugadora.id})">
                             <div class="jugadora-header">
                                 <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
-                                <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
+                                <span class='emoji'>${obtenerEmojiPosicion(jugadora.posicion)}</span>
                                 <span class="jugadora-nombre">${lesionadaIcon}${jugadora.nombre}</span>
                             </div>
                             ${jugadora.lesionada ? '<div class="warning-lesion">⚠️ LESIONADA</div>' : ''}
@@ -3480,9 +3488,7 @@
         // Verificar que jugadora existe y no es null ni undefined
         if (jugadora !== null && jugadora !== undefined && jugadora.nombre) {
             // Obtener emoji según el rol
-            let emojiRol = '🏐'; // Jugadora normal
-            if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
-            else if (jugadora.posicion === 'central') emojiRol = '🛡️';
+            const emojiRol = obtenerEmojiPosicion(jugadora.posicion);
             
             return `
                 <div class="posicion-campo ocupada" onclick="window.app.removerJugadoraDePosicion(${posicion}, '${setKey}')" title="Posición ${posicion} - Click para quitar">
@@ -3568,9 +3574,7 @@
             if (setKey !== 'set3' && this.planificacionSets.set3.find(js => js && js.id === j.id)) setsActuales.push('3');
             
             // Emoji según la posición/rol
-            let emojiRol = '🏐'; // Jugadora normal
-            if (j.posicion === 'colocadora') emojiRol = '🎯';
-            else if (j.posicion === 'central') emojiRol = '🛡️';
+            const emojiRol = obtenerEmojiPosicion(j.posicion);
             
             let estadoTexto = '';
             let colorFondo = '';
@@ -4261,7 +4265,7 @@
                                     <div class="titular-slot occupied ${j.posicion === 'colocadora' ? 'colocadora' : ''}">
                                         <div class="titular-info">
                                             <div class="titular-nombre">
-                                                ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} #${j.dorsal} ${j.nombre}
+                                                ${obtenerEmojiPosicion(j.posicion)} #${j.dorsal} ${j.nombre}
                                             </div>
                                             <div class="titular-stats">
                                                 P: ${j.puntosJugados || 0}
@@ -4428,7 +4432,7 @@
                                 return `
                                     <div class="jugadora-draggable" data-id="${j.id}" draggable="true">
                                         <div class="jugadora-nombre">
-                                            ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} <span style="font-weight:bold">#${j.dorsal} ${j.nombre}</span>
+                                            ${obtenerEmojiPosicion(j.posicion)} <span style="font-weight:bold">#${j.dorsal} ${j.nombre}</span>
                                         </div>
                                         <div class="jugadora-stats-mini">
                                             P: ${j.puntosJugados || 0}
@@ -4621,7 +4625,7 @@
                                     <div class="titular-slot occupied saved ${j.posicion === 'colocadora' ? 'colocadora' : ''}">
                                         <div class="titular-info">
                                             <div class="titular-nombre">
-                                                ${j.posicion === 'colocadora' ? '🎯' : (j.posicion === 'central' ? '🛡️' : '🏐')} #${j.dorsal} ${j.nombre}
+                                                ${obtenerEmojiPosicion(j.posicion)} #${j.dorsal} ${j.nombre}
                                             </div>
                                             <div class="titular-stats">
                                                 P: ${j.puntosJugados || 0}
@@ -5389,7 +5393,7 @@
         console.log('✅ Generando lista de', jugadorasFiltradas.length, 'jugadoras (filtradas)');
         container.innerHTML = jugadorasFiltradas
             .map(({ jugadora, totalSustituciones }) => {
-                const emoji = jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐');
+                const emoji = obtenerEmojiPosicion(jugadora.posicion);
                 const nombreSeguro = this.escapeHtmlSeguro(jugadora.nombre);
                 const notasLesionSeguras = this.escapeHtmlSeguro(jugadora.notasLesion || '');
                 
@@ -5399,6 +5403,10 @@
                     posicion = 'Colocador/a';
                 } else if (jugadora.posicion === 'central') {
                     posicion = 'Central';
+                } else if (jugadora.posicion === 'libero') {
+                    posicion = 'Líbero';
+                } else if (jugadora.posicion === 'opuesta') {
+                    posicion = 'Opuesta';
                 } else {
                     posicion = 'Jugador/a';
                 }
@@ -6078,9 +6086,7 @@
                             <div class="asistentes-lista">
                                 ${jugadorasLunes.length > 0 ? 
                                     jugadorasLunes.map(j => {
-                                        let emojiRol = '🏐';
-                                        if (j.posicion === 'colocadora') emojiRol = '🎯';
-                                        else if (j.posicion === 'central') emojiRol = '🛡️';
+                                        const emojiRol = obtenerEmojiPosicion(j.posicion);
                                         const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                                         return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                                     }).join('') :
@@ -6094,9 +6100,7 @@
                             <div class="asistentes-lista">
                                 ${jugadorasMiercoles.length > 0 ? 
                                     jugadorasMiercoles.map(j => {
-                                        let emojiRol = '🏐';
-                                        if (j.posicion === 'colocadora') emojiRol = '🎯';
-                                        else if (j.posicion === 'central') emojiRol = '🛡️';
+                                        const emojiRol = obtenerEmojiPosicion(j.posicion);
                                         const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                                         return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                                     }).join('') :
@@ -6216,9 +6220,7 @@
                     if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
                     // Obtener emoji del rol
-                    let emojiRol = '🏐';
-                    if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
-                    else if (jugadora.posicion === 'central') emojiRol = '🛡️';
+                    const emojiRol = obtenerEmojiPosicion(jugadora.posicion);
                     
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `
@@ -6246,9 +6248,7 @@
                     const jugadora = typeof j === 'object' ? (this.obtenerJugadoraPorId(j.id) || j) : this.obtenerJugadoraPorId(j);
                     if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
-                    let emojiRol = '🏐';
-                    if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
-                    else if (jugadora.posicion === 'central') emojiRol = '🛡️';
+                    const emojiRol = obtenerEmojiPosicion(jugadora.posicion);
                     
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `
@@ -6276,9 +6276,7 @@
                     const jugadora = typeof j === 'object' ? (this.obtenerJugadoraPorId(j.id) || j) : this.obtenerJugadoraPorId(j);
                     if (!jugadora || !jugadora.nombre) return '<div class="player-badge-compact empty"><span class="player-name">-</span></div>';
                     
-                    let emojiRol = '🏐';
-                    if (jugadora.posicion === 'colocadora') emojiRol = '🎯';
-                    else if (jugadora.posicion === 'central') emojiRol = '🛡️';
+                    const emojiRol = obtenerEmojiPosicion(jugadora.posicion);
                     
                     const claseResaltado = jugadoraFiltrada && jugadora.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                     return `
@@ -6407,9 +6405,7 @@
                 html += `
                     <div class="asistentes-lista">
                         ${jugadorasSabado.map(j => {
-                            let emojiRol = '🏐';
-                            if (j.posicion === 'colocadora') emojiRol = '🎯';
-                            else if (j.posicion === 'central') emojiRol = '🛡️';
+                            const emojiRol = obtenerEmojiPosicion(j.posicion);
                             const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                             return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                         }).join('')}
@@ -6424,9 +6420,7 @@
                         <strong>Jugadoras que asistirán:</strong>
                         <div style="margin-top: 5px;">
                             ${jugadorasSabado.map(j => {
-                                let emojiRol = '🏐';
-                                if (j.posicion === 'colocadora') emojiRol = '🎯';
-                                else if (j.posicion === 'central') emojiRol = '🛡️';
+                                const emojiRol = obtenerEmojiPosicion(j.posicion);
                                 const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                                 return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                             }).join('')}
@@ -6441,9 +6435,7 @@
             return `
                 <div class="asistentes-lista">
                     ${jugadorasSabado.map(j => {
-                        let emojiRol = '🏐';
-                        if (j.posicion === 'colocadora') emojiRol = '🎯';
-                        else if (j.posicion === 'central') emojiRol = '🛡️';
+                        const emojiRol = obtenerEmojiPosicion(j.posicion);
                         const claseResaltado = jugadoraFiltrada && j.nombre === jugadoraFiltrada.nombre ? 'resaltado' : '';
                         return `<span class="jugadora-asistente ${claseResaltado}">${emojiRol} ${j.nombre}</span>`;
                     }).join('')}
@@ -6847,7 +6839,7 @@
             
             card.innerHTML = `
                 <div class="jugadora-header">
-                    <span class='emoji'>${jugadora.posicion === 'colocadora' ? '🎯' : (jugadora.posicion === 'central' ? '🛡️' : '🏐')}</span>
+                    <span class='emoji'>${obtenerEmojiPosicion(jugadora.posicion)}</span>
                     <span class="jugadora-dorsal">#${jugadora.dorsal}</span>
                     <span class="jugadora-nombre">${lesionadaIcon}${jugadora.nombre}</span>
                 </div>
@@ -7418,6 +7410,10 @@ function verInfoJugadoraGlobal(jugadoraId) {
         posicionTexto = '🎯 Colocador/a';
     } else if (jugadora.posicion === 'central') {
         posicionTexto = '🛡️ Central';
+    } else if (jugadora.posicion === 'libero') {
+        posicionTexto = '🧤 Líbero';
+    } else if (jugadora.posicion === 'opuesta') {
+        posicionTexto = '🏹 Opuesta';
     } else {
         posicionTexto = '🏐 Jugador/a';
     }
