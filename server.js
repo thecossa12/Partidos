@@ -153,6 +153,11 @@ function isStrongPassword(password) {
     return typeof password === 'string' && password.length >= MIN_PASSWORD_LENGTH && password.length <= 128;
 }
 
+// Contraseñas fijadas por un administrador: cualquier valor no vacío (sin mínimo de longitud).
+function isAdminSetPassword(password) {
+    return typeof password === 'string' && password.length >= 1 && password.length <= 128;
+}
+
 function getClientIp(req) {
     return req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || null;
 }
@@ -1324,8 +1329,11 @@ app.post('/api/users', async (req, res) => {
             return res.status(400).json({ error: 'La contraseña es requerida para crear el usuario' });
         }
 
-        if (normalizedPassword && !isStrongPassword(normalizedPassword)) {
-            return res.status(400).json({ error: `La contraseña debe tener entre ${MIN_PASSWORD_LENGTH} y 128 caracteres.` });
+        const passwordValid = isAdminRequest ? isAdminSetPassword(normalizedPassword) : isStrongPassword(normalizedPassword);
+        if (normalizedPassword && !passwordValid) {
+            return res.status(400).json({ error: isAdminRequest
+                ? 'La contraseña debe tener entre 1 y 128 caracteres.'
+                : `La contraseña debe tener entre ${MIN_PASSWORD_LENGTH} y 128 caracteres.` });
         }
 
         // Hash de contraseña (compatibilidad: si no se envía nueva, conserva la existente)
@@ -1481,8 +1489,11 @@ app.post('/api/users/change-password', async (req, res) => {
         const oldPassword = typeof req.body?.oldPassword === 'string' ? req.body.oldPassword : '';
         const newPassword = typeof req.body?.newPassword === 'string' ? req.body.newPassword : '';
 
-        if (!isStrongPassword(newPassword)) {
-            return res.status(400).json({ error: `La nueva contraseña debe tener entre ${MIN_PASSWORD_LENGTH} y 128 caracteres.` });
+        const selfPasswordValid = req.authUser.isAdmin ? isAdminSetPassword(newPassword) : isStrongPassword(newPassword);
+        if (!selfPasswordValid) {
+            return res.status(400).json({ error: req.authUser.isAdmin
+                ? 'La nueva contraseña debe tener entre 1 y 128 caracteres.'
+                : `La nueva contraseña debe tener entre ${MIN_PASSWORD_LENGTH} y 128 caracteres.` });
         }
 
         const user = await db.collection('users').findOne({ username });
@@ -1568,8 +1579,8 @@ app.post('/api/users/:username/reset-password', async (req, res) => {
             return res.status(400).json({ error: 'Usuario objetivo inválido' });
         }
 
-        if (!isStrongPassword(newPassword)) {
-            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 4 y 128 caracteres.' });
+        if (!isAdminSetPassword(newPassword)) {
+            return res.status(400).json({ error: 'La nueva contraseña debe tener entre 1 y 128 caracteres.' });
         }
 
         const targetUser = await db.collection('users').findOne({ username: targetUsername });
@@ -1598,6 +1609,84 @@ app.post('/api/users/:username/reset-password', async (req, res) => {
         return res.json({ success: true, mustChangePassword: true });
     } catch (error) {
         return handleInternalError(res, error, 'admin-reset-password');
+    }
+});
+
+// Explorador de datos (solo admin): resumen por entrenador y detalle de uno.
+function flattenEquipos(docs) {
+    const result = [];
+    for (const doc of docs || []) {
+        if (Array.isArray(doc?.equipos)) {
+            doc.equipos.forEach(item => result.push(item));
+        } else if (doc) {
+            result.push(doc);
+        }
+    }
+    return result;
+}
+
+app.get('/api/admin/overview', async (req, res) => {
+    try {
+        if (!req.authUser || !req.authUser.isAdmin) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const countBy = (collection, sumExpr = 1) => db.collection(collection)
+            .aggregate([{ $group: { _id: '$userId', total: { $sum: sumExpr } } }])
+            .toArray();
+
+        const [users, equipos, jugadores, jornadas] = await Promise.all([
+            db.collection('users').find({}, { projection: { _id: 0, username: 1, name: 1, isAdmin: 1, lastLogin: 1 } }).toArray(),
+            countBy('equipos', { $cond: [{ $isArray: '$equipos' }, { $size: '$equipos' }, 1] }),
+            countBy('jugadores'),
+            countBy('jornadas')
+        ]);
+
+        const toMap = (rows) => new Map(rows.map(row => [String(row._id), row.total]));
+        const equiposMap = toMap(equipos);
+        const jugadoresMap = toMap(jugadores);
+        const jornadasMap = toMap(jornadas);
+
+        res.json(users.map(user => ({
+            username: user.username,
+            name: user.name || '',
+            isAdmin: !!user.isAdmin,
+            lastLogin: user.lastLogin || null,
+            equipos: equiposMap.get(user.username) || 0,
+            jugadores: jugadoresMap.get(user.username) || 0,
+            jornadas: jornadasMap.get(user.username) || 0
+        })));
+    } catch (error) {
+        return handleInternalError(res, error, 'admin-overview');
+    }
+});
+
+app.get('/api/admin/users/:username/data', async (req, res) => {
+    try {
+        if (!req.authUser || !req.authUser.isAdmin) {
+            return res.status(403).json({ error: 'Acceso denegado' });
+        }
+
+        const username = sanitizeText(req.params.username, 40);
+        const [equiposRaw, jugadores, jornadas] = await Promise.all([
+            db.collection('equipos').find({ userId: username }).toArray(),
+            db.collection('jugadores').find({ userId: username }).toArray(),
+            db.collection('jornadas').find({ userId: username }).toArray()
+        ]);
+
+        await writeAuditLog('admin_view_user_data', req, {
+            targetUsername: username,
+            requestedBy: req.authUser.sub
+        });
+
+        res.json(stripMongoInternalFields({
+            username,
+            equipos: flattenEquipos(equiposRaw),
+            jugadores,
+            jornadas
+        }));
+    } catch (error) {
+        return handleInternalError(res, error, 'admin-user-data');
     }
 });
 

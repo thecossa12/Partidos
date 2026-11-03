@@ -332,6 +332,19 @@
                         </div>
                     </div>
 
+                <!-- Explorador de datos por entrenador -->
+                <div class="admin-section">
+                    <h4>🗄️ Explorador de Datos</h4>
+                    <p style="color: #666; margin-bottom: 15px;">
+                        Pulsa en un entrenador para ver sus equipos, jugadores y jornadas (solo lectura).
+                    </p>
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;">
+                        <input type="search" id="admin-explorer-filter" class="form-control" placeholder="Filtrar entrenadores..." style="min-width: 220px; max-width: 320px;">
+                        <button id="admin-explorer-reload-btn" class="btn-system" style="background: #17a2b8; color: white;">🔄 Recargar</button>
+                    </div>
+                    <div id="admin-explorer" class="admin-explorer"></div>
+                </div>
+
                 <!-- Gestión de Sistema -->
                 <div class="admin-section">
                     <h4>🔧 Gestión del Sistema</h4>
@@ -444,7 +457,7 @@
                     <div class="form-row">
                         <div class="form-group">
                             <label for="edit-user-password">🔑 Nueva Contraseña:</label>
-                            <input type="password" id="edit-user-password" placeholder="Nueva contraseña (mín. 8 caracteres)">
+                            <input type="password" id="edit-user-password" placeholder="Nueva contraseña (vacío = no cambiar)">
                             <small class="form-help">Dejar vacío para mantener la contraseña actual</small>
                         </div>
                         <div class="form-group">
@@ -958,7 +971,9 @@
                 var confirmPwd  = confirmInput.value;
                 errorDiv.style.display = 'none';
                 if (requireOldPassword && !oldPwd) { showErr('Debes introducir tu contraseña actual.'); return; }
-                if (!newPwd || newPwd.length < 8)  { showErr('La nueva contraseña debe tener al menos 8 caracteres.'); return; }
+                var minLen = 8;
+                try { var cu = typeof Auth !== 'undefined' && Auth.getCurrentUser ? Auth.getCurrentUser() : null; if (cu && cu.isAdmin) minLen = 1; } catch (e) {}
+                if (!newPwd || newPwd.length < minLen)  { showErr(minLen > 1 ? 'La nueva contraseña debe tener al menos 8 caracteres.' : 'Escribe la nueva contraseña.'); return; }
                 if (newPwd !== confirmPwd)          { showErr('Las contraseñas no coinciden.'); return; }
                 submitBtn.disabled    = true;
                 submitBtn.textContent = 'Guardando…';

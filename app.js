@@ -8233,8 +8233,160 @@ function initializeAdminPanel() {
     initSystemUsersEditor();
     // Cargar selector para auditoria/reparacion por entrenador
     loadDataHealthUsers();
+    // Explorador de datos por entrenador
+    initAdminExplorer();
     
     console.log('✅ Panel de admin inicializado');
+}
+
+// ==================== EXPLORADOR DE DATOS (ADMIN) ====================
+function adminApiFetch(path) {
+    const token = localStorage.getItem('volleyball_token') || '';
+    return fetch(getApiBaseUrl() + path, {
+        headers: token ? { 'Authorization': 'Bearer ' + token } : {}
+    }).then(async (response) => {
+        const payload = await readApiPayloadSafe(response, {});
+        if (!response.ok) {
+            throw new Error(payload.error || ('HTTP ' + response.status));
+        }
+        return payload;
+    });
+}
+
+function initAdminExplorer() {
+    const reloadBtn = document.getElementById('admin-explorer-reload-btn');
+    const filter = document.getElementById('admin-explorer-filter');
+    if (reloadBtn && !reloadBtn.dataset.bound) {
+        reloadBtn.dataset.bound = '1';
+        reloadBtn.addEventListener('click', loadAdminExplorer);
+    }
+    if (filter && !filter.dataset.bound) {
+        filter.dataset.bound = '1';
+        filter.addEventListener('input', () => {
+            const text = filter.value.trim().toLowerCase();
+            document.querySelectorAll('#admin-explorer .explorer-user').forEach((el) => {
+                el.style.display = !text || (el.dataset.search || '').includes(text) ? '' : 'none';
+            });
+        });
+    }
+    loadAdminExplorer();
+}
+
+async function loadAdminExplorer() {
+    const container = document.getElementById('admin-explorer');
+    if (!container) return;
+    container.innerHTML = '<p class="explorer-empty">Cargando...</p>';
+
+    try {
+        const users = await adminApiFetch('/admin/overview');
+        users.sort((a, b) => a.username.localeCompare(b.username, 'es', { sensitivity: 'base' }));
+        container.innerHTML = '';
+
+        if (!users.length) {
+            container.innerHTML = '<p class="explorer-empty">No hay usuarios.</p>';
+            return;
+        }
+
+        users.forEach((user) => {
+            const details = document.createElement('details');
+            details.className = 'explorer-user';
+            details.dataset.search = (user.username + ' ' + user.name).toLowerCase();
+
+            const summary = document.createElement('summary');
+            summary.innerHTML =
+                '<strong>' + escapeHtml(user.username) + '</strong>' +
+                (user.name ? ' <span class="explorer-muted">' + escapeHtml(user.name) + '</span>' : '') +
+                (user.isAdmin ? ' <span class="explorer-badge">admin</span>' : '') +
+                '<span class="explorer-counts">🏆 ' + user.equipos + ' · 👥 ' + user.jugadores + ' · 📅 ' + user.jornadas + '</span>';
+            details.appendChild(summary);
+
+            const body = document.createElement('div');
+            body.className = 'explorer-body';
+            details.appendChild(body);
+
+            details.addEventListener('toggle', async () => {
+                if (!details.open || details.dataset.loaded) return;
+                details.dataset.loaded = '1';
+                body.innerHTML = '<p class="explorer-empty">Cargando datos...</p>';
+                try {
+                    const data = await adminApiFetch('/admin/users/' + encodeURIComponent(user.username) + '/data');
+                    renderAdminExplorerUser(body, data);
+                } catch (error) {
+                    delete details.dataset.loaded;
+                    body.innerHTML = '<p class="explorer-empty">❌ ' + escapeHtml(error.message) + '</p>';
+                }
+            });
+
+            container.appendChild(details);
+        });
+    } catch (error) {
+        container.innerHTML = '<p class="explorer-empty">❌ No se pudo cargar: ' + escapeHtml(error.message) + '</p>';
+    }
+}
+
+function renderAdminExplorerUser(body, data) {
+    const equipos = Array.isArray(data.equipos) ? data.equipos : [];
+    const jugadores = Array.isArray(data.jugadores) ? data.jugadores : [];
+    const jornadas = Array.isArray(data.jornadas) ? data.jornadas : [];
+    const cell = (value) => escapeHtml(value === undefined || value === null || value === '' ? '-' : String(value));
+
+    const groups = equipos.map((equipo) => ({
+        key: String(equipo.id),
+        nombre: equipo.nombre || ('Equipo ' + equipo.id),
+        jugadores: [],
+        jornadas: []
+    }));
+    const orphan = { key: '', nombre: 'Sin equipo asignado', jugadores: [], jornadas: [] };
+    const byKey = new Map(groups.map((group) => [group.key, group]));
+
+    jugadores.forEach((item) => (byKey.get(String(item.equipoId)) || orphan).jugadores.push(item));
+    jornadas.forEach((item) => (byKey.get(String(item.equipoId)) || orphan).jornadas.push(item));
+    if (orphan.jugadores.length || orphan.jornadas.length) groups.push(orphan);
+
+    if (!groups.length) {
+        body.innerHTML = '<p class="explorer-empty">Este entrenador no tiene datos.</p>';
+        return;
+    }
+
+    let html = '';
+    groups.forEach((group) => {
+        const players = group.jugadores.slice().sort((a, b) => Number(a.dorsal) - Number(b.dorsal));
+        const matches = group.jornadas.slice().sort((a, b) =>
+            String(b.fechaSeleccionada || b.fechaSabado || '').localeCompare(String(a.fechaSeleccionada || a.fechaSabado || '')));
+
+        html += '<details class="explorer-team"><summary>🏆 <strong>' + escapeHtml(group.nombre) + '</strong>' +
+            '<span class="explorer-counts">👥 ' + players.length + ' · 📅 ' + matches.length + '</span></summary>';
+
+        html += '<h6>Jugadores/as</h6>';
+        if (players.length) {
+            html += '<div class="explorer-table-wrap"><table class="explorer-table"><thead><tr><th>Dorsal</th><th>Nombre</th><th>Posición</th><th>Partidos</th><th>Puntos</th><th>Lesión</th></tr></thead><tbody>';
+            players.forEach((p) => {
+                html += '<tr><td>' + cell(p.dorsal) + '</td><td>' + cell(p.nombre) + '</td><td>' + cell(p.posicion) +
+                    '</td><td>' + cell(p.partidosJugados) + '</td><td>' + cell(p.puntosJugados) +
+                    '</td><td>' + (p.lesionada ? '🤕 ' + cell(p.notasLesion) : '-') + '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+        } else {
+            html += '<p class="explorer-empty">Sin jugadores.</p>';
+        }
+
+        html += '<h6>Jornadas</h6>';
+        if (matches.length) {
+            html += '<div class="explorer-table-wrap"><table class="explorer-table"><thead><tr><th>Fecha</th><th>Rival</th><th>Ubicación</th><th>Estado</th></tr></thead><tbody>';
+            matches.forEach((j) => {
+                html += '<tr><td>' + cell(j.fechaSeleccionada || j.fechaSabado || j.fechaLunes) + '</td><td>' + cell(j.rival) +
+                    '</td><td>' + cell(j.ubicacion) + '</td><td>' + (j.completada ? '✅ Completada' : '⏳ Pendiente') + '</td></tr>';
+            });
+            html += '</tbody></table></div>';
+        } else {
+            html += '<p class="explorer-empty">Sin jornadas.</p>';
+        }
+        html += '</details>';
+    });
+
+    html += '<details class="explorer-raw"><summary>{ } Ver datos en bruto (JSON)</summary><pre>' +
+        escapeHtml(JSON.stringify(data, null, 2)) + '</pre></details>';
+    body.innerHTML = html;
 }
 
 function setupAdminEvents() {
@@ -8278,11 +8430,6 @@ async function createNewUser() {
 
     if (!username || !name || !password) {
         showNotification('❌ Usuario, nombre y contraseña son obligatorios', 'error');
-        return;
-    }
-
-    if (password.length < 8) {
-        showNotification('❌ La contraseña debe tener al menos 8 caracteres', 'error');
         return;
     }
 
@@ -8499,11 +8646,6 @@ async function editUser() {
         return;
     }
 
-    if (newPassword && newPassword.length < 8) {
-        showNotification('❌ La contraseña debe tener al menos 8 caracteres', 'error');
-        return;
-    }
-
     if (newUsername !== originalUsername) {
         showNotification('❌ No se puede renombrar un usuario existente desde este formulario. Crea uno nuevo y elimina el anterior.', 'error');
         return;
@@ -8638,11 +8780,6 @@ async function changeUserPassword() {
 
     if (!username || !newPassword) {
         showNotification('❌ Usuario y nueva contraseña son obligatorios', 'error');
-        return;
-    }
-
-    if (newPassword.length < 8) {
-        showNotification('❌ La nueva contraseña debe tener al menos 8 caracteres', 'error');
         return;
     }
 
@@ -9643,7 +9780,7 @@ function renderSystemUsersEditor() {
                            class="system-user-password" 
                            data-index="${index}" 
                            value="${user.password}" 
-                           placeholder="Mínimo 8 caracteres"
+                           placeholder="Contraseña"
                            style="width: 100%;">
                 </div>
                 <div>

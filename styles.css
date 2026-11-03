@@ -7088,9 +7088,25 @@ input:checked + .slider:before {
         align-self: center;
     }
 }
-    
-    
-    
+
+/* ==================== EXPLORADOR DE DATOS (ADMIN) ==================== */
+.admin-explorer { display: flex; flex-direction: column; gap: 8px; }
+.explorer-user, .explorer-team, .explorer-raw { border: 1px solid #cfd6e0; border-radius: 8px; background: #fff; }
+.explorer-user > summary, .explorer-team > summary, .explorer-raw > summary { cursor: pointer; padding: 10px 14px; color: #1a202c; }
+.explorer-user > summary { background: #eef1f7; border-radius: 8px; }
+.explorer-user[open] > summary { border-bottom: 1px solid #cfd6e0; border-radius: 8px 8px 0 0; }
+.explorer-body { padding: 10px 14px; display: flex; flex-direction: column; gap: 8px; }
+.explorer-team { background: #fafbfd; }
+.explorer-team > h6 { margin: 10px 14px 6px; color: #2d3748; }
+.explorer-counts { float: right; color: #4a5568; font-size: 0.9rem; }
+.explorer-muted { color: #4a5568; }
+.explorer-badge { background: #2d3748; color: #fff; border-radius: 10px; padding: 1px 8px; font-size: 0.75rem; }
+.explorer-empty { color: #4a5568; margin: 6px 14px; }
+.explorer-table-wrap { overflow-x: auto; margin: 0 14px 10px; }
+.explorer-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+.explorer-table th, .explorer-table td { border: 1px solid #d5dbe5; padding: 6px 8px; text-align: left; color: #1a202c; }
+.explorer-table th { background: #e2e8f0; }
+.explorer-raw pre { max-height: 320px; overflow: auto; margin: 0; padding: 10px 14px; font-size: 0.8rem; background: #1a202c; color: #e2e8f0; border-radius: 0 0 8px 8px; }
     
     
     
