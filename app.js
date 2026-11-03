@@ -8324,6 +8324,17 @@ async function loadAdminExplorer() {
     }
 }
 
+function etiquetaPosicion(posicion) {
+    const etiquetas = {
+        jugadora: 'Cuatro',
+        colocadora: 'Colocador/a',
+        central: 'Central',
+        libero: 'Líbero',
+        opuesta: 'Opuesto/a'
+    };
+    return etiquetas[posicion] || posicion;
+}
+
 function renderAdminExplorerUser(body, data) {
     const equipos = Array.isArray(data.equipos) ? data.equipos : [];
     const jugadores = Array.isArray(data.jugadores) ? data.jugadores : [];
@@ -8361,7 +8372,7 @@ function renderAdminExplorerUser(body, data) {
         if (players.length) {
             html += '<div class="explorer-table-wrap"><table class="explorer-table"><thead><tr><th>Dorsal</th><th>Nombre</th><th>Posición</th><th>Partidos</th><th>Puntos</th><th>Lesión</th></tr></thead><tbody>';
             players.forEach((p) => {
-                html += '<tr><td>' + cell(p.dorsal) + '</td><td>' + cell(p.nombre) + '</td><td>' + cell(p.posicion) +
+                html += '<tr><td>' + cell(p.dorsal) + '</td><td>' + cell(p.nombre) + '</td><td>' + cell(etiquetaPosicion(p.posicion)) +
                     '</td><td>' + cell(p.partidosJugados) + '</td><td>' + cell(p.puntosJugados) +
                     '</td><td>' + (p.lesionada ? '🤕 ' + cell(p.notasLesion) : '-') + '</td></tr>';
             });
