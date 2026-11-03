@@ -23,6 +23,9 @@ const ALLOW_BOOTSTRAP = typeof process.env.ALLOW_BOOTSTRAP !== 'undefined'
     ? String(process.env.ALLOW_BOOTSTRAP).toLowerCase() === 'true'
     : !IS_PRODUCTION;
 const BOOTSTRAP_TOKEN = process.env.BOOTSTRAP_TOKEN || '';
+const TEMP_PASSWORD_CHANGE_WINDOW_SECONDS = 15 * 60;
+const USERNAME_FAILURE_LIMIT = 30;
+const USERNAME_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 
 if (IS_PRODUCTION) {
     const hasJwtSecret = typeof process.env.JWT_SECRET === 'string' && process.env.JWT_SECRET.trim().length >= 32;
@@ -505,6 +508,35 @@ app.use(cors({
 // Penalización por fallo consecutivo: 10s, 30s, 1m, 2m, 3m...
 // Se resetea al iniciar sesión correctamente.
 const loginAttemptState = new Map();
+// Contador adicional por usuario (suma de todas las IPs) frente a ataques distribuidos.
+const usernameFailureState = new Map();
+
+function getLoginUsername(req) {
+    return sanitizeText(req.body?.username, 40).toLowerCase() || 'unknown';
+}
+
+function getUsernameLockSeconds(req) {
+    const state = usernameFailureState.get(getLoginUsername(req));
+    if (!state) return 0;
+    const now = Date.now();
+    if (now - state.windowStart > USERNAME_FAILURE_WINDOW_MS) {
+        usernameFailureState.delete(getLoginUsername(req));
+        return 0;
+    }
+    if (state.failures < USERNAME_FAILURE_LIMIT) return 0;
+    return Math.max(1, Math.ceil((state.windowStart + USERNAME_FAILURE_WINDOW_MS - now) / 1000));
+}
+
+function registerUsernameFailure(req) {
+    const key = getLoginUsername(req);
+    const now = Date.now();
+    const state = usernameFailureState.get(key);
+    if (!state || now - state.windowStart > USERNAME_FAILURE_WINDOW_MS) {
+        usernameFailureState.set(key, { failures: 1, windowStart: now });
+    } else {
+        state.failures += 1;
+    }
+}
 
 function getLoginAttemptKey(req) {
     const ip = String(req.ip || req.headers['x-forwarded-for'] || 'unknown').trim();
@@ -536,16 +568,26 @@ function registerLoginFailure(req) {
     const lockMs = getProgressiveLockMs(failures);
     const lockUntil = Date.now() + lockMs;
     loginAttemptState.set(key, { failures, lockUntil, updatedAt: Date.now() });
+    registerUsernameFailure(req);
     return { failures, lockMs, lockUntil };
 }
 
 function clearLoginFailures(req) {
     const key = req.loginAttemptKey || getLoginAttemptKey(req);
     loginAttemptState.delete(key);
+    usernameFailureState.delete(getLoginUsername(req));
 }
 
 function loginLimiter(req, res, next) {
     pruneOldLoginAttemptState();
+
+    const usernameLockSeconds = getUsernameLockSeconds(req);
+    if (usernameLockSeconds > 0) {
+        return res.status(429).json({
+            error: `Demasiados intentos de login. Espera ${usernameLockSeconds} segundos.`,
+            retryAfterSeconds: usernameLockSeconds
+        });
+    }
 
     const key = getLoginAttemptKey(req);
     req.loginAttemptKey = key;
@@ -655,6 +697,31 @@ app.use('/api', async (req, res, next) => {
     } catch (error) {
         return res.status(401).json({ error: 'Token inválido o expirado' });
     }
+});
+
+// Saneado de escrituras de datos: elimina < y > de todos los textos (anti HTML/XSS almacenado)
+// y descarta claves que empiecen por "$" o contengan "." (anti inyección de operadores Mongo).
+function deepSanitizeForStorage(value, depth = 0) {
+    if (depth > 20) return value;
+    if (typeof value === 'string') return value.replace(/[<>]/g, '');
+    if (Array.isArray(value)) return value.map(item => deepSanitizeForStorage(item, depth + 1));
+    if (value && typeof value === 'object' && !(value instanceof Date)) {
+        const cleaned = {};
+        for (const [key, fieldValue] of Object.entries(value)) {
+            if (key.startsWith('$')) continue;
+            cleaned[key] = deepSanitizeForStorage(fieldValue, depth + 1);
+        }
+        return cleaned;
+    }
+    return value;
+}
+
+app.use('/api', (req, res, next) => {
+    const isWrite = req.method === 'POST' || req.method === 'PUT';
+    if (isWrite && /^\/(equipos|jugadores|jornadas|sync|config)(\/|$)/.test(req.path)) {
+        req.body = deepSanitizeForStorage(req.body);
+    }
+    next();
 });
 
 // Ruta raíz - redirigir a login (ANTES de servir archivos estáticos)
@@ -1423,10 +1490,15 @@ app.post('/api/users/change-password', async (req, res) => {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
-        const canSkipOldPassword = !!user.mustChangePassword;
+        // La contraseña temporal solo se puede cambiar sin la actual si el token es de un login reciente.
+        const tokenAgeSeconds = Math.floor(Date.now() / 1000) - Number(req.authUser.iat || 0);
+        const canSkipOldPassword = !!user.mustChangePassword && tokenAgeSeconds <= TEMP_PASSWORD_CHANGE_WINDOW_SECONDS;
         if (!canSkipOldPassword) {
             if (!oldPassword) {
-                return res.status(400).json({ error: 'La contraseña actual es obligatoria.' });
+                const msg = user.mustChangePassword
+                    ? 'Tu sesión es antigua. Cierra sesión, vuelve a entrar y cambia la contraseña.'
+                    : 'La contraseña actual es obligatoria.';
+                return res.status(400).json({ error: msg });
             }
 
             const isOldPasswordValid = await verifyPasswordAgainstStored(user.password, oldPassword);
