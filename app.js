@@ -8140,7 +8140,7 @@ window.testFormularioJugadora = testFormularioJugadora;
 window.repararFormulario = repararFormulario;
 
 // ==================== INICIALIZACIÓN ====================
-let app;
+// `app` vive en window.app (también lo crea auth.js); no declarar `let app` para no ocultarlo
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🏐 Iniciando sistema de voleibol...');
 
@@ -8164,8 +8164,7 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('✅ Usuario autenticado:', Auth.getCurrentUser());
     
     try {
-        app = new VolleyballManager();
-        window.app = app; // Para debugging
+        window.app = new VolleyballManager();
         console.log('✅ Sistema iniciado correctamente');
         
         // CERRAR MODALES NUEVAMENTE DESPUÉS DE CARGAR

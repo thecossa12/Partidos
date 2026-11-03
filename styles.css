@@ -4456,20 +4456,23 @@ button:hover {
 }
 
 .modal-sustitucion .modal-content {
-    background: white;
+    background: #f1f3f9;
+    border: 2px solid #4a5568;
     border-radius: 15px;
-    padding: 30px;
+    padding: 0 30px 30px;
     max-width: 500px;
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
 }
 
 .modal-sustitucion h4 {
     text-align: center;
-    color: #333;
-    margin-bottom: 20px;
+    color: #fff;
+    background: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+    margin: 0 -30px 25px;
+    padding: 16px 20px;
     font-size: 1.3rem;
 }
 
@@ -4487,14 +4490,16 @@ button:hover {
 
 .sustitucion-form label {
     font-weight: 600;
-    color: #495057;
+    color: #1a202c;
     font-size: 1rem;
 }
 
 .sustitucion-form select,
 .sustitucion-form input {
     padding: 12px;
-    border: 2px solid #e9ecef;
+    background: #fff;
+    color: #1a202c;
+    border: 2px solid #8a94a6;
     border-radius: 8px;
     font-size: 1rem;
     transition: border-color 0.3s ease;
@@ -4515,7 +4520,7 @@ button:hover {
 }
 
 .btn-confirmar {
-    background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
     color: white;
     border: none;
     padding: 12px 25px;
@@ -4532,7 +4537,7 @@ button:hover {
 }
 
 .btn-cancelar {
-    background: linear-gradient(135deg, #6c757d 0%, #adb5bd 100%);
+    background: linear-gradient(135deg, #495057 0%, #6c757d 100%);
     color: white;
     border: none;
     padding: 12px 25px;
