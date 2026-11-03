@@ -13,6 +13,7 @@ Thumbs.db
 npm-debug.log*
 
 # Backups locales
+backups/
 backup_old_files/
 BackUp Con Exportar/
 

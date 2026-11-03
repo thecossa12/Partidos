@@ -13,9 +13,10 @@ require('dotenv').config();
 const app = express();
 app.disable('x-powered-by');
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-insecure-jwt-secret-change-me';
+// Sin JWT_SECRET (solo desarrollo) se genera uno aleatorio por proceso; nunca un valor fijo conocido.
+const JWT_SECRET = process.env.JWT_SECRET || require('crypto').randomBytes(48).toString('hex');
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
-const AUTH_MODE = process.env.AUTH_MODE || 'compat';
+const AUTH_MODE = process.env.AUTH_MODE || 'strict';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
 const MIN_PASSWORD_LENGTH = Number(process.env.MIN_PASSWORD_LENGTH || 8);
 const ALLOW_BOOTSTRAP = typeof process.env.ALLOW_BOOTSTRAP !== 'undefined'
@@ -70,7 +71,30 @@ async function verifyPasswordAgainstStored(storedPassword, plainPassword) {
         return bcrypt.compare(plainPassword, storedPassword);
     }
 
-    return storedPassword === plainPassword;
+    // Texto plano heredado: solo hasta que la migración de arranque lo convierta en hash.
+    const a = Buffer.from(String(storedPassword));
+    const b = Buffer.from(plainPassword);
+    return a.length === b.length && require('crypto').timingSafeEqual(a, b);
+}
+
+async function migratePlaintextPasswords(database) {
+    const users = await database.collection('users').find({ password: { $type: 'string' } }).toArray();
+    let migrated = 0;
+    for (const user of users) {
+        if (!user.password || isBcryptHash(user.password)) continue;
+        const hashed = await bcrypt.hash(user.password, 12);
+        await database.collection('users').updateOne({ _id: user._id }, { $set: { password: hashed } });
+        migrated++;
+    }
+    if (migrated) console.log(`🔐 ${migrated} contraseña(s) en texto plano migradas a bcrypt`);
+}
+
+function sanitizeUpdateBody(body) {
+    const { _id, id, userId, ...rest } = body && typeof body === 'object' ? body : {};
+    if (typeof rest.nombre === 'string') {
+        rest.nombre = rest.nombre.replace(/[<>]/g, '').trim().slice(0, 120);
+    }
+    return rest;
 }
 
 function signUserToken(user) {
@@ -571,7 +595,7 @@ app.use('/api', (req, res, next) => {
 // Auth de API:
 // - compat: acepta cliente legacy sin token, pero si hay token lo valida y fuerza userId
 // - strict: exige token JWT en todas las rutas /api excepto login
-app.use('/api', (req, res, next) => {
+app.use('/api', async (req, res, next) => {
     const publicPaths = new Set(['/users/login', '/health', '/health/ready']);
     if (publicPaths.has(req.path)) {
         return next();
@@ -595,6 +619,20 @@ app.use('/api', (req, res, next) => {
         }
 
         req.authUser = payload;
+
+        // El rol y la existencia del usuario se validan contra la BD, no solo contra el token.
+        if (!db) {
+            return res.status(503).json({ error: 'Base de datos no disponible' });
+        }
+        const dbUser = await db.collection('users').findOne(
+            { username: String(payload.sub) },
+            { projection: { isAdmin: 1 } }
+        );
+        if (!dbUser) {
+            return res.status(401).json({ error: 'Usuario no válido' });
+        }
+        payload.isAdmin = !!dbUser.isAdmin;
+
         const tokenUserId = String(payload.sub);
         const isAdminRequest = !!payload.isAdmin;
 
@@ -624,12 +662,28 @@ app.get('/', (req, res) => {
     res.redirect('/login.html');
 });
 
-// Evita exposición accidental de código fuente, scripts internos y backups.
+// Evita exposición de código fuente, scripts internos, backups y ficheros de configuración.
+// Se evalúa la ruta decodificada y en minúsculas para impedir bypass con %xx o mayúsculas.
 app.use((req, res, next) => {
-    const blockedPrefixes = ['/backups/', '/scripts/', '/railway/'];
-    const blockedFiles = new Set(['/server.js', '/db.js']);
+    if (req.path.startsWith('/api/')) return next();
+    let decoded;
+    try {
+        decoded = decodeURIComponent(req.path).replace(/\\/g, '/').toLowerCase();
+    } catch (error) {
+        return res.status(400).json({ error: 'Ruta inválida' });
+    }
 
-    if (blockedPrefixes.some(prefix => req.path.startsWith(prefix)) || blockedFiles.has(req.path)) {
+    const blockedPrefixes = ['/backups/', '/scripts/', '/railway/', '/node_modules/', '/.git'];
+    const blockedFiles = new Set(['/server.js', '/db.js', '/migrate-to-multi-team.js']);
+    const allowedExt = new Set(['.html', '.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp', '.woff', '.woff2', '.ttf', '']);
+    const ext = path.posix.extname(decoded);
+
+    if (
+        decoded.includes('..') ||
+        blockedPrefixes.some(prefix => decoded.startsWith(prefix)) ||
+        blockedFiles.has(decoded) ||
+        !allowedExt.has(ext)
+    ) {
         return res.status(404).json({ error: 'Recurso no encontrado' });
     }
 
@@ -697,6 +751,9 @@ async function ensureDatabaseIndexes(database) {
 // Conectar a MongoDB al iniciar el servidor
 connectDB().then(database => {
     db = database;
+    migratePlaintextPasswords(db).catch((error) => {
+        console.warn('⚠️ Error migrando contraseñas:', error.message);
+    });
     ensureDatabaseIndexes(db).catch((error) => {
         console.warn('⚠️ Error creando índices recomendados:', error.message);
     });
@@ -768,7 +825,6 @@ app.post('/api/equipos', async (req, res) => {
 
         equipo.nombre = sanitizeText(equipo.nombre, 120);
         
-        console.log('📥 POST /api/equipos - Recibiendo:', JSON.stringify(equipo));
         
         if (!equipo.userId) {
             console.error('❌ Error: userId faltante');
@@ -819,7 +875,7 @@ app.put('/api/equipos/:id', async (req, res) => {
         
         await db.collection('equipos').updateOne(
             { id, userId },
-            { $set: equipo }
+            { $set: sanitizeUpdateBody(equipo) }
         );
         res.json({ success: true });
     } catch (error) {
@@ -1017,7 +1073,7 @@ app.put('/api/jugadores/:id', async (req, res) => {
         
         await db.collection('jugadores').updateOne(
             { id: normalizeNumericValue(id), userId },
-            { $set: jugador }
+            { $set: sanitizeUpdateBody(jugador) }
         );
         res.json({ success: true });
     } catch (error) {
@@ -1106,7 +1162,7 @@ app.put('/api/jornadas/:id', async (req, res) => {
         
         await db.collection('jornadas').updateOne(
             { id: normalizeNumericValue(id), userId },
-            { $set: jornada }
+            { $set: sanitizeUpdateBody(jornada) }
         );
         res.json({ success: true });
     } catch (error) {
